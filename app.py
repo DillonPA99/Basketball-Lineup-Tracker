@@ -395,17 +395,6 @@ if not st.session_state.authenticated:
                     else:
                         st.error("Please enter both username and password")
 
-            # Demo admin login
-            with col2:
-                if st.form_submit_button("Demo Login (Admin)"):
-                    create_user("admin", "admin123", "admin@demo.com", "admin")
-                    success, result = authenticate_user("admin", "admin123")
-                    if success:
-                        st.session_state.authenticated = True
-                        st.session_state.user_info = result
-                        st.success("Logged in as Demo Admin!")
-                        st.rerun()
-
     with tab2:
         st.header("Register New Account")
         with st.form("register_form"):
