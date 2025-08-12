@@ -11,6 +11,10 @@ import os
 from datetime import datetime, timedelta
 import pickle
 import base64
+import io
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.utils.dataframe import dataframe_to_rows
 
 # ------------------------------------------------------------------
 # Page configuration
@@ -669,6 +673,407 @@ def calculate_lineup_plus_minus():
         lineup_stats[lineup_key]['appearances'] += 1
     
     return dict(lineup_stats)
+
+def generate_game_report_excel():
+    """Generate a comprehensive Excel report of the game data."""
+    
+    # Create workbook and worksheets
+    wb = openpyxl.Workbook()
+    
+    # Remove default sheet and create our custom sheets
+    wb.remove(wb.active)
+    
+    # 1. Game Summary Sheet
+    summary_sheet = wb.create_sheet("Game Summary")
+    
+    # Game Summary Data
+    summary_data = [
+        ["Basketball Game Report"],
+        ["Generated on:", datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
+        [""],
+        ["Final Score"],
+        ["Home Team:", st.session_state.home_score],
+        ["Away Team:", st.session_state.away_score],
+        [""],
+        ["Game Stats"],
+        ["Current Quarter:", st.session_state.current_quarter],
+        ["Total Lineup Changes:", len([lh for lh in st.session_state.lineup_history if not lh.get('is_quarter_end')])],
+        ["Total Scoring Plays:", len(st.session_state.score_history)],
+        ["Quarters Completed:", len(st.session_state.quarter_end_history)],
+    ]
+    
+    for row_idx, row_data in enumerate(summary_data, 1):
+        for col_idx, cell_value in enumerate(row_data, 1):
+            cell = summary_sheet.cell(row=row_idx, column=col_idx, value=cell_value)
+            if row_idx == 1:  # Title row
+                cell.font = Font(bold=True, size=16)
+            elif row_data[0] in ["Final Score", "Game Stats"]:  # Section headers
+                cell.font = Font(bold=True, size=12)
+    
+    # 2. Roster Sheet
+    if st.session_state.roster:
+        roster_sheet = wb.create_sheet("Team Roster")
+        roster_sheet.append(["Jersey Number", "Player Name", "Position"])
+        
+        # Style header
+        for cell in roster_sheet[1]:
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+            cell.font = Font(bold=True, color="FFFFFF")
+        
+        # Add roster data
+        for player in sorted(st.session_state.roster, key=lambda x: x["jersey"]):
+            roster_sheet.append([player["jersey"], player["name"], player["position"]])
+    
+    # 3. Lineup History Sheet
+    if st.session_state.lineup_history:
+        lineup_sheet = wb.create_sheet("Lineup History")
+        lineup_sheet.append(["Event #", "Quarter", "Game Time", "Score", "Lineup", "Event Type"])
+        
+        # Style header
+        for cell in lineup_sheet[1]:
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+            cell.font = Font(bold=True, color="FFFFFF")
+        
+        # Add lineup data
+        for i, lineup_event in enumerate(st.session_state.lineup_history):
+            event_type = "Quarter End Snapshot" if lineup_event.get("is_quarter_end") else "Lineup Change"
+            lineup_sheet.append([
+                i + 1,
+                lineup_event.get("quarter", "Unknown"),
+                lineup_event.get("game_time", "Unknown"),
+                f"{lineup_event.get('home_score', 0)}-{lineup_event.get('away_score', 0)}",
+                " | ".join(lineup_event.get("new_lineup", [])),
+                event_type
+            ])
+        
+        # Auto-adjust column widths
+        for column in lineup_sheet.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            lineup_sheet.column_dimensions[column_letter].width = adjusted_width
+    
+    # 4. Scoring History Sheet
+    if st.session_state.score_history:
+        scoring_sheet = wb.create_sheet("Scoring History")
+        scoring_sheet.append(["Event #", "Team", "Points", "Quarter", "Game Time", "Lineup on Court"])
+        
+        # Style header
+        for cell in scoring_sheet[1]:
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+            cell.font = Font(bold=True, color="FFFFFF")
+        
+        # Add scoring data
+        for i, score_event in enumerate(st.session_state.score_history):
+            scoring_sheet.append([
+                i + 1,
+                score_event['team'].title(),
+                score_event['points'],
+                score_event['quarter'],
+                score_event.get('game_time', 'Unknown'),
+                " | ".join(score_event['lineup'])
+            ])
+        
+        # Auto-adjust column widths
+        for column in scoring_sheet.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            scoring_sheet.column_dimensions[column_letter].width = adjusted_width
+    
+    # 5. Plus/Minus Analytics Sheet
+    individual_stats = calculate_individual_plus_minus()
+    if individual_stats:
+        analytics_sheet = wb.create_sheet("Plus-Minus Analytics")
+        analytics_sheet.append(["Player", "Plus/Minus"])
+        
+        # Style header
+        for cell in analytics_sheet[1]:
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+            cell.font = Font(bold=True, color="FFFFFF")
+        
+        # Add plus/minus data
+        sorted_players = sorted(individual_stats.items(), key=lambda x: x[1]['plus_minus'], reverse=True)
+        for player, stats in sorted_players:
+            row = [player, stats['plus_minus']]
+            analytics_sheet.append(row)
+            
+            # Color code the plus/minus values
+            last_row = analytics_sheet.max_row
+            pm_cell = analytics_sheet.cell(row=last_row, column=2)
+            if stats['plus_minus'] > 0:
+                pm_cell.fill = PatternFill(start_color="90EE90", end_color="90EE90", fill_type="solid")
+            elif stats['plus_minus'] < 0:
+                pm_cell.fill = PatternFill(start_color="FFB6C1", end_color="FFB6C1", fill_type="solid")
+    
+    # Save to BytesIO buffer
+    excel_buffer = io.BytesIO()
+    wb.save(excel_buffer)
+    excel_buffer.seek(0)
+    
+    return excel_buffer
+
+def create_email_content():
+    """Generate email content with game summary."""
+    
+    # Calculate some basic stats
+    total_points = st.session_state.home_score + st.session_state.away_score
+    lineup_changes = len([lh for lh in st.session_state.lineup_history if not lh.get('is_quarter_end')])
+    
+    # Find best performer
+    individual_stats = calculate_individual_plus_minus()
+    best_player = ""
+    best_plus_minus = None
+    if individual_stats:
+        best_player_data = max(individual_stats.items(), key=lambda x: x[1]['plus_minus'])
+        best_player = best_player_data[0]
+        best_plus_minus = best_player_data[1]['plus_minus']
+    
+    email_subject = f"Basketball Game Report - {datetime.now().strftime('%Y-%m-%d')}"
+    
+    email_body = f"""
+Basketball Game Report
+======================
+
+Game Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+FINAL SCORE
+-----------
+Home Team: {st.session_state.home_score}
+Away Team: {st.session_state.away_score}
+{"🏠 HOME WINS!" if st.session_state.home_score > st.session_state.away_score else "✈️ AWAY WINS!" if st.session_state.away_score > st.session_state.home_score else "🤝 TIE GAME!"}
+
+GAME STATISTICS
+---------------
+• Current Quarter: {st.session_state.current_quarter}
+• Total Points Scored: {total_points}
+• Lineup Changes Made: {lineup_changes}
+• Scoring Plays: {len(st.session_state.score_history)}
+• Quarters Completed: {len(st.session_state.quarter_end_history)}
+
+{f"TOP PERFORMER: {best_player} (+{best_plus_minus})" if best_player and best_plus_minus is not None and best_plus_minus > 0 else ""}
+
+TEAM ROSTER
+-----------
+{chr(10).join([f"#{p['jersey']} {p['name']} ({p['position']})" for p in sorted(st.session_state.roster, key=lambda x: x["jersey"])])}
+
+Please find the detailed Excel report attached with complete game data including:
+• Complete lineup history
+• All scoring events  
+• Plus/minus analytics
+• Quarter-by-quarter breakdown
+
+Generated by Basketball Lineup Tracker Pro
+"""
+    
+    return email_subject, email_body
+
+# =============================================================================
+# 3. ADD THIS SECTION TO YOUR SIDEBAR 
+# (Find your sidebar section and add this after the "Game Management" section)
+# =============================================================================
+
+# REPLACE your existing sidebar content with this updated version:
+with st.sidebar:
+    st.header("Game Controls")
+    
+    # User info and logout
+    st.subheader(f"👤 {st.session_state.user_info['username']}")
+    st.caption(f"Role: {st.session_state.user_info['role'].title()}")
+
+    if st.button("🚪 Logout"):
+        # Save roster before logout
+        if st.session_state.roster:
+            save_user_roster(st.session_state.user_info['id'], st.session_state.roster)
+            st.success("Roster saved!")
+        
+        # Clear session
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
+        
+    # Admin panel access
+    if st.session_state.user_info['role'] == 'admin':
+        if st.button("⚙️ Admin Panel"):
+            st.session_state.show_admin_panel = not st.session_state.show_admin_panel
+            st.rerun()
+
+    st.divider()
+        
+    # Show current roster info
+    st.subheader("Team Roster")
+    st.info(f"📋 {len(st.session_state.roster)} players")
+
+    roster_col1, roster_col2 = st.columns(2)
+    with roster_col1:
+        if st.button("🔄 Change Roster"):
+            st.session_state.roster_set = False
+            st.session_state.roster = []
+            reset_game()
+            st.rerun()
+
+    with roster_col2:
+        if st.button("💾 Save Roster"):
+            if st.session_state.roster:
+                save_user_roster(st.session_state.user_info['id'], st.session_state.roster)
+                st.success("Roster saved!")
+            else:
+                st.warning("No roster to save!")
+
+    with st.expander("View Full Roster"):
+        if st.session_state.roster:
+            for player in sorted(st.session_state.roster, key=lambda x: x["jersey"]):
+                st.write(f"#{player['jersey']} {player['name']} ({player['position']})")
+
+    st.divider()
+
+    # Quarter management
+    st.subheader("Quarter Settings")
+    quarter_options = ["Q1", "Q2", "Q3", "Q4", "OT1", "OT2", "OT3"]
+    current_quarter = st.selectbox(
+        "Current Quarter",
+        quarter_options,
+        index=quarter_options.index(st.session_state.current_quarter)
+    )
+
+    quarter_length = st.number_input(
+        "Quarter Length (minutes)",
+        min_value=1,
+        max_value=20,
+        value=st.session_state.quarter_length,
+        help="Standard NBA/college quarters are 12/20 minutes"
+    )
+
+    if st.button("Update Quarter Settings"):
+        update_quarter_settings(current_quarter, quarter_length)
+        st.success(f"Quarter settings updated! Game clock: {st.session_state.current_game_time}")
+        st.rerun()
+
+    st.divider()
+
+    # Game management
+    st.subheader("Game Management")
+
+    if st.button("🔄 New Game", help="Start a new game"):
+        reset_game()
+        st.success("New game started!")
+        st.rerun()
+
+    st.divider()
+
+    # *** NEW EMAIL EXPORT SECTION ***
+    st.subheader("📧 Export Game Data")
+    
+    # Check if there's meaningful game data to export
+    has_game_data = (
+        st.session_state.home_score > 0 or 
+        st.session_state.away_score > 0 or 
+        len(st.session_state.lineup_history) > 0 or
+        len(st.session_state.score_history) > 0
+    )
+    
+    if not has_game_data:
+        st.info("📊 Start tracking your game to enable data export!")
+    else:
+        st.write("Export complete game data:")
+        
+        # Generate and download Excel file
+        if st.button("📊 Download Excel Report", type="primary"):
+            try:
+                excel_buffer = generate_game_report_excel()
+                
+                # Create filename with timestamp
+                filename = f"basketball_game_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+                
+                st.download_button(
+                    label="⬇️ Download Excel File",
+                    data=excel_buffer.getvalue(),
+                    file_name=filename,
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    help="Click to download the complete game report as an Excel file"
+                )
+                
+                st.success("✅ Excel report generated!")
+                
+            except Exception as e:
+                st.error(f"❌ Error generating Excel report: {str(e)}")
+        
+        # Generate email content
+        if st.button("📧 Prepare Email Content"):
+            try:
+                subject, body = create_email_content()
+                
+                st.write("**Subject:**")
+                st.code(subject)
+                
+                st.write("**Email Body:**")
+                st.text_area(
+                    "Copy this content:",
+                    body,
+                    height=200,
+                    help="Copy this text to paste into your email"
+                )
+                
+                st.info("💡 Attach the Excel file to your email!")
+                
+            except Exception as e:
+                st.error(f"❌ Error generating email content: {str(e)}")
+
+        # Instructions
+        with st.expander("📖 How to Email Report"):
+            st.write("""
+            **Steps to email your game report:**
+            
+            1. Click "📊 Download Excel Report" to get the data file
+            2. Click "📧 Prepare Email Content" to get email text
+            3. Copy the email subject and body text
+            4. Open your email (Gmail, Outlook, etc.)
+            5. Create new email and paste the content
+            6. Attach the Excel file you downloaded
+            7. Send to yourself or your team!
+            
+            **The Excel file includes:**
+            • Game summary & final score
+            • Complete team roster
+            • All lineup changes & substitutions
+            • Every scoring play with context
+            • Player plus/minus analytics
+            """)
+
+    st.divider()
+        
+    # Real-time Plus/Minus Display (existing code)
+    if st.session_state.quarter_lineup_set and st.session_state.lineup_history:
+        st.subheader("Live Plus/Minus")
+        
+        individual_stats = calculate_individual_plus_minus()
+        if individual_stats:
+            st.write("**Current Players Plus/Minus:**")
+            current_plus_minus_cols = st.columns(5)
+            
+            for i, player in enumerate(st.session_state.current_lineup):
+                with current_plus_minus_cols[i]:
+                    plus_minus = individual_stats.get(player, {}).get('plus_minus', 0)
+                    if plus_minus >= 0:
+                        st.success(f"{player.split('(')[0].strip()}\n+{plus_minus}")
+                    else:
+                        st.error(f"{player.split('(')[0].strip()}\n{plus_minus}")
 
 # ------------------------------------------------------------------
 # Main title
