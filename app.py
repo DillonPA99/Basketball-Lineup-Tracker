@@ -1122,67 +1122,6 @@ with st.sidebar:
             st.rerun()
 
     st.divider()
-        
-    # Show current roster info
-    st.subheader("Team Roster")
-    st.info(f"📋 {len(st.session_state.roster)} players")
-
-    roster_col1, roster_col2 = st.columns(2)
-    with roster_col1:
-        if st.button("🔄 Change Roster"):
-            st.session_state.roster_set = False
-            st.session_state.roster = []
-            reset_game()
-            st.rerun()
-
-    with roster_col2:
-        if st.button("💾 Save Roster"):
-            if st.session_state.roster:
-                save_user_roster(st.session_state.user_info['id'], st.session_state.roster)
-                st.success("Roster saved!")
-            else:
-                st.warning("No roster to save!")
-
-    with st.expander("View Full Roster"):
-        if st.session_state.roster:
-            for player in sorted(st.session_state.roster, key=lambda x: x["jersey"]):
-                st.write(f"#{player['jersey']} {player['name']} ({player['position']})")
-
-    st.divider()
-
-    # Quarter management
-    st.subheader("Quarter Settings")
-    quarter_options = ["Q1", "Q2", "Q3", "Q4", "OT1", "OT2", "OT3"]
-    current_quarter = st.selectbox(
-        "Current Quarter",
-        quarter_options,
-        index=quarter_options.index(st.session_state.current_quarter)
-    )
-
-    quarter_length = st.number_input(
-        "Quarter Length (minutes)",
-        min_value=1,
-        max_value=20,
-        value=st.session_state.quarter_length,
-        help="Standard NBA/college quarters are 12/20 minutes"
-    )
-
-    if st.button("Update Quarter Settings"):
-        update_quarter_settings(current_quarter, quarter_length)
-        st.success(f"Quarter settings updated! Game clock: {st.session_state.current_game_time}")
-        st.rerun()
-
-    st.divider()
-
-    # Game management
-    st.subheader("Game Management")
-
-    if st.button("🔄 New Game", help="Start a new game"):
-        reset_game()
-        st.success("New game started!")
-        st.rerun()
-
-    st.divider()
 
     # *** NEW EMAIL EXPORT SECTION ***
     st.subheader("📧 Export Game Data")
@@ -1262,6 +1201,67 @@ with st.sidebar:
             • Every scoring play with context
             • Player plus/minus analytics
             """)
+
+    st.divider()
+        
+    # Show current roster info
+    st.subheader("Team Roster")
+    st.info(f"📋 {len(st.session_state.roster)} players")
+
+    roster_col1, roster_col2 = st.columns(2)
+    with roster_col1:
+        if st.button("🔄 Change Roster"):
+            st.session_state.roster_set = False
+            st.session_state.roster = []
+            reset_game()
+            st.rerun()
+
+    with roster_col2:
+        if st.button("💾 Save Roster"):
+            if st.session_state.roster:
+                save_user_roster(st.session_state.user_info['id'], st.session_state.roster)
+                st.success("Roster saved!")
+            else:
+                st.warning("No roster to save!")
+
+    with st.expander("View Full Roster"):
+        if st.session_state.roster:
+            for player in sorted(st.session_state.roster, key=lambda x: x["jersey"]):
+                st.write(f"#{player['jersey']} {player['name']} ({player['position']})")
+
+    st.divider()
+
+    # Quarter management
+    st.subheader("Quarter Settings")
+    quarter_options = ["Q1", "Q2", "Q3", "Q4", "OT1", "OT2", "OT3"]
+    current_quarter = st.selectbox(
+        "Current Quarter",
+        quarter_options,
+        index=quarter_options.index(st.session_state.current_quarter)
+    )
+
+    quarter_length = st.number_input(
+        "Quarter Length (minutes)",
+        min_value=1,
+        max_value=20,
+        value=st.session_state.quarter_length,
+        help="Standard NBA/college quarters are 12/20 minutes"
+    )
+
+    if st.button("Update Quarter Settings"):
+        update_quarter_settings(current_quarter, quarter_length)
+        st.success(f"Quarter settings updated! Game clock: {st.session_state.current_game_time}")
+        st.rerun()
+
+    st.divider()
+
+    # Game management
+    st.subheader("Game Management")
+
+    if st.button("🔄 New Game", help="Start a new game"):
+        reset_game()
+        st.success("New game started!")
+        st.rerun()
 
     st.divider()
         
