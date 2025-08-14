@@ -5,7 +5,7 @@ import json
 from collections import defaultdict
 import plotly.express as px
 import plotly.graph_objects as go
-import sqlite3
+from supabase import create_client, Client
 import hashlib
 import os
 from datetime import datetime, timedelta
