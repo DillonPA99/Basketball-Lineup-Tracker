@@ -27,63 +27,56 @@ st.set_page_config(
 )
 
 # ============================================================================
-# DATABASE INITIALIZATION
+# SUPABASE CONNECTION SETUP
 # ============================================================================
-# Creates the necessary SQLite tables for users, rosters, and game sessions.
+# Get credentials from Streamlit secrets
+SUPABASE_URL = st.secrets["supabase"]["database_url"]
+SUPABASE_KEY = st.secrets["supabase"]["api_key"]
+
+@st.cache_resource
+def init_supabase():
+    """Initialize Supabase client."""
+    return create_client(SUPABASE_URL, SUPABASE_KEY)
+
+supabase: Client = init_supabase()
+
+# ============================================================================
+# DATABASE INITIALIZATION (SUPABASE)
+# ============================================================================
+# Note: Tables should be created in Supabase dashboard or via SQL
+# This function now just checks if tables exist and creates them if needed
 
 def init_database():
-    """Initialize the user database and tables."""
-    conn = sqlite3.connect('basketball_app.db')
-    cursor = conn.cursor()
-    
-    # Users table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            email TEXT,
-            role TEXT DEFAULT 'user',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            last_login TIMESTAMP,
-            is_active BOOLEAN DEFAULT 1
-        )
-    ''')
-    
-    # User rosters table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS user_rosters (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            roster_name TEXT DEFAULT 'My Team',
-            roster_data TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users (id)
-        )
-    ''')
-    
-    # Game sessions table (optional - for saving game states)
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS game_sessions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            session_name TEXT,
-            game_data TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users (id)
-        )
-    ''')
-    
-    conn.commit()
-    conn.close()
+    """Initialize the database tables in Supabase."""
+    try:
+        # Check if tables exist by trying to query them
+        # If they don't exist, Supabase will return an error
+        
+        # Test users table
+        try:
+            supabase.table('users').select("count", count="exact").limit(1).execute()
+        except Exception:
+            # Create users table via RPC call or handle via Supabase dashboard
+            st.warning("Please ensure 'users' table exists in Supabase")
+            
+        # Test user_rosters table  
+        try:
+            supabase.table('user_rosters').select("count", count="exact").limit(1).execute()
+        except Exception:
+            st.warning("Please ensure 'user_rosters' table exists in Supabase")
+            
+        # Test game_sessions table
+        try:
+            supabase.table('game_sessions').select("count", count="exact").limit(1).execute()
+        except Exception:
+            st.warning("Please ensure 'game_sessions' table exists in Supabase")
+            
+    except Exception as e:
+        st.error(f"Database initialization error: {e}")
 
 # ============================================================================
-# PASSWORD SECURITY
+# PASSWORD SECURITY (UNCHANGED)
 # ============================================================================
-# Functions for hashing and verifying user passwords.
-
 def hash_password(password):
     """Hash a password for storing."""
     return hashlib.sha256(password.encode()).hexdigest()
@@ -93,212 +86,243 @@ def verify_password(password, hashed):
     return hash_password(password) == hashed
 
 # ============================================================================
-# USER ACCOUNT MANAGEMENT
+# USER ACCOUNT MANAGEMENT (SUPABASE VERSION)
 # ============================================================================
-# Functions for creating and authenticating users.
-
 def create_user(username, password, email=None, role='user'):
-    """Create a new user."""
-    conn = sqlite3.connect('basketball_app.db')
-    cursor = conn.cursor()
-    
+    """Create a new user in Supabase."""
     try:
         password_hash = hash_password(password)
-        cursor.execute('''
-            INSERT INTO users (username, password_hash, email, role)
-            VALUES (?, ?, ?, ?)
-        ''', (username, password_hash, email, role))
         
-        user_id = cursor.lastrowid
-        conn.commit()
-        return True, user_id
-    except sqlite3.IntegrityError:
-        return False, "Username already exists"
-    finally:
-        conn.close()
+        response = supabase.table('users').insert({
+            'username': username,
+            'password_hash': password_hash,
+            'email': email,
+            'role': role,
+            'created_at': datetime.now().isoformat(),
+            'is_active': True
+        }).execute()
+        
+        if response.data:
+            return True, response.data[0]['id']
+        else:
+            return False, "Failed to create user"
+            
+    except Exception as e:
+        if "duplicate key" in str(e).lower() or "unique" in str(e).lower():
+            return False, "Username already exists"
+        return False, f"Error creating user: {str(e)}"
 
 def authenticate_user(username, password):
-    """Authenticate a user."""
-    conn = sqlite3.connect('basketball_app.db')
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        SELECT id, username, password_hash, role, is_active
-        FROM users WHERE username = ?
-    ''', (username,))
-    
-    user = cursor.fetchone()
-    conn.close()
-    
-    if user and user[4] and verify_password(password, user[2]):  # Check if active and password matches
-        # Update last login
-        conn = sqlite3.connect('basketball_app.db')
-        cursor = conn.cursor()
-        cursor.execute('''
-            UPDATE users SET last_login = CURRENT_TIMESTAMP
-            WHERE id = ?
-        ''', (user[0],))
-        conn.commit()
-        conn.close()
+    """Authenticate a user with Supabase."""
+    try:
+        response = supabase.table('users').select(
+            'id, username, password_hash, role, is_active'
+        ).eq('username', username).execute()
         
-        return True, {
-            'id': user[0],
-            'username': user[1],
-            'role': user[3]
-        }
-    return False, "Invalid credentials"
+        if response.data:
+            user = response.data[0]
+            if user['is_active'] and verify_password(password, user['password_hash']):
+                # Update last login
+                supabase.table('users').update({
+                    'last_login': datetime.now().isoformat()
+                }).eq('id', user['id']).execute()
+                
+                return True, {
+                    'id': user['id'],
+                    'username': user['username'],
+                    'role': user['role']
+                }
+        
+        return False, "Invalid credentials"
+        
+    except Exception as e:
+        return False, f"Authentication error: {str(e)}"
 
 # ============================================================================
-# ROSTER STORAGE
+# ROSTER STORAGE (SUPABASE VERSION)
 # ============================================================================
-# Functions to save and load team rosters to/from the database.
-
 def save_user_roster(user_id, roster_data, roster_name='My Team'):
-    """Save user's roster to database."""
-    conn = sqlite3.connect('basketball_app.db')
-    cursor = conn.cursor()
-    
-    # Convert roster to JSON string
-    roster_json = pickle.dumps(roster_data)
-    roster_b64 = base64.b64encode(roster_json).decode()
-    
-    # Check if user already has a roster
-    cursor.execute('SELECT id FROM user_rosters WHERE user_id = ?', (user_id,))
-    existing = cursor.fetchone()
-    
-    if existing:
-        cursor.execute('''
-            UPDATE user_rosters 
-            SET roster_data = ?, roster_name = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE user_id = ?
-        ''', (roster_b64, roster_name, user_id))
-    else:
-        cursor.execute('''
-            INSERT INTO user_rosters (user_id, roster_name, roster_data)
-            VALUES (?, ?, ?)
-        ''', (user_id, roster_name, roster_b64))
-    
-    conn.commit()
-    conn.close()
+    """Save user's roster to Supabase."""
+    try:
+        # Convert roster to JSON string
+        roster_json = pickle.dumps(roster_data)
+        roster_b64 = base64.b64encode(roster_json).decode()
+        
+        # Check if user already has a roster
+        existing = supabase.table('user_rosters').select('id').eq('user_id', user_id).execute()
+        
+        if existing.data:
+            # Update existing roster
+            supabase.table('user_rosters').update({
+                'roster_data': roster_b64,
+                'roster_name': roster_name,
+                'updated_at': datetime.now().isoformat()
+            }).eq('user_id', user_id).execute()
+        else:
+            # Insert new roster
+            supabase.table('user_rosters').insert({
+                'user_id': user_id,
+                'roster_name': roster_name,
+                'roster_data': roster_b64,
+                'created_at': datetime.now().isoformat(),
+                'updated_at': datetime.now().isoformat()
+            }).execute()
+            
+    except Exception as e:
+        st.error(f"Error saving roster: {str(e)}")
 
 def load_user_roster(user_id):
-    """Load user's roster from database."""
-    conn = sqlite3.connect('basketball_app.db')
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        SELECT roster_data, roster_name FROM user_rosters 
-        WHERE user_id = ?
-    ''', (user_id,))
-    
-    result = cursor.fetchone()
-    conn.close()
-    
-    if result:
-        roster_b64 = result[0]
-        roster_name = result[1]
-        roster_data = pickle.loads(base64.b64decode(roster_b64))
-        return roster_data, roster_name
-    return None, None
+    """Load user's roster from Supabase."""
+    try:
+        response = supabase.table('user_rosters').select(
+            'roster_data, roster_name'
+        ).eq('user_id', user_id).execute()
+        
+        if response.data:
+            result = response.data[0]
+            roster_b64 = result['roster_data']
+            roster_name = result['roster_name']
+            roster_data = pickle.loads(base64.b64decode(roster_b64))
+            return roster_data, roster_name
+            
+        return None, None
+        
+    except Exception as e:
+        st.error(f"Error loading roster: {str(e)}")
+        return None, None
 
 # ============================================================================
-# ADMIN FUNCTIONS
+# ADMIN FUNCTIONS (SUPABASE VERSION)
 # ============================================================================
-# Tools for admin use, such as viewing users or toggling active status.
-
 def get_all_users():
-    """Get all users (for admin panel)."""
-    conn = sqlite3.connect('basketball_app.db')
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        SELECT id, username, email, role, created_at, last_login, is_active
-        FROM users ORDER BY created_at DESC
-    ''')
-    
-    users = cursor.fetchall()
-    conn.close()
-    return users
+    """Get all users from Supabase (for admin panel)."""
+    try:
+        response = supabase.table('users').select(
+            'id, username, email, role, created_at, last_login, is_active'
+        ).order('created_at', desc=True).execute()
+        
+        if response.data:
+            # Convert to tuple format to match original SQLite format
+            users = []
+            for user in response.data:
+                users.append((
+                    user['id'],
+                    user['username'],
+                    user.get('email'),
+                    user['role'],
+                    user['created_at'],
+                    user.get('last_login'),
+                    user['is_active']
+                ))
+            return users
+        return []
+        
+    except Exception as e:
+        st.error(f"Error fetching users: {str(e)}")
+        return []
 
 def toggle_user_status(user_id, is_active):
-    """Enable/disable a user."""
-    conn = sqlite3.connect('basketball_app.db')
-    cursor = conn.cursor()
-    
-    
-# ============================================================================
-# DATABASE VIEWER FUNCTIONS
-# ============================================================================
+    """Enable/disable a user in Supabase."""
+    try:
+        supabase.table('users').update({
+            'is_active': is_active
+        }).eq('id', user_id).execute()
+        
+    except Exception as e:
+        st.error(f"Error toggling user status: {str(e)}")
 
+# ============================================================================
+# DATABASE VIEWER FUNCTIONS (SUPABASE VERSION)
+# ============================================================================
 def get_table_info():
-    """Get information about all tables in the database."""
-    conn = sqlite3.connect('basketball_app.db')
-    cursor = conn.cursor()
-    
-    # Get all table names
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-    tables = cursor.fetchall()
+    """Get information about all tables in Supabase."""
+    # Note: This is simplified since Supabase doesn't have the same introspection as SQLite
+    # You'll need to hardcode your table structure or use Supabase's API
     
     table_info = {}
-    for table in tables:
-        table_name = table[0]
-        cursor.execute(f"PRAGMA table_info({table_name})")
-        columns = cursor.fetchall()
-        
-        cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
-        row_count = cursor.fetchone()[0]
-        
-        table_info[table_name] = {
-            'columns': columns,
-            'row_count': row_count
-        }
+    tables = ['users', 'user_rosters', 'game_sessions']
     
-    conn.close()
+    for table_name in tables:
+        try:
+            # Get row count
+            response = supabase.table(table_name).select("*", count="exact").limit(1).execute()
+            row_count = response.count if hasattr(response, 'count') else 0
+            
+            # Hardcode column info (you'll need to update this based on your actual schema)
+            if table_name == 'users':
+                columns = [
+                    (0, 'id', 'bigint', False, None, True),
+                    (1, 'username', 'text', True, None, False),
+                    (2, 'password_hash', 'text', True, None, False),
+                    (3, 'email', 'text', False, None, False),
+                    (4, 'role', 'text', False, 'user', False),
+                    (5, 'created_at', 'timestamp', False, 'now()', False),
+                    (6, 'last_login', 'timestamp', False, None, False),
+                    (7, 'is_active', 'boolean', False, True, False),
+                ]
+            elif table_name == 'user_rosters':
+                columns = [
+                    (0, 'id', 'bigint', False, None, True),
+                    (1, 'user_id', 'bigint', False, None, False),
+                    (2, 'roster_name', 'text', False, 'My Team', False),
+                    (3, 'roster_data', 'text', False, None, False),
+                    (4, 'created_at', 'timestamp', False, 'now()', False),
+                    (5, 'updated_at', 'timestamp', False, 'now()', False),
+                ]
+            else:  # game_sessions
+                columns = [
+                    (0, 'id', 'bigint', False, None, True),
+                    (1, 'user_id', 'bigint', False, None, False),
+                    (2, 'session_name', 'text', False, None, False),
+                    (3, 'game_data', 'text', False, None, False),
+                    (4, 'created_at', 'timestamp', False, 'now()', False),
+                    (5, 'updated_at', 'timestamp', False, 'now()', False),
+                ]
+            
+            table_info[table_name] = {
+                'columns': columns,
+                'row_count': row_count
+            }
+            
+        except Exception as e:
+            st.error(f"Error getting info for table {table_name}: {str(e)}")
+            
     return table_info
 
 def get_table_data(table_name, limit=100):
-    """Get data from a specific table."""
-    conn = sqlite3.connect('basketball_app.db')
-    cursor = conn.cursor()
-    
-    cursor.execute(f"SELECT * FROM {table_name} LIMIT {limit}")
-    data = cursor.fetchall()
-    
-    # Get column names
-    cursor.execute(f"PRAGMA table_info({table_name})")
-    columns = [col[1] for col in cursor.fetchall()]
-    
-    conn.close()
-    return data, columns
+    """Get data from a specific Supabase table."""
+    try:
+        response = supabase.table(table_name).select("*").limit(limit).execute()
+        
+        if response.data:
+            # Convert to list of tuples and get column names
+            data = []
+            columns = []
+            
+            if response.data:
+                columns = list(response.data[0].keys())
+                for row in response.data:
+                    data.append(tuple(row[col] for col in columns))
+                    
+            return data, columns
+        return [], []
+        
+    except Exception as e:
+        st.error(f"Error getting table data: {str(e)}")
+        return [], []
 
 def execute_custom_query(query):
-    """Execute a custom SQL query (for admin use)."""
+    """Execute a custom SQL query in Supabase (limited functionality)."""
     try:
-        conn = sqlite3.connect('basketball_app.db')
-        cursor = conn.cursor()
+        # Note: Supabase has limited raw SQL support
+        # You might need to use RPC functions for complex queries
+        # This is a basic implementation
         
-        cursor.execute(query)
+        st.warning("Custom SQL queries have limited support with Supabase. Consider using RPC functions for complex queries.")
+        return False, "Custom queries not fully supported with Supabase client", []
         
-        if query.strip().upper().startswith('SELECT'):
-            data = cursor.fetchall()
-            # Try to get column descriptions
-            columns = [description[0] for description in cursor.description]
-            conn.close()
-            return True, data, columns
-        else:
-            conn.commit()
-            conn.close()
-            return True, "Query executed successfully", []
-            
     except Exception as e:
-        conn.close()
         return False, str(e), []
-    
-    cursor.execute('UPDATE users SET is_active = ? WHERE id = ?', (is_active, user_id))
-    conn.commit()
-    conn.close()
-    
-    
 
 # ------------------------------------------------------------------
 # Initialize session state variables
