@@ -323,7 +323,6 @@ def execute_custom_query(query):
         
     except Exception as e:
         return False, str(e), []
-
 # ------------------------------------------------------------------
 # Initialize session state variables
 # ------------------------------------------------------------------
