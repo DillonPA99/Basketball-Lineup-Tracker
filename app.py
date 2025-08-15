@@ -1718,46 +1718,174 @@ with admin_tab2:
                     st.rerun()
     else:
         st.info("No product keys created yet.")
-    
+
+# Insert this code after the admin_tab2 section (around line 1650)
+# This should go right after the "else: st.info("No product keys created yet.")" line
+
     with admin_tab3:
+        st.subheader("Database Viewer")
+        
+        # Get table information
+        try:
+            table_info = get_table_info()
+            
+            if table_info:
+                # Table selector
+                table_names = list(table_info.keys())
+                selected_table = st.selectbox("Select Table to View:", table_names)
+                
+                if selected_table:
+                    # Show table info
+                    info = table_info[selected_table]
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.metric("Total Rows", info.get('row_count', 0))
+                    with col2:
+                        st.metric("Total Columns", len(info.get('columns', [])))
+                    
+                    # Show column information
+                    st.write("**Table Schema:**")
+                    if info.get('columns'):
+                        schema_data = []
+                        for col in info['columns']:
+                            schema_data.append({
+                                'Column': col[1],  # column name
+                                'Type': col[2],    # data type
+                                'Not Null': 'Yes' if col[3] else 'No',
+                                'Default': col[4] if col[4] is not None else 'None',
+                                'Primary Key': 'Yes' if col[5] else 'No'
+                            })
+                        
+                        schema_df = pd.DataFrame(schema_data)
+                        st.dataframe(schema_df, use_container_width=True, hide_index=True)
+                    
+                    # Show table data
+                    st.write("**Table Data:**")
+                    
+                    # Limit selector
+                    limit = st.selectbox("Rows to display:", [10, 25, 50, 100], index=1)
+                    
+                    # Get and display data
+                    data, columns = get_table_data(selected_table, limit)
+                    
+                    if data and columns:
+                        # Convert to DataFrame for better display
+                        display_data = []
+                        for row in data:
+                            row_dict = {}
+                            for i, col_name in enumerate(columns):
+                                row_dict[col_name] = row[i] if i < len(row) else None
+                            display_data.append(row_dict)
+                        
+                        if display_data:
+                            display_df = pd.DataFrame(display_data)
+                            st.dataframe(display_df, use_container_width=True, hide_index=True)
+                        else:
+                            st.info(f"No data found in table '{selected_table}'")
+                    else:
+                        st.info(f"No data found in table '{selected_table}'")
+                        
+            else:
+                st.error("Could not retrieve table information")
+                
+        except Exception as e:
+            st.error(f"Error accessing database: {str(e)}")
+            
+        # Custom query section (with warning)
+        st.divider()
+        st.write("**Custom Query (Limited Support)**")
+        st.warning("⚠️ Custom SQL queries have limited support with Supabase. Use with caution.")
+        
+        custom_query = st.text_area(
+            "Enter SQL Query:",
+            placeholder="SELECT * FROM users LIMIT 10;",
+            help="Note: Complex queries may not work with the Supabase client"
+        )
+        
+        if st.button("Execute Query"):
+            if custom_query.strip():
+                success, message, results = execute_custom_query(custom_query)
+                if success:
+                    if results:
+                        st.success("Query executed successfully!")
+                        st.dataframe(pd.DataFrame(results), use_container_width=True)
+                    else:
+                        st.info("Query executed successfully but returned no results.")
+                else:
+                    st.error(f"Query failed: {message}")
+            else:
+                st.error("Please enter a query to execute")
+
+    with admin_tab4:
         st.subheader("System Information")
         
-        # Database file info
-        db_path = 'basketball_app.db'
-        if os.path.exists(db_path):
-            file_size = os.path.getsize(db_path)
-            file_modified = datetime.fromtimestamp(os.path.getmtime(db_path))
-            
-            st.write(f"**Database File:** {db_path}")
-            st.write(f"**File Size:** {file_size:,} bytes ({file_size/1024:.2f} KB)")
-            st.write(f"**Last Modified:** {file_modified}")
-        else:
-            st.error("Database file not found!")
+        # System stats
+        st.write("**Application Information**")
         
-        # Backup functionality
-        st.write("**Database Backup:**")
-        if st.button("Create Backup"):
-            backup_name = f"basketball_app_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+        app_info = {
+            "Application": "Basketball Lineup Tracker Pro",
+            "Database Type": "Supabase (PostgreSQL)",
+            "Python Environment": "Streamlit Cloud" if "streamlit" in str(os.environ.get('SERVER_SOFTWARE', '')) else "Local",
+            "Current User": st.session_state.user_info['username'],
+            "User Role": st.session_state.user_info['role'],
+            "Session State Variables": len(st.session_state.keys()),
+            "Current Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        
+        for key, value in app_info.items():
+            st.write(f"**{key}:** {value}")
+        
+        st.divider()
+        
+        # Database connection test
+        st.write("**Database Connection Test**")
+        
+        if st.button("Test Database Connection"):
             try:
-                import shutil
-                shutil.copy2(db_path, backup_name)
-                st.success(f"Backup created: {backup_name}")
+                # Simple test query
+                response = supabase.table('users').select("count", count="exact").limit(1).execute()
+                st.success("✅ Database connection successful!")
+                st.write(f"Connection URL: {SUPABASE_URL[:50]}...")
+                
             except Exception as e:
-                st.error(f"Backup failed: {e}")
-    
-    # Close admin panel button
-    if st.button("Close Admin Panel"):
-        st.session_state.show_admin_panel = False
-        st.rerun()
-    
-    st.divider()
-    
-    # Important: Add this to prevent the main app from showing when admin panel is open
-    st.stop()
-
-    
-                        
-                       
+                st.error(f"❌ Database connection failed: {str(e)}")
+        
+        st.divider()
+        
+        # Environment variables (safe display)
+        st.write("**Environment Check**")
+        
+        env_checks = {
+            "Supabase URL": "✅ Set" if SUPABASE_URL else "❌ Missing",
+            "Supabase Key": "✅ Set" if SUPABASE_KEY else "❌ Missing",
+            "Streamlit Version": st.__version__,
+        }
+        
+        for check, status in env_checks.items():
+            st.write(f"**{check}:** {status}")
+        
+        st.divider()
+        
+        # System maintenance
+        st.write("**System Maintenance**")
+        
+        maintenance_col1, maintenance_col2 = st.columns(2)
+        
+        with maintenance_col1:
+            if st.button("🗑️ Clear Session Cache"):
+                # Clear specific session state items (preserve authentication)
+                items_to_clear = ['roster', 'lineup_history', 'score_history', 'quarter_end_history']
+                for item in items_to_clear:
+                    if item in st.session_state:
+                        del st.session_state[item]
+                st.success("Session cache cleared!")
+                
+        with maintenance_col2:
+            if st.button("🔄 Reset Game Data"):
+                reset_game()
+                st.success("Game data reset!")
+                st.rerun()            
 
 # ------------------------------------------------------------------
 # Main content area: Tabs
