@@ -1533,7 +1533,6 @@ if st.session_state.get('show_admin_panel', False) and st.session_state.user_inf
         else:
             st.info("No users found")
     
-     Add this new tab between Users and Database Viewer:
 with admin_tab2:
     st.subheader("Product Key Management")
     
