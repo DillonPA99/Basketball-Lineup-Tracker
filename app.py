@@ -1530,6 +1530,9 @@ with st.sidebar:
 # ------------------------------------------------------------------
 # Admin Panel Display (when activated)
 # ------------------------------------------------------------------
+# ------------------------------------------------------------------
+# Admin Panel Display (when activated) - COMPLETE REPLACEMENT
+# ------------------------------------------------------------------
 if st.session_state.get('show_admin_panel', False) and st.session_state.user_info['role'] == 'admin':
     st.header("🔧 Admin Panel")
     
@@ -1571,157 +1574,154 @@ if st.session_state.get('show_admin_panel', False) and st.session_state.user_inf
         else:
             st.info("No users found")
     
-with admin_tab2:
-    st.subheader("Product Key Management")
-    
-    # Create new product key section
-    st.write("**Create New Product Key**")
-    
-    create_col1, create_col2, create_col3 = st.columns(3)
-    
-    with create_col1:
-        key_description = st.text_input(
-            "Description (optional)",
-            placeholder="e.g., 'For John Smith' or 'Batch #1'"
-        )
+    with admin_tab2:
+        st.subheader("Product Key Management")
         
-    with create_col2:
-        max_uses = st.number_input(
-            "Maximum Uses",
-            min_value=1,
-            max_value=100,
-            value=1,
-            help="How many times this key can be used"
-        )
+        # Create new product key section
+        st.write("**Create New Product Key**")
         
-    with create_col3:
-        expires_days = st.number_input(
-            "Expires in Days",
-            min_value=1,
-            max_value=365,
-            value=30,
-            help="How many days until the key expires"
-        )
-    
-    if st.button("🔑 Generate New Product Key", type="primary"):
-        success, result = create_product_key(
-            st.session_state.user_info['id'],
-            key_description,
-            max_uses,
-            expires_days
-        )
-        if success:
-            st.success(f"✅ Product key created: **{result}**")
-            st.info("📋 Copy this key and share it with the user. It won't be shown again!")
-            st.rerun()
-        else:
-            st.error(f"❌ Failed to create product key: {result}")
-    
-    st.divider()
-    
-    # Existing product keys
-    st.write("**Existing Product Keys**")
-    
-    keys = get_all_product_keys()
-    
-    if keys:
-        key_data = []
-        for key in keys:
-            # Format expiry date
-            expiry_str = "Never"
-            if key.get('expires_at'):
-                try:
-                    expiry_date = datetime.fromisoformat(key['expires_at'].replace('Z', '+00:00'))
-                    expiry_str = expiry_date.strftime('%Y-%m-%d %H:%M')
-                    if datetime.now(expiry_date.tzinfo) > expiry_date:
-                        expiry_str += " (EXPIRED)"
-                except:
-                    expiry_str = "Invalid Date"
-            
-            # Status indicator
-            status = "🟢 Active" if key.get('is_active') else "🔴 Inactive"
-            if key.get('current_uses', 0) >= key.get('max_uses', 1):
-                status = "🟡 Used Up"
-            
-            key_data.append({
-                'ID': key['id'],
-                'Key Code': key['key_code'],
-                'Description': key.get('description') or 'No description',
-                'Uses': f"{key.get('current_uses', 0)}/{key.get('max_uses', 1)}",
-                'Status': status,
-                'Expires': expiry_str,
-                'Created': key['created_at'][:10] if key.get('created_at') else 'Unknown',
-                'Last Used': key.get('last_used_at', 'Never')[:10] if key.get('last_used_at') and key.get('last_used_at') != 'Never' else 'Never'
-            })
+        create_col1, create_col2, create_col3 = st.columns(3)
         
-        keys_df = pd.DataFrame(key_data)
-        st.dataframe(keys_df, use_container_width=True, hide_index=True)
-        
-        # Key management actions
-        st.write("**Product Key Actions**")
-        
-        action_col1, action_col2, action_col3 = st.columns(3)
-        
-        with action_col1:
-            key_to_toggle = st.selectbox(
-                "Select key to toggle status:",
-                [f"{k['key_code']} (ID: {k['id']})" for k in keys]
+        with create_col1:
+            key_description = st.text_input(
+                "Description (optional)",
+                placeholder="e.g., 'For John Smith' or 'Batch #1'"
             )
-            if st.button("🔄 Toggle Status"):
-                key_id = int(key_to_toggle.split("ID: ")[1].rstrip(")"))
-                current_key = next(k for k in keys if k['id'] == key_id)
-                new_status = not current_key.get('is_active', True)
-                toggle_product_key_status(key_id, new_status)
-                st.success("Key status updated!")
-                st.rerun()
-        
-        with action_col2:
-            key_to_delete = st.selectbox(
-                "Select key to delete:",
-                [f"{k['key_code']} (ID: {k['id']})" for k in keys],
-                key="delete_select"
-            )
-            if st.button("🗑️ Delete Key", type="secondary"):
-                key_id = int(key_to_delete.split("ID: ")[1].rstrip(")"))
-                if delete_product_key(key_id):
-                    st.success("Key deleted!")
-                    st.rerun()
-        
-        with action_col3:
-            # Bulk key generation
-            st.write("**Bulk Generation**")
-            bulk_count = st.number_input(
-                "Generate multiple keys:",
+            
+        with create_col2:
+            max_uses = st.number_input(
+                "Maximum Uses",
                 min_value=1,
-                max_value=50,
-                value=5
+                max_value=100,
+                value=1,
+                help="How many times this key can be used"
             )
-            if st.button("🔑 Generate Bulk Keys"):
-                generated_keys = []
-                for i in range(bulk_count):
-                    success, result = create_product_key(
-                        st.session_state.user_info['id'],
-                        f"Bulk generated key {i+1}",
-                        1,  # Single use
-                        30  # 30 days expiry
-                    )
-                    if success:
-                        generated_keys.append(result)
+            
+        with create_col3:
+            expires_days = st.number_input(
+                "Expires in Days",
+                min_value=1,
+                max_value=365,
+                value=30,
+                help="How many days until the key expires"
+            )
+        
+        if st.button("🔑 Generate New Product Key", type="primary"):
+            success, result = create_product_key(
+                st.session_state.user_info['id'],
+                key_description,
+                max_uses,
+                expires_days
+            )
+            if success:
+                st.success(f"✅ Product key created: **{result}**")
+                st.info("📋 Copy this key and share it with the user. It won't be shown again!")
+                st.rerun()
+            else:
+                st.error(f"❌ Failed to create product key: {result}")
+        
+        st.divider()
+        
+        # Existing product keys
+        st.write("**Existing Product Keys**")
+        
+        keys = get_all_product_keys()
+        
+        if keys:
+            key_data = []
+            for key in keys:
+                # Format expiry date
+                expiry_str = "Never"
+                if key.get('expires_at'):
+                    try:
+                        expiry_date = datetime.fromisoformat(key['expires_at'].replace('Z', '+00:00'))
+                        expiry_str = expiry_date.strftime('%Y-%m-%d %H:%M')
+                        if datetime.now(expiry_date.tzinfo) > expiry_date:
+                            expiry_str += " (EXPIRED)"
+                    except:
+                        expiry_str = "Invalid Date"
                 
-                if generated_keys:
-                    st.success(f"✅ Generated {len(generated_keys)} keys!")
-                    st.text_area(
-                        "Generated Keys (copy these):",
-                        "\n".join(generated_keys),
-                        height=200
-                    )
+                # Status indicator
+                status = "🟢 Active" if key.get('is_active') else "🔴 Inactive"
+                if key.get('current_uses', 0) >= key.get('max_uses', 1):
+                    status = "🟡 Used Up"
+                
+                key_data.append({
+                    'ID': key['id'],
+                    'Key Code': key['key_code'],
+                    'Description': key.get('description') or 'No description',
+                    'Uses': f"{key.get('current_uses', 0)}/{key.get('max_uses', 1)}",
+                    'Status': status,
+                    'Expires': expiry_str,
+                    'Created': key['created_at'][:10] if key.get('created_at') else 'Unknown',
+                    'Last Used': key.get('last_used_at', 'Never')[:10] if key.get('last_used_at') and key.get('last_used_at') != 'Never' else 'Never'
+                })
+            
+            keys_df = pd.DataFrame(key_data)
+            st.dataframe(keys_df, use_container_width=True, hide_index=True)
+            
+            # Key management actions
+            st.write("**Product Key Actions**")
+            
+            action_col1, action_col2, action_col3 = st.columns(3)
+            
+            with action_col1:
+                key_to_toggle = st.selectbox(
+                    "Select key to toggle status:",
+                    [f"{k['key_code']} (ID: {k['id']})" for k in keys]
+                )
+                if st.button("🔄 Toggle Status"):
+                    key_id = int(key_to_toggle.split("ID: ")[1].rstrip(")"))
+                    current_key = next(k for k in keys if k['id'] == key_id)
+                    new_status = not current_key.get('is_active', True)
+                    toggle_product_key_status(key_id, new_status)
+                    st.success("Key status updated!")
                     st.rerun()
-    else:
-        st.info("No product keys created yet.")
-
-# Insert this code after the admin_tab2 section (around line 1650)
-# This should go right after the "else: st.info("No product keys created yet.")" line
-
+            
+            with action_col2:
+                key_to_delete = st.selectbox(
+                    "Select key to delete:",
+                    [f"{k['key_code']} (ID: {k['id']})" for k in keys],
+                    key="delete_select"
+                )
+                if st.button("🗑️ Delete Key", type="secondary"):
+                    key_id = int(key_to_delete.split("ID: ")[1].rstrip(")"))
+                    if delete_product_key(key_id):
+                        st.success("Key deleted!")
+                        st.rerun()
+            
+            with action_col3:
+                # Bulk key generation
+                st.write("**Bulk Generation**")
+                bulk_count = st.number_input(
+                    "Generate multiple keys:",
+                    min_value=1,
+                    max_value=50,
+                    value=5
+                )
+                if st.button("🔑 Generate Bulk Keys"):
+                    generated_keys = []
+                    for i in range(bulk_count):
+                        success, result = create_product_key(
+                            st.session_state.user_info['id'],
+                            f"Bulk generated key {i+1}",
+                            1,  # Single use
+                            30  # 30 days expiry
+                        )
+                        if success:
+                            generated_keys.append(result)
+                    
+                    if generated_keys:
+                        st.success(f"✅ Generated {len(generated_keys)} keys!")
+                        st.text_area(
+                            "Generated Keys (copy these):",
+                            "\n".join(generated_keys),
+                            height=200
+                        )
+                        st.rerun()
+        else:
+            st.info("No product keys created yet.")
+    
     with admin_tab3:
         st.subheader("Database Viewer")
         
@@ -1885,7 +1885,17 @@ with admin_tab2:
             if st.button("🔄 Reset Game Data"):
                 reset_game()
                 st.success("Game data reset!")
-                st.rerun()            
+                st.rerun()
+
+    # Close admin panel button
+    if st.button("Close Admin Panel"):
+        st.session_state.show_admin_panel = False
+        st.rerun()
+    
+    st.divider()
+    
+    # Important: Add this to prevent the main app from showing when admin panel is open
+    st.stop()
 
 # ------------------------------------------------------------------
 # Main content area: Tabs
