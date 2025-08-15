@@ -1122,6 +1122,30 @@ if not st.session_state.roster_set:
 # ------------------------------------------------------------------
 with st.sidebar:
     st.header("Game Controls")
+
+    # Quarter management
+    st.subheader("Quarter Settings")
+    quarter_options = ["Q1", "Q2", "Q3", "Q4", "OT1", "OT2", "OT3"]
+    current_quarter = st.selectbox(
+        "Current Quarter",
+        quarter_options,
+        index=quarter_options.index(st.session_state.current_quarter)
+    )
+
+    quarter_length = st.number_input(
+        "Quarter Length (minutes)",
+        min_value=1,
+        max_value=20,
+        value=st.session_state.quarter_length,
+        help="Standard NBA/college quarters are 12/20 minutes"
+    )
+
+    if st.button("Update Quarter Settings"):
+        update_quarter_settings(current_quarter, quarter_length)
+        st.success(f"Quarter settings updated! Game clock: {st.session_state.current_game_time}")
+        st.rerun()
+
+    st.divider()
     
     # User info and logout
     st.subheader(f"👤 {st.session_state.user_info['username']}")
@@ -1251,30 +1275,6 @@ with st.sidebar:
         if st.session_state.roster:
             for player in sorted(st.session_state.roster, key=lambda x: x["jersey"]):
                 st.write(f"#{player['jersey']} {player['name']} ({player['position']})")
-
-    st.divider()
-
-    # Quarter management
-    st.subheader("Quarter Settings")
-    quarter_options = ["Q1", "Q2", "Q3", "Q4", "OT1", "OT2", "OT3"]
-    current_quarter = st.selectbox(
-        "Current Quarter",
-        quarter_options,
-        index=quarter_options.index(st.session_state.current_quarter)
-    )
-
-    quarter_length = st.number_input(
-        "Quarter Length (minutes)",
-        min_value=1,
-        max_value=20,
-        value=st.session_state.quarter_length,
-        help="Standard NBA/college quarters are 12/20 minutes"
-    )
-
-    if st.button("Update Quarter Settings"):
-        update_quarter_settings(current_quarter, quarter_length)
-        st.success(f"Quarter settings updated! Game clock: {st.session_state.current_game_time}")
-        st.rerun()
 
     st.divider()
 
