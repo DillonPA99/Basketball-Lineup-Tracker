@@ -1369,7 +1369,7 @@ with st.sidebar:
 
     st.divider()
 
-     # Show current roster info
+    # Show current roster info
     st.subheader("Team Roster")
     st.info(f"📋 {len(st.session_state.roster)} players")
 
@@ -1396,7 +1396,7 @@ with st.sidebar:
 
     st.divider()
 
-        # Real-time Plus/Minus Display
+    # Real-time Plus/Minus Display
     if st.session_state.quarter_lineup_set and st.session_state.lineup_history:
         st.subheader("Live Plus/Minus")
         
@@ -1415,7 +1415,7 @@ with st.sidebar:
 
     st.divider()
 
-    # *** NEW EMAIL EXPORT SECTION ***
+    # Export Game Data Section
     st.subheader("📧 Export Game Data")
     
     # Check if there's meaningful game data to export
@@ -1506,7 +1506,7 @@ with st.sidebar:
 
     st.divider()
         
-# User info and logout
+    # User info and logout
     st.subheader(f"👤 {st.session_state.user_info['username']}")
     st.caption(f"Role: {st.session_state.user_info['role'].title()}")
 
@@ -1529,9 +1529,6 @@ with st.sidebar:
 
 # ------------------------------------------------------------------
 # Admin Panel Display (when activated)
-# ------------------------------------------------------------------
-# ------------------------------------------------------------------
-# Admin Panel Display (when activated) - COMPLETE REPLACEMENT
 # ------------------------------------------------------------------
 if st.session_state.get('show_admin_panel', False) and st.session_state.user_info['role'] == 'admin':
     st.header("🔧 Admin Panel")
