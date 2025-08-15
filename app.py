@@ -590,45 +590,45 @@ if not st.session_state.authenticated:
                     else:
                         st.error("Please enter both username and password")
 
-# ============================================================================
-# UPDATED REGISTRATION FORM (REPLACE YOUR EXISTING REGISTRATION TAB)
-# ============================================================================
+    # ============================================================================
+    # UPDATED REGISTRATION FORM (REPLACE YOUR EXISTING REGISTRATION TAB)
+    # ============================================================================
 
-# Replace your existing registration tab2 content with this:
-with tab2:
-    st.header("Register New Account")
-    st.info("🔐 A valid product key is required to register. Contact your administrator for a product key.")
-    
-    with st.form("register_form"):
-        new_username = st.text_input("Choose Username")
-        new_email = st.text_input("Email (optional)")
-        new_password = st.text_input("Choose Password", type="password")
-        confirm_password = st.text_input("Confirm Password", type="password")
+    # Replace your existing registration tab2 content with this:
+    with tab2:
+        st.header("Register New Account")
+        st.info("🔐 A valid product key is required to register. Contact your administrator for a product key.")
         
-        # Product key input
-        product_key = st.text_input(
-            "Product Key", 
-            placeholder="XXXX-XXXX-XXXX-XXXX",
-            help="Enter the product key provided by your administrator",
-            max_chars=19
-        )
+        with st.form("register_form"):
+            new_username = st.text_input("Choose Username")
+            new_email = st.text_input("Email (optional)")
+            new_password = st.text_input("Choose Password", type="password")
+            confirm_password = st.text_input("Confirm Password", type="password")
+            
+            # Product key input
+            product_key = st.text_input(
+                "Product Key", 
+                placeholder="XXXX-XXXX-XXXX-XXXX",
+                help="Enter the product key provided by your administrator",
+                max_chars=19
+            )
 
-        if st.form_submit_button("Register", type="primary"):
-            if new_username and new_password and product_key:
-                if new_password == confirm_password:
-                    success, result = create_user(new_username, new_password, new_email, product_key=product_key)
-                    if success:
-                        st.success("Account created successfully! Please log in.")
-                        st.balloons()
+            if st.form_submit_button("Register", type="primary"):
+                if new_username and new_password and product_key:
+                    if new_password == confirm_password:
+                        success, result = create_user(new_username, new_password, new_email, product_key=product_key)
+                        if success:
+                            st.success("Account created successfully! Please log in.")
+                            st.balloons()
+                        else:
+                            st.error(result)
                     else:
-                        st.error(result)
+                        st.error("Passwords don't match")
                 else:
-                    st.error("Passwords don't match")
-            else:
-                st.error("Please enter username, password, and product key!")
+                    st.error("Please enter username, password, and product key!")
 
+    # Important: Stop execution here if not authenticated
     st.stop()
-
 # ------------------------------------------------------------------
 # Helper functions
 # ------------------------------------------------------------------
