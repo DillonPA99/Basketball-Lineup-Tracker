@@ -15,6 +15,8 @@ import io
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils.dataframe import dataframe_to_rows
+import secrets
+import string
 
 # ------------------------------------------------------------------
 # Page configuration
@@ -51,6 +53,12 @@ def init_database():
     try:
         # Check if tables exist by trying to query them
         # If they don't exist, Supabase will return an error
+
+        # Test product_keys table
+        try:
+            supabase.table('product_keys').select("count", count="exact").limit(1).execute()
+        except Exception:
+            st.warning("Please ensure 'product_keys' table exists in Supabase")
         
         # Test users table
         try:
@@ -86,24 +94,169 @@ def verify_password(password, hashed):
     return hash_password(password) == hashed
 
 # ============================================================================
+# PRODUCT KEY MANAGEMENT
+# ============================================================================
+
+def generate_product_key():
+    """Generate a random product key in format XXXX-XXXX-XXXX-XXXX"""
+    characters = string.ascii_uppercase + string.digits
+    key_parts = []
+    for _ in range(4):
+        part = ''.join(secrets.choice(characters) for _ in range(4))
+        key_parts.append(part)
+    return '-'.join(key_parts)
+
+def create_product_key(created_by_user_id, description="", max_uses=1, expires_days=30):
+    """Create a new product key in Supabase."""
+    try:
+        key = generate_product_key()
+        expires_at = datetime.now() + timedelta(days=expires_days) if expires_days else None
+        
+        response = supabase.table('product_keys').insert({
+            'key_code': key,
+            'description': description,
+            'max_uses': max_uses,
+            'current_uses': 0,
+            'expires_at': expires_at.isoformat() if expires_at else None,
+            'created_by': created_by_user_id,
+            'is_active': True,
+            'created_at': datetime.now().isoformat()
+        }).execute()
+        
+        if response.data:
+            return True, key
+        else:
+            return False, "Failed to create product key"
+            
+    except Exception as e:
+        return False, f"Error creating product key: {str(e)}"
+
+def validate_product_key(key_code):
+    """Validate a product key and check if it can be used."""
+    try:
+        response = supabase.table('product_keys').select(
+            'id, key_code, max_uses, current_uses, expires_at, is_active'
+        ).eq('key_code', key_code).eq('is_active', True).execute()
+        
+        if not response.data:
+            return False, "Invalid product key"
+        
+        key_info = response.data[0]
+        
+        # Check if expired
+        if key_info['expires_at']:
+            expiry_date = datetime.fromisoformat(key_info['expires_at'].replace('Z', '+00:00'))
+            if datetime.now(expiry_date.tzinfo) > expiry_date:
+                return False, "Product key has expired"
+        
+        # Check if uses exceeded
+        if key_info['current_uses'] >= key_info['max_uses']:
+            return False, "Product key has reached maximum uses"
+        
+        return True, key_info
+        
+    except Exception as e:
+        return False, f"Error validating product key: {str(e)}"
+
+def use_product_key(key_id, used_by_user_id):
+    """Mark a product key as used by incrementing the usage count."""
+    try:
+        # First get current usage
+        response = supabase.table('product_keys').select(
+            'current_uses'
+        ).eq('id', key_id).execute()
+        
+        if response.data:
+            current_uses = response.data[0]['current_uses']
+            
+            # Update usage count
+            supabase.table('product_keys').update({
+                'current_uses': current_uses + 1,
+                'last_used_at': datetime.now().isoformat(),
+                'last_used_by': used_by_user_id
+            }).eq('id', key_id).execute()
+            
+            return True, "Product key used successfully"
+        else:
+            return False, "Product key not found"
+            
+    except Exception as e:
+        return False, f"Error using product key: {str(e)}"
+
+def get_all_product_keys():
+    """Get all product keys (for admin panel)."""
+    try:
+        response = supabase.table('product_keys').select(
+            'id, key_code, description, max_uses, current_uses, expires_at, is_active, created_at, last_used_at'
+        ).order('created_at', desc=True).execute()
+        
+        return response.data if response.data else []
+        
+    except Exception as e:
+        st.error(f"Error fetching product keys: {str(e)}")
+        return []
+
+def toggle_product_key_status(key_id, is_active):
+    """Enable/disable a product key."""
+    try:
+        supabase.table('product_keys').update({
+            'is_active': is_active
+        }).eq('id', key_id).execute()
+        
+    except Exception as e:
+        st.error(f"Error toggling product key status: {str(e)}")
+
+def delete_product_key(key_id):
+    """Delete a product key."""
+    try:
+        supabase.table('product_keys').delete().eq('id', key_id).execute()
+        return True
+    except Exception as e:
+        st.error(f"Error deleting product key: {str(e)}")
+        return False
+
+# ============================================================================
 # USER ACCOUNT MANAGEMENT (SUPABASE VERSION)
 # ============================================================================
-def create_user(username, password, email=None, role='user'):
-    """Create a new user in Supabase."""
+# ============================================================================
+# UPDATED USER REGISTRATION WITH PRODUCT KEY (REPLACE YOUR EXISTING create_user FUNCTION)
+# ============================================================================
+
+def create_user(username, password, email=None, role='user', product_key=None):
+    """Create a new user in Supabase with product key validation."""
     try:
+        # Validate product key first
+        if product_key:
+            is_valid, key_info = validate_product_key(product_key)
+            if not is_valid:
+                return False, key_info  # key_info contains error message
+        else:
+            return False, "Product key is required for registration"
+        
         password_hash = hash_password(password)
         
+        # Create user
         response = supabase.table('users').insert({
             'username': username,
             'password_hash': password_hash,
             'email': email,
             'role': role,
             'created_at': datetime.now().isoformat(),
-            'is_active': True
+            'is_active': True,
+            'registered_with_key': product_key
         }).execute()
         
         if response.data:
-            return True, response.data[0]['id']
+            user_id = response.data[0]['id']
+            
+            # Mark product key as used
+            use_success, use_message = use_product_key(key_info['id'], user_id)
+            if not use_success:
+                # If we can't mark the key as used, we should probably still allow the user
+                # but log the issue
+                st.warning(f"User created but couldn't update product key usage: {use_message}")
+            
+            return True, user_id
         else:
             return False, "Failed to create user"
             
@@ -240,7 +393,7 @@ def get_table_info():
     # You'll need to hardcode your table structure or use Supabase's API
     
     table_info = {}
-    tables = ['users', 'user_rosters', 'game_sessions']
+    tables = ['users', 'user_rosters', 'game_sessions', 'product_keys']
     
     for table_name in tables:
         try:
@@ -269,7 +422,7 @@ def get_table_info():
                     (4, 'created_at', 'timestamp', False, 'now()', False),
                     (5, 'updated_at', 'timestamp', False, 'now()', False),
                 ]
-            else:  # game_sessions
+            elif table_name == 'game_sessions':
                 columns = [
                     (0, 'id', 'bigint', False, None, True),
                     (1, 'user_id', 'bigint', False, None, False),
@@ -277,6 +430,20 @@ def get_table_info():
                     (3, 'game_data', 'text', False, None, False),
                     (4, 'created_at', 'timestamp', False, 'now()', False),
                     (5, 'updated_at', 'timestamp', False, 'now()', False),
+                ]
+            else:  # product_keys
+                columns = [
+                    (0, 'id', 'bigint', False, None, True),
+                    (1, 'key_code', 'text', True, None, False),
+                    (2, 'description', 'text', False, None, False),
+                    (3, 'max_uses', 'integer', False, 1, False),
+                    (4, 'current_uses', 'integer', False, 0, False),
+                    (5, 'expires_at', 'timestamptz', False, None, False),
+                    (6, 'created_by', 'bigint', False, None, False),
+                    (7, 'is_active', 'boolean', False, True, False),
+                    (8, 'created_at', 'timestamptz', False, 'now()', False),
+                    (9, 'last_used_at', 'timestamptz', False, None, False),
+                    (10, 'last_used_by', 'bigint', False, None, False),
                 ]
             
             table_info[table_name] = {
@@ -422,26 +589,42 @@ if not st.session_state.authenticated:
                     else:
                         st.error("Please enter both username and password")
 
-    with tab2:
-        st.header("Register New Account")
-        with st.form("register_form"):
-            new_username = st.text_input("Choose Username")
-            new_email = st.text_input("Email (optional)")
-            new_password = st.text_input("Choose Password", type="password")
-            confirm_password = st.text_input("Confirm Password", type="password")
+# ============================================================================
+# UPDATED REGISTRATION FORM (REPLACE YOUR EXISTING REGISTRATION TAB)
+# ============================================================================
 
-            if st.form_submit_button("Register", type="primary"):
-                if new_username and new_password:
-                    if new_password == confirm_password:
-                        success, result = create_user(new_username, new_password, new_email)
-                        if success:
-                            st.success("Account created successfully! Please log in.")
-                        else:
-                            st.error(result)
+# Replace your existing registration tab2 content with this:
+with tab2:
+    st.header("Register New Account")
+    st.info("🔐 A valid product key is required to register. Contact your administrator for a product key.")
+    
+    with st.form("register_form"):
+        new_username = st.text_input("Choose Username")
+        new_email = st.text_input("Email (optional)")
+        new_password = st.text_input("Choose Password", type="password")
+        confirm_password = st.text_input("Confirm Password", type="password")
+        
+        # Product key input
+        product_key = st.text_input(
+            "Product Key", 
+            placeholder="XXXX-XXXX-XXXX-XXXX",
+            help="Enter the product key provided by your administrator",
+            max_chars=19
+        )
+
+        if st.form_submit_button("Register", type="primary"):
+            if new_username and new_password and product_key:
+                if new_password == confirm_password:
+                    success, result = create_user(new_username, new_password, new_email, product_key=product_key)
+                    if success:
+                        st.success("Account created successfully! Please log in.")
+                        st.balloons()
                     else:
-                        st.error("Passwords don't match")
+                        st.error(result)
                 else:
-                    st.error("Please enter username and password")
+                    st.error("Passwords don't match")
+            else:
+                st.error("Please enter username, password, and product key!")
 
     st.stop()
 
@@ -1311,7 +1494,7 @@ with st.sidebar:
 if st.session_state.get('show_admin_panel', False) and st.session_state.user_info['role'] == 'admin':
     st.header("🔧 Admin Panel")
     
-    admin_tab1, admin_tab2, admin_tab3 = st.tabs(["👥 Users", "🗄️ Database Viewer", "⚙️ System"])
+    admin_tab1, admin_tab2, admin_tab3, admin_tab4 = st.tabs(["👥 Users", "🔑 Product Keys", "🗄️ Database Viewer", "⚙️ System"])
     
     with admin_tab1:
         st.subheader("User Management")
@@ -1349,98 +1532,154 @@ if st.session_state.get('show_admin_panel', False) and st.session_state.user_inf
         else:
             st.info("No users found")
     
-    with admin_tab2:
-        st.subheader("Database Viewer")
-        
-        # Show database overview
-        st.write("**Database Overview:**")
-        table_info = get_table_info()
-        
-        overview_data = []
-        for table_name, info in table_info.items():
-            overview_data.append({
-                'Table': table_name,
-                'Rows': info['row_count'],
-                'Columns': len(info['columns'])
-            })
-        
-        if overview_data:
-            overview_df = pd.DataFrame(overview_data)
-            st.dataframe(overview_df, use_container_width=True, hide_index=True)
-        
-        # Table viewer
-        st.write("**Table Data Viewer:**")
-        selected_table = st.selectbox("Select table to view:", list(table_info.keys()))
-        
-        if selected_table:
-            st.write(f"**Table: {selected_table}**")
-            
-            # Show column info
-            with st.expander("Table Schema"):
-                schema_data = []
-                for col in table_info[selected_table]['columns']:
-                    schema_data.append({
-                        'Column': col[1],
-                        'Type': col[2],
-                        'Not Null': 'Yes' if col[3] else 'No',
-                        'Default': col[4] or 'None',
-                        'Primary Key': 'Yes' if col[5] else 'No'
-                    })
-                
-                schema_df = pd.DataFrame(schema_data)
-                st.dataframe(schema_df, use_container_width=True, hide_index=True)
-            
-            # Show data
-            limit = st.number_input("Rows to display:", min_value=1, max_value=1000, value=50)
-            data, columns = get_table_data(selected_table, limit)
-            
-            if data:
-                df = pd.DataFrame(data, columns=columns)
-                st.dataframe(df, use_container_width=True, hide_index=True)
-                
-                # Download option
-                csv = df.to_csv(index=False)
-                st.download_button(
-                    label=f"Download {selected_table} as CSV",
-                    data=csv,
-                    file_name=f"{selected_table}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                    mime="text/csv"
-                )
-            else:
-                st.info(f"No data in {selected_table}")
-        
-        # Custom query section
-        st.write("**Custom SQL Query:**")
-        st.warning("⚠️ Be careful with custom queries! Only SELECT queries are recommended.")
-        
-        custom_query = st.text_area(
-            "Enter SQL query:",
-            placeholder="SELECT * FROM users WHERE role='admin'",
-            height=100
+     Add this new tab between Users and Database Viewer:
+with admin_tab2:
+    st.subheader("Product Key Management")
+    
+    # Create new product key section
+    st.write("**Create New Product Key**")
+    
+    create_col1, create_col2, create_col3 = st.columns(3)
+    
+    with create_col1:
+        key_description = st.text_input(
+            "Description (optional)",
+            placeholder="e.g., 'For John Smith' or 'Batch #1'"
         )
         
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Execute Query"):
-                if custom_query.strip():
-                    success, result, columns = execute_custom_query(custom_query)
-                    if success:
-                        if isinstance(result, str):
-                            st.success(result)
-                        else:
-                            if result:
-                                query_df = pd.DataFrame(result, columns=columns)
-                                st.dataframe(query_df, use_container_width=True, hide_index=True)
-                            else:
-                                st.info("Query returned no results")
-                    else:
-                        st.error(f"Query error: {result}")
-                else:
-                    st.error("Please enter a query")
+    with create_col2:
+        max_uses = st.number_input(
+            "Maximum Uses",
+            min_value=1,
+            max_value=100,
+            value=1,
+            help="How many times this key can be used"
+        )
         
-        with col2:
-            if st.button("Clear Query"):
+    with create_col3:
+        expires_days = st.number_input(
+            "Expires in Days",
+            min_value=1,
+            max_value=365,
+            value=30,
+            help="How many days until the key expires"
+        )
+    
+    if st.button("🔑 Generate New Product Key", type="primary"):
+        success, result = create_product_key(
+            st.session_state.user_info['id'],
+            key_description,
+            max_uses,
+            expires_days
+        )
+        if success:
+            st.success(f"✅ Product key created: **{result}**")
+            st.info("📋 Copy this key and share it with the user. It won't be shown again!")
+            st.rerun()
+        else:
+            st.error(f"❌ Failed to create product key: {result}")
+    
+    st.divider()
+    
+    # Existing product keys
+    st.write("**Existing Product Keys**")
+    
+    keys = get_all_product_keys()
+    
+    if keys:
+        key_data = []
+        for key in keys:
+            # Format expiry date
+            expiry_str = "Never"
+            if key.get('expires_at'):
+                try:
+                    expiry_date = datetime.fromisoformat(key['expires_at'].replace('Z', '+00:00'))
+                    expiry_str = expiry_date.strftime('%Y-%m-%d %H:%M')
+                    if datetime.now(expiry_date.tzinfo) > expiry_date:
+                        expiry_str += " (EXPIRED)"
+                except:
+                    expiry_str = "Invalid Date"
+            
+            # Status indicator
+            status = "🟢 Active" if key.get('is_active') else "🔴 Inactive"
+            if key.get('current_uses', 0) >= key.get('max_uses', 1):
+                status = "🟡 Used Up"
+            
+            key_data.append({
+                'ID': key['id'],
+                'Key Code': key['key_code'],
+                'Description': key.get('description') or 'No description',
+                'Uses': f"{key.get('current_uses', 0)}/{key.get('max_uses', 1)}",
+                'Status': status,
+                'Expires': expiry_str,
+                'Created': key['created_at'][:10] if key.get('created_at') else 'Unknown',
+                'Last Used': key.get('last_used_at', 'Never')[:10] if key.get('last_used_at') and key.get('last_used_at') != 'Never' else 'Never'
+            })
+        
+        keys_df = pd.DataFrame(key_data)
+        st.dataframe(keys_df, use_container_width=True, hide_index=True)
+        
+        # Key management actions
+        st.write("**Product Key Actions**")
+        
+        action_col1, action_col2, action_col3 = st.columns(3)
+        
+        with action_col1:
+            key_to_toggle = st.selectbox(
+                "Select key to toggle status:",
+                [f"{k['key_code']} (ID: {k['id']})" for k in keys]
+            )
+            if st.button("🔄 Toggle Status"):
+                key_id = int(key_to_toggle.split("ID: ")[1].rstrip(")"))
+                current_key = next(k for k in keys if k['id'] == key_id)
+                new_status = not current_key.get('is_active', True)
+                toggle_product_key_status(key_id, new_status)
+                st.success("Key status updated!")
                 st.rerun()
+        
+        with action_col2:
+            key_to_delete = st.selectbox(
+                "Select key to delete:",
+                [f"{k['key_code']} (ID: {k['id']})" for k in keys],
+                key="delete_select"
+            )
+            if st.button("🗑️ Delete Key", type="secondary"):
+                key_id = int(key_to_delete.split("ID: ")[1].rstrip(")"))
+                if delete_product_key(key_id):
+                    st.success("Key deleted!")
+                    st.rerun()
+        
+        with action_col3:
+            # Bulk key generation
+            st.write("**Bulk Generation**")
+            bulk_count = st.number_input(
+                "Generate multiple keys:",
+                min_value=1,
+                max_value=50,
+                value=5
+            )
+            if st.button("🔑 Generate Bulk Keys"):
+                generated_keys = []
+                for i in range(bulk_count):
+                    success, result = create_product_key(
+                        st.session_state.user_info['id'],
+                        f"Bulk generated key {i+1}",
+                        1,  # Single use
+                        30  # 30 days expiry
+                    )
+                    if success:
+                        generated_keys.append(result)
+                
+                if generated_keys:
+                    st.success(f"✅ Generated {len(generated_keys)} keys!")
+                    st.text_area(
+                        "Generated Keys (copy these):",
+                        "\n".join(generated_keys),
+                        height=200
+                    )
+                    st.rerun()
+    else:
+        st.info("No product keys created yet.")
     
     with admin_tab3:
         st.subheader("System Information")
