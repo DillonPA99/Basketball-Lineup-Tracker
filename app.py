@@ -1146,27 +1146,50 @@ with st.sidebar:
         st.rerun()
 
     st.divider()
-    
-    # User info and logout
-    st.subheader(f"👤 {st.session_state.user_info['username']}")
-    st.caption(f"Role: {st.session_state.user_info['role'].title()}")
 
-    if st.button("🚪 Logout"):
-        # Save roster before logout
-        if st.session_state.roster:
-            save_user_roster(st.session_state.user_info['id'], st.session_state.roster)
-            st.success("Roster saved!")
-        
-        # Clear session
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        st.rerun()
-        
-    # Admin panel access
-    if st.session_state.user_info['role'] == 'admin':
-        if st.button("⚙️ Admin Panel"):
-            st.session_state.show_admin_panel = not st.session_state.show_admin_panel
+     # Show current roster info
+    st.subheader("Team Roster")
+    st.info(f"📋 {len(st.session_state.roster)} players")
+
+    roster_col1, roster_col2 = st.columns(2)
+    with roster_col1:
+        if st.button("🔄 Change Roster"):
+            st.session_state.roster_set = False
+            st.session_state.roster = []
+            reset_game()
             st.rerun()
+
+    with roster_col2:
+        if st.button("💾 Save Roster"):
+            if st.session_state.roster:
+                save_user_roster(st.session_state.user_info['id'], st.session_state.roster)
+                st.success("Roster saved!")
+            else:
+                st.warning("No roster to save!")
+
+    with st.expander("View Full Roster"):
+        if st.session_state.roster:
+            for player in sorted(st.session_state.roster, key=lambda x: x["jersey"]):
+                st.write(f"#{player['jersey']} {player['name']} ({player['position']})")
+
+    st.divider()
+
+        # Real-time Plus/Minus Display
+    if st.session_state.quarter_lineup_set and st.session_state.lineup_history:
+        st.subheader("Live Plus/Minus")
+        
+        individual_stats = calculate_individual_plus_minus()
+        if individual_stats:
+            st.write("**Current Players Plus/Minus:**")
+            current_plus_minus_cols = st.columns(5)
+            
+            for i, player in enumerate(st.session_state.current_lineup):
+                with current_plus_minus_cols[i]:
+                    plus_minus = individual_stats.get(player, {}).get('plus_minus', 0)
+                    if plus_minus >= 0:
+                        st.success(f"{player.split('(')[0].strip()}\n+{plus_minus}")
+                    else:
+                        st.error(f"{player.split('(')[0].strip()}\n{plus_minus}")
 
     st.divider()
 
@@ -1251,33 +1274,6 @@ with st.sidebar:
 
     st.divider()
         
-    # Show current roster info
-    st.subheader("Team Roster")
-    st.info(f"📋 {len(st.session_state.roster)} players")
-
-    roster_col1, roster_col2 = st.columns(2)
-    with roster_col1:
-        if st.button("🔄 Change Roster"):
-            st.session_state.roster_set = False
-            st.session_state.roster = []
-            reset_game()
-            st.rerun()
-
-    with roster_col2:
-        if st.button("💾 Save Roster"):
-            if st.session_state.roster:
-                save_user_roster(st.session_state.user_info['id'], st.session_state.roster)
-                st.success("Roster saved!")
-            else:
-                st.warning("No roster to save!")
-
-    with st.expander("View Full Roster"):
-        if st.session_state.roster:
-            for player in sorted(st.session_state.roster, key=lambda x: x["jersey"]):
-                st.write(f"#{player['jersey']} {player['name']} ({player['position']})")
-
-    st.divider()
-
     # Game management
     st.subheader("Game Management")
 
@@ -1288,22 +1284,26 @@ with st.sidebar:
 
     st.divider()
         
-    # Real-time Plus/Minus Display
-    if st.session_state.quarter_lineup_set and st.session_state.lineup_history:
-        st.subheader("Live Plus/Minus")
+# User info and logout
+    st.subheader(f"👤 {st.session_state.user_info['username']}")
+    st.caption(f"Role: {st.session_state.user_info['role'].title()}")
+
+    if st.button("🚪 Logout"):
+        # Save roster before logout
+        if st.session_state.roster:
+            save_user_roster(st.session_state.user_info['id'], st.session_state.roster)
+            st.success("Roster saved!")
         
-        individual_stats = calculate_individual_plus_minus()
-        if individual_stats:
-            st.write("**Current Players Plus/Minus:**")
-            current_plus_minus_cols = st.columns(5)
-            
-            for i, player in enumerate(st.session_state.current_lineup):
-                with current_plus_minus_cols[i]:
-                    plus_minus = individual_stats.get(player, {}).get('plus_minus', 0)
-                    if plus_minus >= 0:
-                        st.success(f"{player.split('(')[0].strip()}\n+{plus_minus}")
-                    else:
-                        st.error(f"{player.split('(')[0].strip()}\n{plus_minus}")
+        # Clear session
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
+        
+    # Admin panel access
+    if st.session_state.user_info['role'] == 'admin':
+        if st.button("⚙️ Admin Panel"):
+            st.session_state.show_admin_panel = not st.session_state.show_admin_panel
+            st.rerun()
 
 # ------------------------------------------------------------------
 # Admin Panel Display (when activated)
