@@ -1,3 +1,5 @@
+import secrets
+import string
 import streamlit as st
 import pandas as pd
 import datetime
@@ -15,8 +17,7 @@ import io
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils.dataframe import dataframe_to_rows
-import secrets
-import string
+
 
 # ------------------------------------------------------------------
 # Page configuration
