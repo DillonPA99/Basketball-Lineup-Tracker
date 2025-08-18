@@ -603,6 +603,18 @@ if "current_game_time" not in st.session_state:
 if "quarter_end_history" not in st.session_state:
     st.session_state.quarter_end_history = []  # optional: stores quarter-end snapshots
 
+if "player_stats" not in st.session_state:
+    st.session_state.player_stats = defaultdict(lambda: {
+        'points': 0,
+        'field_goals_made': 0,
+        'field_goals_attempted': 0,
+        'three_pointers_made': 0,
+        'three_pointers_attempted': 0,
+        'free_throws_made': 0,
+        'free_throws_attempted': 0,
+        'minutes_played': 0
+    })
+
 # Authentication-related session state
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
@@ -714,6 +726,16 @@ def reset_game():
     st.session_state.quarter_lineup_set = False
     st.session_state.current_game_time = f"{st.session_state.quarter_length}:00"
     st.session_state.quarter_end_history = []
+    st.session_state.player_stats = defaultdict(lambda: {
+        'points': 0,
+        'field_goals_made': 0,
+        'field_goals_attempted': 0,
+        'three_pointers_made': 0,
+        'three_pointers_attempted': 0,
+        'free_throws_made': 0,
+        'free_throws_attempted': 0,
+        'minutes_played': 0
+    })
 
 # Add points to team score and log the event
 def add_score(team, points):
@@ -730,6 +752,90 @@ def add_score(team, points):
         st.session_state.home_score += points
     else:
         st.session_state.away_score += points
+
+def add_score_with_player(team, points, scorer_player=None, shot_type='field_goal', made=True, attempted=True):
+    """Add points to team score and attribute to specific player with shot tracking."""
+    score_event = {
+        'team': team,
+        'points': points,
+        'scorer': scorer_player,
+        'shot_type': shot_type,  # 'field_goal', 'three_pointer', 'free_throw'
+        'made': made,
+        'attempted': attempted,
+        'quarter': st.session_state.current_quarter,
+        'lineup': st.session_state.current_lineup.copy(),
+        'game_time': st.session_state.current_game_time,
+        'timestamp': datetime.now()
+    }
+    st.session_state.score_history.append(score_event)
+
+    # Update team score
+    if team == "home":
+        st.session_state.home_score += points
+    else:
+        st.session_state.away_score += points
+    
+    # Update individual player stats if scorer is specified
+    if scorer_player and made:
+        st.session_state.player_stats[scorer_player]['points'] += points
+        
+        if shot_type == 'field_goal':
+            st.session_state.player_stats[scorer_player]['field_goals_made'] += 1
+            if attempted:
+                st.session_state.player_stats[scorer_player]['field_goals_attempted'] += 1
+        elif shot_type == 'three_pointer':
+            st.session_state.player_stats[scorer_player]['three_pointers_made'] += 1
+            st.session_state.player_stats[scorer_player]['field_goals_made'] += 1  # 3PT also counts as FG
+            if attempted:
+                st.session_state.player_stats[scorer_player]['three_pointers_attempted'] += 1
+                st.session_state.player_stats[scorer_player]['field_goals_attempted'] += 1
+        elif shot_type == 'free_throw':
+            st.session_state.player_stats[scorer_player]['free_throws_made'] += 1
+            if attempted:
+                st.session_state.player_stats[scorer_player]['free_throws_attempted'] += 1
+    
+    # Track missed shots
+    elif scorer_player and not made and attempted:
+        if shot_type == 'field_goal':
+            st.session_state.player_stats[scorer_player]['field_goals_attempted'] += 1
+        elif shot_type == 'three_pointer':
+            st.session_state.player_stats[scorer_player]['three_pointers_attempted'] += 1
+            st.session_state.player_stats[scorer_player]['field_goals_attempted'] += 1
+        elif shot_type == 'free_throw':
+            st.session_state.player_stats[scorer_player]['free_throws_attempted'] += 1
+
+def calculate_player_shooting_stats():
+    """Calculate shooting percentages for all players."""
+    shooting_stats = {}
+    
+    for player, stats in st.session_state.player_stats.items():
+        shooting_stats[player] = {
+            'points': stats['points'],
+            'fg_percentage': (stats['field_goals_made'] / stats['field_goals_attempted'] * 100) if stats['field_goals_attempted'] > 0 else 0,
+            'three_pt_percentage': (stats['three_pointers_made'] / stats['three_pointers_attempted'] * 100) if stats['three_pointers_attempted'] > 0 else 0,
+            'ft_percentage': (stats['free_throws_made'] / stats['free_throws_attempted'] * 100) if stats['free_throws_attempted'] > 0 else 0,
+            'fg_made': stats['field_goals_made'],
+            'fg_attempted': stats['field_goals_attempted'],
+            'three_pt_made': stats['three_pointers_made'],
+            'three_pt_attempted': stats['three_pointers_attempted'],
+            'ft_made': stats['free_throws_made'],
+            'ft_attempted': stats['free_throws_attempted']
+        }
+    
+    return shooting_stats
+
+def get_top_scorers(limit=5):
+    """Get top scoring players."""
+    if not st.session_state.player_stats:
+        return []
+    
+    sorted_players = sorted(
+        st.session_state.player_stats.items(),
+        key=lambda x: x[1]['points'],
+        reverse=True
+    )
+    
+    return sorted_players[:limit]
 
 # Validate that game time input is in MM:SS format and within bounds
 def validate_game_time(time_str, quarter_length):
@@ -2160,64 +2266,194 @@ with tab1:
 
     st.divider()
     
-    # Score management
-    st.subheader("Score Tracking")
+    # Enhanced Score management with player attribution
+    def render_enhanced_scoring_section():
+        """Render the enhanced scoring section with player attribution."""
+        
+        st.subheader("Score Tracking")
 
-    # Check if lineup is set for current quarter
-    if not st.session_state.quarter_lineup_set:
-        st.warning("⚠️ Please set a starting lineup for this quarter before scoring points.")
-    else:
-        score_col1, score_col2 = st.columns(2)
+        # Check if lineup is set for current quarter
+        if not st.session_state.quarter_lineup_set:
+            st.warning("⚠️ Please set a starting lineup for this quarter before scoring points.")
+            return
+        
+        # Get current players for dropdown
+        current_players = st.session_state.current_lineup
+        
+        # Scoring mode selector
+        scoring_mode = st.radio(
+            "Scoring Mode:",
+            ["Quick Score (Team Only)", "Detailed Score (With Player)"],
+            horizontal=True,
+            help="Quick mode for fast scoring, Detailed mode for player statistics"
+        )
+        
+        if scoring_mode == "Quick Score (Team Only)":
+            # Original quick scoring interface
+            score_col1, score_col2 = st.columns(2)
 
-        with score_col1:
-            st.write("**Home Team**")
-            home_cols = st.columns(4)
-            with home_cols[0]:
-                if st.button("Home +1"):
-                    add_score("home", 1)
-                    st.rerun()
-            with home_cols[1]:
-                if st.button("Home +2"):
-                    add_score("home", 2)
-                    st.rerun()
-            with home_cols[2]:
-                if st.button("Home +3"):
-                    add_score("home", 3)
-                    st.rerun()
-            with home_cols[3]:
-                if st.button("Home FT"):
-                    add_score("home", 1)
-                    st.rerun()
+            with score_col1:
+                st.write("**Home Team**")
+                home_cols = st.columns(4)
+                with home_cols[0]:
+                    if st.button("Home +1", key="home_1_quick"):
+                        add_score("home", 1)
+                        st.rerun()
+                with home_cols[1]:
+                    if st.button("Home +2", key="home_2_quick"):
+                        add_score("home", 2)
+                        st.rerun()
+                with home_cols[2]:
+                    if st.button("Home +3", key="home_3_quick"):
+                        add_score("home", 3)
+                        st.rerun()
+                with home_cols[3]:
+                    if st.button("Home FT", key="home_ft_quick"):
+                        add_score("home", 1)
+                        st.rerun()
 
-        with score_col2:
-            st.write("**Away Team**")
-            away_cols = st.columns(4)
-            with away_cols[0]:
-                if st.button("Away +1"):
-                    add_score("away", 1)
+            with score_col2:
+                st.write("**Away Team**")
+                away_cols = st.columns(4)
+                with away_cols[0]:
+                    if st.button("Away +1", key="away_1_quick"):
+                        add_score("away", 1)
+                        st.rerun()
+                with away_cols[1]:
+                    if st.button("Away +2", key="away_2_quick"):
+                        add_score("away", 2)
+                        st.rerun()
+                with away_cols[2]:
+                    if st.button("Away +3", key="away_3_quick"):
+                        add_score("away", 3)
+                        st.rerun()
+                with away_cols[3]:
+                    if st.button("Away FT", key="away_ft_quick"):
+                        add_score("away", 1)
+                        st.rerun()
+        
+        else:  # Detailed scoring with player attribution
+            st.write("**Detailed Scoring with Player Stats**")
+            
+            # Team selection
+            team_col1, team_col2 = st.columns(2)
+            
+            with team_col1:
+                scoring_team = st.radio("Scoring Team:", ["Home", "Away"], horizontal=True)
+            
+            with team_col2:
+                scorer = st.selectbox(
+                    "Select Scorer:",
+                    ["Select Player..."] + current_players,
+                    help="Choose the player who scored"
+                )
+            
+            # Shot type and points
+            shot_col1, shot_col2, shot_col3 = st.columns(3)
+            
+            with shot_col1:
+                shot_type = st.selectbox(
+                    "Shot Type:",
+                    ["2-Point Field Goal", "3-Point Field Goal", "Free Throw"]
+                )
+            
+            with shot_col2:
+                shot_result = st.radio("Result:", ["Made", "Missed"], horizontal=True)
+            
+            with shot_col3:
+                # Determine points based on shot type and result
+                if shot_result == "Made":
+                    if shot_type == "2-Point Field Goal":
+                        points = 2
+                    elif shot_type == "3-Point Field Goal":
+                        points = 3
+                    else:  # Free Throw
+                        points = 1
+                else:
+                    points = 0
+                
+                st.metric("Points", points)
+            
+            # Add score button
+            if st.button("📊 Add Score & Update Stats", type="primary"):
+                if scorer == "Select Player...":
+                    st.error("Please select a player!")
+                else:
+                    # Determine shot type for tracking
+                    if shot_type == "2-Point Field Goal":
+                        tracking_shot_type = "field_goal"
+                    elif shot_type == "3-Point Field Goal":
+                        tracking_shot_type = "three_pointer"
+                    else:
+                        tracking_shot_type = "free_throw"
+                    
+                    # Add score with player attribution
+                    add_score_with_player(
+                        team=scoring_team.lower(),
+                        points=points,
+                        scorer_player=scorer,
+                        shot_type=tracking_shot_type,
+                        made=(shot_result == "Made"),
+                        attempted=True
+                    )
+                    
+                    st.success(f"✅ {shot_result} {shot_type} by {scorer} (+{points} points)")
                     st.rerun()
-            with away_cols[1]:
-                if st.button("Away +2"):
-                    add_score("away", 2)
-                    st.rerun()
-            with away_cols[2]:
-                if st.button("Away +3"):
-                    add_score("away", 3)
-                    st.rerun()
-            with away_cols[3]:
-                if st.button("Away FT"):
-                    add_score("away", 1)
-                    st.rerun()
+        
+        # Quick stats display
+        if st.session_state.player_stats:
+            st.write("**Live Scoring Leaders:**")
+            top_scorers = get_top_scorers(3)
+            
+            if top_scorers:
+                score_cols = st.columns(len(top_scorers))
+                for i, (player, stats) in enumerate(top_scorers):
+                    with score_cols[i]:
+                        st.metric(
+                            f"{player.split('(')[0].strip()}", 
+                            f"{stats['points']} pts",
+                            help=f"FG: {stats['field_goals_made']}/{stats['field_goals_attempted']}"
+                        )
+        
+        # Enhanced undo last score
+        if st.session_state.score_history:
+            last_score = st.session_state.score_history[-1]
+            undo_text = f"↩️ Undo: {last_score['team'].title()} +{last_score['points']}"
+            if last_score.get('scorer'):
+                undo_text += f" by {last_score['scorer'].split('(')[0].strip()}"
+            
+            if st.button(undo_text):
+                # Remove from team score
+                if last_score['team'] == "home":
+                    st.session_state.home_score -= last_score['points']
+                else:
+                    st.session_state.away_score -= last_score['points']
+                
+                # Remove from player stats if applicable
+                if last_score.get('scorer') and last_score.get('made', True):
+                    player = last_score['scorer']
+                    st.session_state.player_stats[player]['points'] -= last_score['points']
+                    
+                    shot_type = last_score.get('shot_type', 'field_goal')
+                    if shot_type == 'field_goal':
+                        st.session_state.player_stats[player]['field_goals_made'] -= 1
+                        st.session_state.player_stats[player]['field_goals_attempted'] -= 1
+                    elif shot_type == 'three_pointer':
+                        st.session_state.player_stats[player]['three_pointers_made'] -= 1
+                        st.session_state.player_stats[player]['three_pointers_attempted'] -= 1
+                        st.session_state.player_stats[player]['field_goals_made'] -= 1
+                        st.session_state.player_stats[player]['field_goals_attempted'] -= 1
+                    elif shot_type == 'free_throw':
+                        st.session_state.player_stats[player]['free_throws_made'] -= 1
+                        st.session_state.player_stats[player]['free_throws_attempted'] -= 1
+                
+                # Remove from history
+                st.session_state.score_history.pop()
+                st.success("Last score undone!")
+                st.rerun()
 
-        # Undo last score
-        if st.session_state.score_history and st.button("↩️ Undo Last Score"):
-            last_score = st.session_state.score_history.pop()
-            if last_score['team'] == "home":
-                st.session_state.home_score -= last_score['points']
-            else:
-                st.session_state.away_score -= last_score['points']
-            st.success("Last score undone!")
-            st.rerun()
+    # Call the enhanced scoring section
+    render_enhanced_scoring_section()
 
     # Lineup management section
     st.subheader("Lineup Management")
@@ -2489,56 +2725,130 @@ with tab2:
         else:
             st.info("No lineup plus/minus data available yet.")
 
+        # Individual Player Statistics
+        if st.session_state.player_stats:
+            st.subheader("🏀 Individual Player Statistics")
+            
+            # Shooting statistics table
+            shooting_stats = calculate_player_shooting_stats()
+            
+            if shooting_stats:
+                stats_data = []
+                for player, stats in shooting_stats.items():
+                    stats_data.append({
+                        'Player': player.split('(')[0].strip(),
+                        'Points': stats['points'],
+                        'FG Made-Att': f"{stats['fg_made']}-{stats['fg_attempted']}",
+                        'FG%': f"{stats['fg_percentage']:.1f}%" if stats['fg_percentage'] > 0 else "0.0%",
+                        '3PT Made-Att': f"{stats['three_pt_made']}-{stats['three_pt_attempted']}",
+                        '3PT%': f"{stats['three_pt_percentage']:.1f}%" if stats['three_pt_percentage'] > 0 else "0.0%",
+                        'FT Made-Att': f"{stats['ft_made']}-{stats['ft_attempted']}",
+                        'FT%': f"{stats['ft_percentage']:.1f}%" if stats['ft_percentage'] > 0 else "0.0%"
+                    })
+                
+                if stats_data:
+                    stats_df = pd.DataFrame(stats_data)
+                    stats_df = stats_df.sort_values('Points', ascending=False)
+                    
+                    st.dataframe(
+                        stats_df,
+                        use_container_width=True,
+                        hide_index=True
+                    )
+                    
+                    # Top scorer highlight
+                    if len(stats_df) > 0:
+                        top_scorer = stats_df.iloc[0]
+                        st.success(f"🏆 Leading Scorer: {top_scorer['Player']} with {top_scorer['Points']} points")
+                    
+                    # Scoring chart
+                    fig_scoring = px.bar(
+                        stats_df.head(10),  # Top 10 scorers
+                        x='Player',
+                        y='Points',
+                        title='Top Scorers',
+                        color='Points',
+                        color_continuous_scale='viridis'
+                    )
+                    fig_scoring.update_xaxes(tickangle=45)
+                    st.plotly_chart(fig_scoring, use_container_width=True)
+
 # ------------------------------------------------------------------
 # Tab 3: Event Log
 # ------------------------------------------------------------------
 with tab3:
     st.header("Game Event Log")
-    if not st.session_state.score_history and not st.session_state.lineup_history and not st.session_state.quarter_end_history:
+    
+    if not st.session_state.score_history and not st.session_state.lineup_history:
         st.info("No events logged yet.")
     else:
-        # Combine all events
-        all_events = []
-        # Add score events
-        for score in st.session_state.score_history:
-            all_events.append({
-                'type': 'Score',
-                'description': f"{score['team'].title()} +{score['points']} points",
-                'quarter': score['quarter'],
-                'game_time': score.get('game_time', 'Unknown'),
-                'details': f"Lineup: {' | '.join(score['lineup'])}"
-            })
-        # Add lineup events (including quarter-end snapshots)
-        for lineup in st.session_state.lineup_history:
-            if lineup.get('is_quarter_end'):
-                desc = f"{lineup['quarter']} ended (snapshot)"
-            else:
-                desc = "New lineup set"
-            all_events.append({
-                'type': 'Lineup Change' if not lineup.get('is_quarter_end') else 'Quarter End Snapshot',
-                'description': desc,
-                'quarter': lineup['quarter'],
-                'game_time': lineup.get('game_time', 'Unknown'),
-                'details': f"Players: {' | '.join(lineup['new_lineup'])}"
-            })
-        # Add quarter end events (legacy)
-        for quarter_end in st.session_state.quarter_end_history:
-            all_events.append({
-                'type': 'Quarter End',
-                'description': f"{quarter_end['quarter']} ended",
-                'quarter': quarter_end['quarter'],
-                'game_time': quarter_end.get('game_time', 'Unknown'),
-                'details': f"Final Score: {quarter_end['final_score']}"
-            })
+        # Filter options
+        col1, col2 = st.columns(2)
+        with col1:
+            event_filter = st.selectbox(
+                "Filter Events:",
+                ["All Events", "Scoring Only", "Lineup Changes Only"]
+            )
         
-        # Display events sequentially numbered
+        with col2:
+            quarter_filter = st.selectbox(
+                "Quarter Filter:",
+                ["All Quarters"] + [q for q in ["Q1", "Q2", "Q3", "Q4", "OT1", "OT2", "OT3"]]
+            )
+        
+        # Combine and filter events
+        all_events = []
+        
+        # Add score events with enhanced details
+        for score in st.session_state.score_history:
+            if quarter_filter == "All Quarters" or score['quarter'] == quarter_filter:
+                if event_filter in ["All Events", "Scoring Only"]:
+                    description = f"{score['team'].title()} +{score['points']} points"
+                    if score.get('scorer'):
+                        description += f" by {score['scorer'].split('(')[0].strip()}"
+                    if score.get('shot_type'):
+                        shot_display = {
+                            'field_goal': '2PT Field Goal',
+                            'three_pointer': '3PT Field Goal', 
+                            'free_throw': 'Free Throw'
+                        }
+                        description += f" ({shot_display.get(score['shot_type'], 'Shot')})"
+                    
+                    all_events.append({
+                        'type': 'Score',
+                        'description': description,
+                        'quarter': score['quarter'],
+                        'game_time': score.get('game_time', 'Unknown'),
+                        'details': f"Lineup: {' | '.join([p.split('(')[0].strip() for p in score['lineup']])}",
+                        'timestamp': score.get('timestamp', datetime.now())
+                    })
+        
+        # Add lineup events
+        for lineup in st.session_state.lineup_history:
+            if quarter_filter == "All Quarters" or lineup['quarter'] == quarter_filter:
+                if event_filter in ["All Events", "Lineup Changes Only"]:
+                    if lineup.get('is_quarter_end'):
+                        desc = f"{lineup['quarter']} ended (snapshot)"
+                    else:
+                        desc = "New lineup set"
+                    
+                    all_events.append({
+                        'type': 'Lineup Change' if not lineup.get('is_quarter_end') else 'Quarter End',
+                        'description': desc,
+                        'quarter': lineup['quarter'],
+                        'game_time': lineup.get('game_time', 'Unknown'),
+                        'details': f"Players: {' | '.join([p.split('(')[0].strip() for p in lineup['new_lineup']])}",
+                        'timestamp': lineup.get('timestamp', datetime.now())
+                    })
+        
+        # Sort by timestamp
+        all_events.sort(key=lambda x: x['timestamp'])
+        
+        # Display events
         for i, event in enumerate(all_events, 1):
-            st.subheader(f"{i}")
-            st.write(f"**Type:** {event['type']}")
-            st.write(f"**Quarter:** {event['quarter']}")
-            st.write(f"**Game Time:** {event['game_time']}")
-            st.write(f"**Description:** {event['description']}")
-            st.write(f"**Details:** {event['details']}")
+            st.write(f"**{i}. {event['type']}** - {event['quarter']} at {event['game_time']}")
+            st.write(f"_{event['description']}_")
+            st.write(f"Details: {event['details']}")
             st.divider()
 # ------------------------------------------------------------------
 # Footer
