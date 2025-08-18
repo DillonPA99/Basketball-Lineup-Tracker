@@ -331,7 +331,7 @@ def authenticate_user(username, password):
         return False, f"Authentication error: {str(e)}"
 
 # ============================================================================
-# ROSTER STORAGE (SUPABASE VERSION)
+# ROSTER STORAGE (SUPABASE VERSION) - UPDATED
 # ============================================================================
 def save_user_roster(user_id, roster_data, roster_name='My Team'):
     """Save user's roster to Supabase."""
@@ -360,8 +360,11 @@ def save_user_roster(user_id, roster_data, roster_name='My Team'):
                 'updated_at': datetime.now().isoformat()
             }).execute()
             
+        return True  # Return success indicator
+        
     except Exception as e:
         st.error(f"Error saving roster: {str(e)}")
+        return False  # Return failure indicator
 
 def load_user_roster(user_id):
     """Load user's roster from Supabase."""
@@ -382,6 +385,35 @@ def load_user_roster(user_id):
     except Exception as e:
         st.error(f"Error loading roster: {str(e)}")
         return None, None
+
+def delete_user_roster(user_id):
+    """Delete user's saved roster from Supabase."""
+    try:
+        response = supabase.table('user_rosters').delete().eq('user_id', user_id).execute()
+        return True  # Return success indicator
+        
+    except Exception as e:
+        st.error(f"Error deleting roster: {str(e)}")
+        return False  # Return failure indicator
+
+def get_all_user_rosters(user_id):
+    """Get all rosters for a user (if you want to support multiple rosters in the future)."""
+    try:
+        response = supabase.table('user_rosters').select(
+            'id, roster_name, created_at, updated_at'
+        ).eq('user_id', user_id).order('updated_at', desc=True).execute()
+        
+        return response.data if response.data else []
+        
+    except Exception as e:
+        st.error(f"Error loading roster list: {str(e)}")
+        return []
+
+def roster_exists(user_id):
+    """Check if user has any saved rosters."""
+    try:
+        response = supabase.table('user_rosters').select('id').eq('user_id', user_id).execute()
+        return bool(response.data)
 
 # ============================================================================
 # ADMIN FUNCTIONS (SUPABASE VERSION)
