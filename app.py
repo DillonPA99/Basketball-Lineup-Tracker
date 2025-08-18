@@ -2247,7 +2247,6 @@ tab1, tab2, tab3 = st.tabs(["🏀 Live Game", "📊 Analytics", "📝 Event Log"
 # ------------------------------------------------------------------
 with tab1:
     st.header("Live Game Management")
-
     # Current game status
     status_col1, status_col2, status_col3, status_col4, status_col5 = st.columns([1, 1, 1, 1, 1])
     with status_col1:
@@ -2266,194 +2265,214 @@ with tab1:
                 st.rerun()
             else:
                 st.error("Cannot advance quarter further")
-
     st.divider()
-    
-    # Enhanced Score management with player attribution
-    def render_enhanced_scoring_section():
-        """Render the enhanced scoring section with player attribution."""
-        
-        st.subheader("Score Tracking")
 
-        # Check if lineup is set for current quarter
-        if not st.session_state.quarter_lineup_set:
-            st.warning("⚠️ Please set a starting lineup for this quarter before scoring points.")
-            return
+    # Enhanced Score management with faster player attribution
+    def render_enhanced_scoring_section():
+    """Render the enhanced scoring section with fast player attribution."""
+    
+    st.subheader("Score Tracking")
+
+    # Check if lineup is set for current quarter
+    if not st.session_state.quarter_lineup_set:
+        st.warning("⚠️ Please set a starting lineup for this quarter before scoring points.")
+        return
+    
+    # Get current players for dropdown
+    current_players = st.session_state.current_lineup
+    
+    # Fast scoring interface - single mode with optional player tracking
+    st.write("**Quick Score Entry**")
+    
+    # Team and Player selection in compact layout
+    team_player_col1, team_player_col2 = st.columns([1, 2])
+    
+    with team_player_col1:
+        scoring_team = st.radio("Team:", ["Home", "Away"], horizontal=True, key="scoring_team")
+    
+    with team_player_col2:
+        # Player selection with "No Player" option for quick team scoring
+        player_options = ["Quick Score (No Player)"] + current_players
+        scorer = st.selectbox(
+            "Player (Optional):",
+            player_options,
+            help="Select player for detailed stats, or use 'Quick Score' for team-only tracking",
+            key="scorer_select"
+        )
+    
+    # Fast scoring buttons - organized by shot type with make/miss options
+    st.write("**Score Entry**")
+    
+    # Create three columns for different shot types
+    ft_col, fg2_col, fg3_col = st.columns(3)
+    
+    with ft_col:
+        st.write("**Free Throws**")
+        ft_make_col, ft_miss_col = st.columns(2)
         
-        # Get current players for dropdown
-        current_players = st.session_state.current_lineup
+        with ft_make_col:
+            if st.button("✅ FT Make", key="ft_make", use_container_width=True, type="primary"):
+                handle_score_entry(scoring_team.lower(), 1, scorer, "free_throw", True)
         
-        # Scoring mode selector
-        scoring_mode = st.radio(
-            "Scoring Mode:",
-            ["Quick Score (Team Only)", "Detailed Score (With Player)"],
-            horizontal=True,
-            help="Quick mode for fast scoring, Detailed mode for player statistics"
+        with ft_miss_col:
+            if st.button("❌ FT Miss", key="ft_miss", use_container_width=True):
+                handle_score_entry(scoring_team.lower(), 0, scorer, "free_throw", False)
+    
+    with fg2_col:
+        st.write("**2-Point Field Goals**")
+        fg2_make_col, fg2_miss_col = st.columns(2)
+        
+        with fg2_make_col:
+            if st.button("✅ 2PT Make", key="fg2_make", use_container_width=True, type="primary"):
+                handle_score_entry(scoring_team.lower(), 2, scorer, "field_goal", True)
+        
+        with fg2_miss_col:
+            if st.button("❌ 2PT Miss", key="fg2_miss", use_container_width=True):
+                handle_score_entry(scoring_team.lower(), 0, scorer, "field_goal", False)
+    
+    with fg3_col:
+        st.write("**3-Point Field Goals**")
+        fg3_make_col, fg3_miss_col = st.columns(2)
+        
+        with fg3_make_col:
+            if st.button("✅ 3PT Make", key="fg3_make", use_container_width=True, type="primary"):
+                handle_score_entry(scoring_team.lower(), 3, scorer, "three_pointer", True)
+        
+        with fg3_miss_col:
+            if st.button("❌ 3PT Miss", key="fg3_miss", use_container_width=True):
+                handle_score_entry(scoring_team.lower(), 0, scorer, "three_pointer", False)
+    
+    # Quick stats display
+    if st.session_state.player_stats:
+        st.write("**Live Scoring Leaders:**")
+        top_scorers = get_top_scorers(3)
+        
+        if top_scorers:
+            score_cols = st.columns(len(top_scorers))
+            for i, (player, stats) in enumerate(top_scorers):
+                with score_cols[i]:
+                    st.metric(
+                        f"{player.split('(')[0].strip()}", 
+                        f"{stats['points']} pts",
+                        help=f"FG: {stats['field_goals_made']}/{stats['field_goals_attempted']}"
+                    )
+    
+    # Enhanced undo last score
+    if st.session_state.score_history:
+        last_score = st.session_state.score_history[-1]
+        undo_text = f"↩️ Undo: {last_score['team'].title()} "
+        
+        # Show shot type and result
+        shot_type = last_score.get('shot_type', 'unknown')
+        made = last_score.get('made', True)
+        points = last_score.get('points', 0)
+        
+        if shot_type == 'free_throw':
+            undo_text += f"FT {'Make' if made else 'Miss'}"
+        elif shot_type == 'field_goal':
+            undo_text += f"2PT {'Make' if made else 'Miss'}"
+        elif shot_type == 'three_pointer':
+            undo_text += f"3PT {'Make' if made else 'Miss'}"
+        else:
+            undo_text += f"+{points}"
+            
+        if last_score.get('scorer') and last_score.get('scorer') != "Quick Score (No Player)":
+            undo_text += f" by {last_score['scorer'].split('(')[0].strip()}"
+        
+        if st.button(undo_text):
+            undo_last_score()
+
+def handle_score_entry(team, points, scorer, shot_type, made):
+    """Handle score entry with improved logic."""
+    
+    # Always add to team score if points > 0
+    if points > 0:
+        add_score(team, points)
+    
+    # If player is selected and it's not quick score mode, update player stats
+    if scorer != "Quick Score (No Player)":
+        add_score_with_player(
+            team=team,
+            points=points,
+            scorer_player=scorer,
+            shot_type=shot_type,
+            made=made,
+            attempted=True
         )
         
-        if scoring_mode == "Quick Score (Team Only)":
-            # Original quick scoring interface
-            score_col1, score_col2 = st.columns(2)
+        # Success message with player info
+        result_text = "Made" if made else "Missed"
+        shot_text = {
+            "free_throw": "Free Throw",
+            "field_goal": "2-Point Field Goal", 
+            "three_pointer": "3-Point Field Goal"
+        }.get(shot_type, "Shot")
+        
+        if made:
+            st.success(f"✅ {result_text} {shot_text} by {scorer.split('(')[0].strip()} (+{points} pts)")
+        else:
+            st.info(f"📊 {result_text} {shot_text} by {scorer.split('(')[0].strip()} (Recorded)")
+    else:
+        # Quick score mode - just add to history for undo functionality
+        st.session_state.score_history.append({
+            'team': team,
+            'points': points,
+            'shot_type': shot_type,
+            'made': made,
+            'scorer': None
+        })
+        
+        if made:
+            st.success(f"✅ {team.title()} +{points} points")
+        else:
+            st.info(f"📊 {team.title()} missed shot recorded")
+    
+    st.rerun()
 
-            with score_col1:
-                st.write("**Home Team**")
-                home_cols = st.columns(4)
-                with home_cols[0]:
-                    if st.button("Home +1", key="home_1_quick"):
-                        add_score("home", 1)
-                        st.rerun()
-                with home_cols[1]:
-                    if st.button("Home +2", key="home_2_quick"):
-                        add_score("home", 2)
-                        st.rerun()
-                with home_cols[2]:
-                    if st.button("Home +3", key="home_3_quick"):
-                        add_score("home", 3)
-                        st.rerun()
-                with home_cols[3]:
-                    if st.button("Home FT", key="home_ft_quick"):
-                        add_score("home", 1)
-                        st.rerun()
-
-            with score_col2:
-                st.write("**Away Team**")
-                away_cols = st.columns(4)
-                with away_cols[0]:
-                    if st.button("Away +1", key="away_1_quick"):
-                        add_score("away", 1)
-                        st.rerun()
-                with away_cols[1]:
-                    if st.button("Away +2", key="away_2_quick"):
-                        add_score("away", 2)
-                        st.rerun()
-                with away_cols[2]:
-                    if st.button("Away +3", key="away_3_quick"):
-                        add_score("away", 3)
-                        st.rerun()
-                with away_cols[3]:
-                    if st.button("Away FT", key="away_ft_quick"):
-                        add_score("away", 1)
-                        st.rerun()
+def undo_last_score():
+    """Improved undo functionality."""
+    if not st.session_state.score_history:
+        return
         
-        else:  # Detailed scoring with player attribution
-            st.write("**Detailed Scoring with Player Stats**")
-            
-            # Team selection
-            team_col1, team_col2 = st.columns(2)
-            
-            with team_col1:
-                scoring_team = st.radio("Scoring Team:", ["Home", "Away"], horizontal=True)
-            
-            with team_col2:
-                scorer = st.selectbox(
-                    "Select Scorer:",
-                    ["Select Player..."] + current_players,
-                    help="Choose the player who scored"
-                )
-            
-            # Shot type and points
-            shot_col1, shot_col2, shot_col3 = st.columns(3)
-            
-            with shot_col1:
-                shot_type = st.selectbox(
-                    "Shot Type:",
-                    ["2-Point Field Goal", "3-Point Field Goal", "Free Throw"]
-                )
-            
-            with shot_col2:
-                shot_result = st.radio("Result:", ["Made", "Missed"], horizontal=True)
-            
-            with shot_col3:
-                # Determine points based on shot type and result
-                if shot_result == "Made":
-                    if shot_type == "2-Point Field Goal":
-                        points = 2
-                    elif shot_type == "3-Point Field Goal":
-                        points = 3
-                    else:  # Free Throw
-                        points = 1
-                else:
-                    points = 0
-                
-                st.metric("Points", points)
-            
-            # Add score button
-            if st.button("📊 Add Score & Update Stats", type="primary"):
-                if scorer == "Select Player...":
-                    st.error("Please select a player!")
-                else:
-                    # Determine shot type for tracking
-                    if shot_type == "2-Point Field Goal":
-                        tracking_shot_type = "field_goal"
-                    elif shot_type == "3-Point Field Goal":
-                        tracking_shot_type = "three_pointer"
-                    else:
-                        tracking_shot_type = "free_throw"
-                    
-                    # Add score with player attribution
-                    add_score_with_player(
-                        team=scoring_team.lower(),
-                        points=points,
-                        scorer_player=scorer,
-                        shot_type=tracking_shot_type,
-                        made=(shot_result == "Made"),
-                        attempted=True
-                    )
-                    
-                    st.success(f"✅ {shot_result} {shot_type} by {scorer} (+{points} points)")
-                    st.rerun()
+    last_score = st.session_state.score_history[-1]
+    
+    # Remove from team score if points were added
+    if last_score['points'] > 0:
+        if last_score['team'] == "home":
+            st.session_state.home_score -= last_score['points']
+        else:
+            st.session_state.away_score -= last_score['points']
+    
+    # Remove from player stats if applicable
+    scorer = last_score.get('scorer')
+    if scorer and scorer != "Quick Score (No Player)" and scorer in st.session_state.player_stats:
+        player_stats = st.session_state.player_stats[scorer]
         
-        # Quick stats display
-        if st.session_state.player_stats:
-            st.write("**Live Scoring Leaders:**")
-            top_scorers = get_top_scorers(3)
-            
-            if top_scorers:
-                score_cols = st.columns(len(top_scorers))
-                for i, (player, stats) in enumerate(top_scorers):
-                    with score_cols[i]:
-                        st.metric(
-                            f"{player.split('(')[0].strip()}", 
-                            f"{stats['points']} pts",
-                            help=f"FG: {stats['field_goals_made']}/{stats['field_goals_attempted']}"
-                        )
+        # Remove points if made
+        if last_score.get('made', True):
+            player_stats['points'] -= last_score['points']
         
-        # Enhanced undo last score
-        if st.session_state.score_history:
-            last_score = st.session_state.score_history[-1]
-            undo_text = f"↩️ Undo: {last_score['team'].title()} +{last_score['points']}"
-            if last_score.get('scorer'):
-                undo_text += f" by {last_score['scorer'].split('(')[0].strip()}"
-            
-            if st.button(undo_text):
-                # Remove from team score
-                if last_score['team'] == "home":
-                    st.session_state.home_score -= last_score['points']
-                else:
-                    st.session_state.away_score -= last_score['points']
-                
-                # Remove from player stats if applicable
-                if last_score.get('scorer') and last_score.get('made', True):
-                    player = last_score['scorer']
-                    st.session_state.player_stats[player]['points'] -= last_score['points']
-                    
-                    shot_type = last_score.get('shot_type', 'field_goal')
-                    if shot_type == 'field_goal':
-                        st.session_state.player_stats[player]['field_goals_made'] -= 1
-                        st.session_state.player_stats[player]['field_goals_attempted'] -= 1
-                    elif shot_type == 'three_pointer':
-                        st.session_state.player_stats[player]['three_pointers_made'] -= 1
-                        st.session_state.player_stats[player]['three_pointers_attempted'] -= 1
-                        st.session_state.player_stats[player]['field_goals_made'] -= 1
-                        st.session_state.player_stats[player]['field_goals_attempted'] -= 1
-                    elif shot_type == 'free_throw':
-                        st.session_state.player_stats[player]['free_throws_made'] -= 1
-                        st.session_state.player_stats[player]['free_throws_attempted'] -= 1
-                
-                # Remove from history
-                st.session_state.score_history.pop()
-                st.success("Last score undone!")
-                st.rerun()
+        # Remove attempt and make stats
+        shot_type = last_score.get('shot_type', 'field_goal')
+        if shot_type == 'field_goal':
+            player_stats['field_goals_attempted'] -= 1
+            if last_score.get('made', True):
+                player_stats['field_goals_made'] -= 1
+        elif shot_type == 'three_pointer':
+            player_stats['three_pointers_attempted'] -= 1
+            player_stats['field_goals_attempted'] -= 1
+            if last_score.get('made', True):
+                player_stats['three_pointers_made'] -= 1
+                player_stats['field_goals_made'] -= 1
+        elif shot_type == 'free_throw':
+            player_stats['free_throws_attempted'] -= 1
+            if last_score.get('made', True):
+                player_stats['free_throws_made'] -= 1
+    
+    # Remove from history
+    st.session_state.score_history.pop()
+    st.success("Last entry undone!")
+    st.rerun()
 
     # Call the enhanced scoring section
     render_enhanced_scoring_section()
