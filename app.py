@@ -1324,9 +1324,9 @@ if not st.session_state.roster_set:
                 roster_df = pd.DataFrame(st.session_state.roster)
                 roster_df = roster_df.sort_values("jersey")
                 st.dataframe(
-                roster_df,
-                use_container_width=True,
-                hide_index=True
+                    roster_df,
+                    use_container_width=True,
+                    hide_index=True
                 )
                 
                 # Quick roster templates
@@ -1355,24 +1355,34 @@ if not st.session_state.roster_set:
 
                     button_col1, button_col2 = st.columns(2)
                     with button_col1:
-                        if st.button("Start Game with This Roster", type="primary", key="start_game_loaded"):
-                            st.session_state.roster_set = True
-                            st.session_state.current_game_time = f"{st.session_state.quarter_length}:00"
-            
-                            # Save roster to database
-                            save_user_roster(st.session_state.user_info['id'], st.session_state.roster)
-            
-                            st.success("Roster confirmed and saved! Starting game setup...")
-                            st.rerun()
+                        if st.button("Start Game with This Roster", type="primary", key="start_game_build"):
+                            is_valid, error_msg = validate_roster(st.session_state.roster)
+                            if is_valid:
+                                st.session_state.roster_set = True
+                                st.session_state.current_game_time = f"{st.session_state.quarter_length}:00"
+        
+                                # Save roster to database with loading indicator
+                                with st.spinner("Saving roster and starting game..."):
+                                    save_user_roster(st.session_state.user_info['id'], st.session_state.roster)
+        
+                                st.success("Roster confirmed and saved! Starting game setup...")
+                                st.rerun()
+                            else:
+                                st.error(f"Cannot start game: {error_msg}")
 
                     with button_col2:
-                        if st.button("Save Roster Only"):
-                            save_user_roster(st.session_state.user_info['id'], st.session_state.roster)
-                            st.success("Roster saved to your account!")
+                        if st.button("Save Roster Only", key="save_roster_build"):
+                            is_valid, error_msg = validate_roster(st.session_state.roster)
+                            if is_valid:
+                                with st.spinner("Saving roster..."):
+                                    if save_user_roster(st.session_state.user_info['id'], st.session_state.roster):
+                                        st.success("Roster saved to your account!")
+                                    else:
+                                        st.error("Failed to save roster - please try again")
+                            else:
+                                st.error(f"Cannot save roster: {error_msg}")
                 else:
                     st.warning(f"⚠️ Need at least 5 players (currently have {len(st.session_state.roster)})")
-            else:
-                st.info("No players added yet. Add players using the form on the left.")
 
     with tab2:
         # Edit existing roster tab
@@ -1480,8 +1490,15 @@ if not st.session_state.roster_set:
                     save_col1, save_col2 = st.columns(2)
                     with save_col1:
                         if st.button("💾 Save Changes", key="save_edit_changes"):
-                            save_user_roster(st.session_state.user_info['id'], st.session_state.roster)
-                            st.success("Roster changes saved!")
+                            is_valid, error_msg = validate_roster(st.session_state.roster)
+                            if is_valid:
+                                with st.spinner("Saving changes..."):
+                                    if save_user_roster(st.session_state.user_info['id'], st.session_state.roster):
+                                        st.success("Roster changes saved!")
+                                    else:
+                                        st.error("Failed to save changes - please try again")
+                            else:
+                                st.error(f"Cannot save roster: {error_msg}")
                     
                     with save_col2:
                         if len(st.session_state.roster) >= 5:
@@ -1503,36 +1520,49 @@ if not st.session_state.roster_set:
         st.subheader("📋 Load Previously Saved Roster")
         
         # Load the user's saved roster
-        try:
-            saved_roster_data, saved_roster_name = load_user_roster(st.session_state.user_info['id'])
-            
-            if saved_roster_data:
-                st.success(f"Found saved roster: '{saved_roster_name}'")
+        with st.spinner("Loading saved roster..."):
+            try:
+                saved_roster_data, saved_roster_name = load_user_roster(st.session_state.user_info['id'])
                 
-                # Display saved roster
-                saved_df = pd.DataFrame(saved_roster_data)
-                saved_df = saved_df.sort_values("jersey")
-                st.dataframe(saved_df, use_container_width=True, hide_index=True)
-                
-                load_col1, load_col2 = st.columns(2)
-                
-                with load_col1:
-                    if st.button("🔄 Load This Roster", type="primary"):
-                        st.session_state.roster = saved_roster_data
-                        st.success(f"Loaded roster '{saved_roster_name}' with {len(saved_roster_data)} players!")
-                        st.rerun()
-                
-                with load_col2:
-                    if st.button("🗑️ Delete Saved Roster"):
-                        # You'd need to implement a delete function
-                        st.warning("Delete functionality would go here")
-                        
-            else:
-                st.info("No saved roster found for your account.")
-                st.write("Create and save a roster in the 'Build Roster' tab first.")
-                
-        except Exception as e:
-            st.error(f"Error loading saved roster: {e}")
+                if saved_roster_data:
+                    st.success(f"Found saved roster: '{saved_roster_name}'")
+                    
+                    # Display saved roster
+                    saved_df = pd.DataFrame(saved_roster_data)
+                    saved_df = saved_df.sort_values("jersey")
+                    st.dataframe(saved_df, use_container_width=True, hide_index=True)
+                    
+                    load_col1, load_col2 = st.columns(2)
+                    
+                    with load_col1:
+                        if st.button("🔄 Load This Roster", type="primary"):
+                            # Validate loaded roster
+                            is_valid, error_msg = validate_roster(saved_roster_data)
+                            if is_valid:
+                                st.session_state.roster = saved_roster_data
+                                st.success(f"Loaded roster '{saved_roster_name}' with {len(saved_roster_data)} players!")
+                                st.rerun()
+                            else:
+                                st.error(f"Saved roster has issues: {error_msg}")
+                    
+                    with load_col2:
+                        if st.button("🗑️ Delete Saved Roster"):
+                            if st.button("⚠️ Confirm Delete", key="confirm_delete_roster"):
+                                with st.spinner("Deleting roster..."):
+                                    if delete_user_roster(st.session_state.user_info['id']):
+                                        st.success("Roster deleted successfully!")
+                                        st.rerun()
+                                    else:
+                                        st.error("Failed to delete roster")
+                            else:
+                                st.warning("Click 'Confirm Delete' to permanently remove saved roster")
+                                
+                else:
+                    st.info("No saved roster found for your account.")
+                    st.write("Create and save a roster in the 'Build Roster' tab first.")
+                    
+            except Exception as e:
+                st.error(f"Error loading saved roster: {e}")
 
     # Stop here if roster not set
     st.stop()
