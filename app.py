@@ -2275,17 +2275,36 @@ with tab1:
 
     # Check if lineup is set for current quarter
     if not st.session_state.quarter_lineup_set:
-        st.warning("⚠️ Please set a starting lineup for this quarter before scoring points.")
+        st.warning("⚠️ Please set a starting lineup for this quarter before tracking home team player stats.")
         return
     
-    # Get current players for dropdown
-    current_players = st.session_state.current_lineup
+    # Get current players for dropdown (home team only)
+    current_players = st.session_state.current_lineup if st.session_state.quarter_lineup_set else []
     
-    # Fast scoring interface - single mode with optional player tracking
-    st.write("**Quick Score Entry**")
+    # Team selection
+    st.write("**Team Scoring**")
+    scoring_team = st.radio("Team:", ["Home", "Away"], horizontal=True, key="scoring_team")
     
-    # Team and Player selection in compact layout
-    team_player_col1, team_player_col2 = st.columns([1, 2])
+     # Player selection only for home team
+    if scoring_team == "Home" and st.session_state.quarter_lineup_set:
+        st.write("**Player Selection (Home Team)**")
+        player_options = ["Quick Score (No Player)"] + current_players
+        scorer = st.selectbox(
+            "Player (Optional):",
+            player_options,
+            help="Select player for detailed stats, or use 'Quick Score' for team-only tracking",
+            key="scorer_select"
+        )
+    else:
+        scorer = "Quick Score (No Player)"  # Away team always uses quick score
+        if scoring_team == "Away":
+            st.info("📊 Away team scoring will be recorded as team totals only")
+            
+    # Fast scoring buttons - organized by shot type with make/miss options
+    st.write("**Score Entry**")
+    
+    # Create three columns for different shot types
+    ft_col, fg2_col, fg3_col = st.columns(3)
     
     with team_player_col1:
         scoring_team = st.radio("Team:", ["Home", "Away"], horizontal=True, key="scoring_team")
@@ -2383,14 +2402,14 @@ with tab1:
             undo_last_score()
 
 def handle_score_entry(team, points, scorer, shot_type, made):
-    """Handle score entry with improved logic."""
+    """Handle score entry with improved logic - player stats only for home team."""
     
     # Always add to team score if points > 0
     if points > 0:
         add_score(team, points)
     
-    # If player is selected and it's not quick score mode, update player stats
-    if scorer != "Quick Score (No Player)":
+    # Only track player stats for home team
+    if team == "home" and scorer != "Quick Score (No Player)":
         add_score_with_player(
             team=team,
             points=points,
@@ -2413,20 +2432,67 @@ def handle_score_entry(team, points, scorer, shot_type, made):
         else:
             st.info(f"📊 {result_text} {shot_text} by {scorer.split('(')[0].strip()} (Recorded)")
     else:
-        # Quick score mode - just add to history for undo functionality
+        # Quick score mode (always used for away team, optional for home team)
         st.session_state.score_history.append({
             'team': team,
             'points': points,
             'shot_type': shot_type,
             'made': made,
-            'scorer': None
+            'scorer': scorer if team == "home" else None  # Only store scorer for home team
         })
         
+        team_name = "Home" if team == "home" else "Away"
         if made:
-            st.success(f"✅ {team.title()} +{points} points")
+            st.success(f"✅ {team_name} +{points} points")
         else:
-            st.info(f"📊 {team.title()} missed shot recorded")
+            st.info(f"📊 {team_name} missed shot recorded")
     
+    st.rerun()
+
+def undo_last_score():
+    """Improved undo functionality."""
+    if not st.session_state.score_history:
+        return
+        
+    last_score = st.session_state.score_history[-1]
+    
+    # Remove from team score if points were added
+    if last_score['points'] > 0:
+        if last_score['team'] == "home":
+            st.session_state.home_score -= last_score['points']
+        else:
+            st.session_state.away_score -= last_score['points']
+    
+    # Remove from player stats if applicable (only for home team)
+    scorer = last_score.get('scorer')
+    if (last_score['team'] == "home" and scorer and scorer != "Quick Score (No Player)" 
+        and scorer in st.session_state.player_stats):
+        player_stats = st.session_state.player_stats[scorer]
+        
+        # Remove points if made
+        if last_score.get('made', True):
+            player_stats['points'] -= last_score['points']
+        
+        # Remove attempt and make stats
+        shot_type = last_score.get('shot_type', 'field_goal')
+        if shot_type == 'field_goal':
+            player_stats['field_goals_attempted'] -= 1
+            if last_score.get('made', True):
+                player_stats['field_goals_made'] -= 1
+        elif shot_type == 'three_pointer':
+            player_stats['three_pointers_attempted'] -= 1
+            player_stats['field_goals_attempted'] -= 1
+            if last_score.get('made', True):
+                player_stats['three_pointers_made'] -= 1
+                player_stats['field_goals_made'] -= 1
+        elif shot_type == 'free_throw':
+            player_stats['free_throws_attempted'] -= 1
+            if last_score.get('made', True):
+                player_stats['free_throws_made'] -= 1
+    
+    # Remove from history
+    st.session_state.score_history.pop()
+    st.success("Last entry undone!")
     st.rerun()
 
 def undo_last_score():
