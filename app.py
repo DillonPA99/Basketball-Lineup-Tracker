@@ -414,6 +414,9 @@ def roster_exists(user_id):
     try:
         response = supabase.table('user_rosters').select('id').eq('user_id', user_id).execute()
         return bool(response.data)
+    except Exception as e:  # Add this missing except block
+        st.error(f"Error checking roster existence: {str(e)}")
+        return False
 
 # ============================================================================
 # ADMIN FUNCTIONS (SUPABASE VERSION)
