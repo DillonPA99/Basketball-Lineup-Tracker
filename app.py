@@ -34,15 +34,52 @@ st.set_page_config(
 # ============================================================================
 
 st.write("Available secrets:")
+# Replace your existing secret loading section with this:
+
 try:
-    st.write("All secrets keys:", list(st.secrets.keys()))
-    if "supabase" in st.secrets:
-        st.write("Supabase section keys:", list(st.secrets["supabase"].keys()))
-    else:
-        st.write("No 'supabase' section found in secrets")
-except Exception as e:
-    st.write("Error accessing secrets:", str(e))
+    # Get credentials from Streamlit secrets (root level)
+    SUPABASE_URL = st.secrets["database_url"]
+    SUPABASE_KEY = st.secrets["api_key"]
     
+    # Verify the values aren't empty
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        st.error("❌ Supabase credentials are empty")
+        st.stop()
+        
+except KeyError as e:
+    st.error(f"❌ **Configuration Error**: Missing secret key: {e}")
+    st.write("**How to fix this:**")
+    
+    st.write("""
+    **For Streamlit Cloud:**
+    1. Go to your app settings in Streamlit Cloud
+    2. Click on the "Secrets" tab
+    3. Add the following secrets:
+    
+    ```
+    database_url = "your_supabase_project_url"
+    api_key = "your_supabase_anon_key"
+    ```
+    
+    4. Save and redeploy your app
+    
+    **For local development:**
+    1. Create a `.streamlit/secrets.toml` file in your app directory
+    2. Add the same content as above (without the [supabase] section)
+    3. Restart your Streamlit app
+    """)
+    
+    st.write("**To get your Supabase credentials:**")
+    st.write("""
+    1. Go to your Supabase project dashboard
+    2. Click on "Settings" → "API"
+    3. Copy the "Project URL" and "anon/public" key
+    """)
+    
+    st.stop()
+
+except Exception as e:
+    st.error(f"❌ Error loading Supabase credentials: {str(e)}")
     st.stop()
 
 @st.cache_resource
