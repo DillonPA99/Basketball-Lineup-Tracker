@@ -45,11 +45,6 @@ try:
     if not SUPABASE_URL or not SUPABASE_KEY:
         st.error("❌ Supabase credentials are empty")
         st.stop()
-
-    # Success message
-    st.success("✅ Supabase credentials loaded successfully!")
-    st.write(f"🔗 Connected to: `{SUPABASE_URL[:50]}...`")  # Show partial URL for confirmation
-        
         
 except KeyError as e:
     st.error(f"❌ **Configuration Error**: Missing secret key: {e}")
