@@ -650,52 +650,49 @@ if "show_admin_panel" not in st.session_state:
 # ------------------------------------------------------------------
 init_database()
 
-# ADD THE NEW FUNCTION HERE:
 def create_default_admin():
-    """Create default admin user if no admin exists."""
+    """Create default admin user if no admin exists - with better error handling."""
     try:
         # Check if any admin user exists
         response = supabase.table('users').select('id').eq('role', 'admin').execute()
         
         if not response.data:  # No admin exists
-            # Create default admin user WITHOUT product key validation
-            password_hash = hash_password("admin123")
+            st.info("🔧 No admin user found. Please create one manually in Supabase or contact support.")
             
-            admin_response = supabase.table('users').insert({
-                'username': 'admin',
-                'password_hash': password_hash,
-                'email': 'admin@example.com',
-                'role': 'admin',
-                'created_at': datetime.now().isoformat(),
-                'is_active': True,
-                'registered_with_key': 'DEFAULT_ADMIN'
-            }).execute()
-            
-            if admin_response.data:
-                admin_id = admin_response.data[0]['id']
-                
-                # Also create a product key for future registrations
-                key = generate_product_key()
-                supabase.table('product_keys').insert({
-                    'key_code': key,
-                    'description': 'Default admin-generated key',
-                    'max_uses': 10,
-                    'current_uses': 0,
-                    'expires_at': (datetime.now() + timedelta(days=365)).isoformat(),
-                    'created_by': admin_id,
-                    'is_active': True,
-                    'created_at': datetime.now().isoformat()
-                }).execute()
-                
-                st.success(f"✅ Default admin created! Product key for others: {key}")
-                return True
-            else:
-                st.error("Failed to create default admin")
-                return False
-    except Exception as e:
-        st.error(f"Error creating default admin: {str(e)}")
-        return False
+            # Show instructions instead of trying to create
+            with st.expander("📋 Manual Admin Setup Instructions"):
+                st.code('''
+-- Run this in Supabase SQL Editor:
+INSERT INTO "public"."users" (username, password_hash, email, role, created_at, is_active, registered_with_key)
+VALUES (
+    'admin',
+    '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',
+    'admin@example.com',
+    'admin',
+    NOW(),
+    true,
+    'MANUAL_ADMIN'
+);
 
+-- And create a product key:
+INSERT INTO "public"."product_keys" (key_code, description, max_uses, current_uses, expires_at, created_by, is_active, created_at)
+VALUES ('DEMO-2024-KEYS-ABCD', 'Initial key', 10, 0, NOW() + INTERVAL '365 days', 1, true, NOW());
+                ''')
+                st.write("**Default Admin Credentials:**")
+                st.write("- Username: `admin`")
+                st.write("- Password: `admin123`")
+                st.write("- Product Key: `DEMO-2024-KEYS-ABCD`")
+            
+            return False
+        else:
+            # Admin exists, optionally show success
+            return True
+            
+    except Exception as e:
+        st.warning(f"⚠️ Could not check for admin user: {str(e)}")
+        st.info("This might be due to Row Level Security policies. Check the setup instructions above.")
+        return False
+        
 # AND ADD THIS CALL RIGHT AFTER:
 create_default_admin()
 
