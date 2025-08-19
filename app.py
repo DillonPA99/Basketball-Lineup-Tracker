@@ -727,6 +727,10 @@ if "player_stats" not in st.session_state:
         'minutes_played': 0
     })
 
+# Add this to your session state initialization elsewhere in your code
+if 'active_scoring_team' not in st.session_state:
+    st.session_state.active_scoring_team = 'home'
+
 # Authentication-related session state
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
@@ -2403,7 +2407,6 @@ tab1, tab2, tab3 = st.tabs(["🏀 Live Game", "📊 Analytics", "📝 Event Log"
 # ------------------------------------------------------------------
 with tab1:
     st.header("Live Game Management")
-
     # Current game status
     status_col1, status_col2, status_col3, status_col4, status_col5 = st.columns([1, 1, 1, 1, 1])
     with status_col1:
@@ -2438,70 +2441,87 @@ with tab1:
         # Get current players for dropdown (home team only)
         current_players = st.session_state.current_lineup if st.session_state.quarter_lineup_set else []
 
-        # Team and Player selection
-        st.write("**Team Scoring**")
-        team_player_col1, team_player_col2 = st.columns([1, 2])
-
-        with team_player_col1:
-            scoring_team = st.radio("Team:", ["Home", "Away"], horizontal=True, key="scoring_team")
-
-        with team_player_col2:
-            # Player selection only for home team
-            if scoring_team == "Home" and st.session_state.quarter_lineup_set:
-                st.write("**Player Selection (Home Team)**")
-                player_options = ["Quick Score (No Player)"] + current_players
-                scorer = st.selectbox(
-                    "Player (Optional):",
+        # OPTION 1: Side-by-side team scoring (most intuitive)
+        home_col, away_col = st.columns(2)
+        
+        with home_col:
+            st.markdown("### 🏠 **HOME TEAM**")
+            
+            # Player selection for home team
+            if st.session_state.quarter_lineup_set:
+                player_options = ["Quick Score (Team Only)"] + current_players
+                home_scorer = st.selectbox(
+                    "Player:",
                     player_options,
                     help="Select player for detailed stats, or use 'Quick Score' for team-only tracking",
-                    key="scorer_select"
+                    key="home_scorer_select"
                 )
             else:
-                scorer = "Quick Score (No Player)"  # Away team always uses quick score
-                if scoring_team == "Away":
-                    st.info("📊 Away team scoring will be recorded as team totals only")
+                home_scorer = "Quick Score (Team Only)"
 
-        # Fast scoring buttons - organized by shot type with make/miss options
-        st.write("**Score Entry**")
+            # Home team scoring buttons
+            st.write("**Score Entry**")
+            
+            # Free Throws
+            home_ft_make, home_ft_miss = st.columns(2)
+            with home_ft_make:
+                if st.button("✅ FT", key="home_ft_make", use_container_width=True, type="primary"):
+                    handle_score_entry("home", 1, home_scorer, "free_throw", True)
+            with home_ft_miss:
+                if st.button("❌ FT", key="home_ft_miss", use_container_width=True):
+                    handle_score_entry("home", 0, home_scorer, "free_throw", False)
 
-        # Create three columns for different shot types
-        ft_col, fg2_col, fg3_col = st.columns(3)
+            # 2-Point Field Goals
+            home_2pt_make, home_2pt_miss = st.columns(2)
+            with home_2pt_make:
+                if st.button("✅ 2PT", key="home_2pt_make", use_container_width=True, type="primary"):
+                    handle_score_entry("home", 2, home_scorer, "field_goal", True)
+            with home_2pt_miss:
+                if st.button("❌ 2PT", key="home_2pt_miss", use_container_width=True):
+                    handle_score_entry("home", 0, home_scorer, "field_goal", False)
 
-        with ft_col:
-            st.write("**Free Throws**")
-            ft_make_col, ft_miss_col = st.columns(2)
+            # 3-Point Field Goals
+            home_3pt_make, home_3pt_miss = st.columns(2)
+            with home_3pt_make:
+                if st.button("✅ 3PT", key="home_3pt_make", use_container_width=True, type="primary"):
+                    handle_score_entry("home", 3, home_scorer, "three_pointer", True)
+            with home_3pt_miss:
+                if st.button("❌ 3PT", key="home_3pt_miss", use_container_width=True):
+                    handle_score_entry("home", 0, home_scorer, "three_pointer", False)
 
-            with ft_make_col:
-                if st.button("✅ FT Make", key="ft_make", use_container_width=True, type="primary"):
-                    handle_score_entry(scoring_team.lower(), 1, scorer, "free_throw", True)
+        with away_col:
+            st.markdown("### 🛣️ **AWAY TEAM**")
+            st.info("📊 Away team scoring recorded as team totals only")
+            
+            # Away team scoring buttons
+            st.write("**Score Entry**")
+            
+            # Free Throws
+            away_ft_make, away_ft_miss = st.columns(2)
+            with away_ft_make:
+                if st.button("✅ FT", key="away_ft_make", use_container_width=True, type="primary"):
+                    handle_score_entry("away", 1, "Quick Score (Team Only)", "free_throw", True)
+            with away_ft_miss:
+                if st.button("❌ FT", key="away_ft_miss", use_container_width=True):
+                    handle_score_entry("away", 0, "Quick Score (Team Only)", "free_throw", False)
 
-            with ft_miss_col:
-                if st.button("❌ FT Miss", key="ft_miss", use_container_width=True):
-                    handle_score_entry(scoring_team.lower(), 0, scorer, "free_throw", False)
+            # 2-Point Field Goals
+            away_2pt_make, away_2pt_miss = st.columns(2)
+            with away_2pt_make:
+                if st.button("✅ 2PT", key="away_2pt_make", use_container_width=True, type="primary"):
+                    handle_score_entry("away", 2, "Quick Score (Team Only)", "field_goal", True)
+            with away_2pt_miss:
+                if st.button("❌ 2PT", key="away_2pt_miss", use_container_width=True):
+                    handle_score_entry("away", 0, "Quick Score (Team Only)", "field_goal", False)
 
-        with fg2_col:
-            st.write("**2-Point Field Goals**")
-            fg2_make_col, fg2_miss_col = st.columns(2)
-
-            with fg2_make_col:
-                if st.button("✅ 2PT Make", key="fg2_make", use_container_width=True, type="primary"):
-                    handle_score_entry(scoring_team.lower(), 2, scorer, "field_goal", True)
-
-            with fg2_miss_col:
-                if st.button("❌ 2PT Miss", key="fg2_miss", use_container_width=True):
-                    handle_score_entry(scoring_team.lower(), 0, scorer, "field_goal", False)
-
-        with fg3_col:
-            st.write("**3-Point Field Goals**")
-            fg3_make_col, fg3_miss_col = st.columns(2)
-
-            with fg3_make_col:
-                if st.button("✅ 3PT Make", key="fg3_make", use_container_width=True, type="primary"):
-                    handle_score_entry(scoring_team.lower(), 3, scorer, "three_pointer", True)
-
-            with fg3_miss_col:
-                if st.button("❌ 3PT Miss", key="fg3_miss", use_container_width=True):
-                    handle_score_entry(scoring_team.lower(), 0, scorer, "three_pointer", False)
+            # 3-Point Field Goals
+            away_3pt_make, away_3pt_miss = st.columns(2)
+            with away_3pt_make:
+                if st.button("✅ 3PT", key="away_3pt_make", use_container_width=True, type="primary"):
+                    handle_score_entry("away", 3, "Quick Score (Team Only)", "three_pointer", True)
+            with away_3pt_miss:
+                if st.button("❌ 3PT", key="away_3pt_miss", use_container_width=True):
+                    handle_score_entry("away", 0, "Quick Score (Team Only)", "three_pointer", False)
 
         # Quick stats display
         if st.session_state.player_stats:
@@ -2537,7 +2557,7 @@ with tab1:
             else:
                 undo_text += f"+{points}"
 
-            if last_score.get('scorer') and last_score.get('scorer') != "Quick Score (No Player)":
+            if last_score.get('scorer') and last_score.get('scorer') != "Quick Score (Team Only)":
                 undo_text += f" by {last_score['scorer'].split('(')[0].strip()}"
 
             if st.button(undo_text):
@@ -2547,7 +2567,7 @@ with tab1:
         """Handle score entry with improved logic - player stats only for home team."""
         
         # Only track player stats for home team with actual player selected
-        if team == "home" and scorer != "Quick Score (No Player)":
+        if team == "home" and scorer != "Quick Score (Team Only)":
             # Use add_score_with_player which handles both team score AND player stats
             add_score_with_player(
                 team=team,
@@ -2561,18 +2581,17 @@ with tab1:
             # Success message with player info
             result_text = "Made" if made else "Missed"
             shot_text = {
-                "free_throw": "Free Throw",
-                "field_goal": "2-Point Field Goal", 
-                "three_pointer": "3-Point Field Goal"
+                "free_throw": "FT",
+                "field_goal": "2PT", 
+                "three_pointer": "3PT"
             }.get(shot_type, "Shot")
             
             if made:
-                st.success(f"✅ {result_text} {shot_text} by {scorer.split('(')[0].strip()} (+{points} pts)")
+                st.success(f"✅ {shot_text} Make by {scorer.split('(')[0].strip()} (+{points})")
             else:
-                st.info(f"📊 {result_text} {shot_text} by {scorer.split('(')[0].strip()} (Recorded)")
+                st.info(f"📊 {shot_text} Miss by {scorer.split('(')[0].strip()}")
         else:
             # Quick score mode (always used for away team, optional for home team)
-            # Only add to team score, no double counting
             if points > 0:
                 add_score(team, points)
             
@@ -2589,11 +2608,17 @@ with tab1:
                 'timestamp': datetime.now()
             })
             
-            team_name = "Home" if team == "home" else "Away"
+            team_name = "HOME" if team == "home" else "AWAY"
+            shot_text = {
+                "free_throw": "FT",
+                "field_goal": "2PT", 
+                "three_pointer": "3PT"
+            }.get(shot_type, "Shot")
+            
             if made:
-                st.success(f"✅ {team_name} +{points} points")
+                st.success(f"✅ {team_name} {shot_text} Make (+{points})")
             else:
-                st.info(f"📊 {team_name} missed shot recorded")
+                st.info(f"📊 {team_name} {shot_text} Miss")
         
         st.rerun()
 
@@ -2613,7 +2638,7 @@ with tab1:
         
         # Remove from player stats if applicable (only for home team)
         scorer = last_score.get('scorer')
-        if (last_score['team'] == "home" and scorer and scorer != "Quick Score (No Player)" 
+        if (last_score['team'] == "home" and scorer and scorer != "Quick Score (Team Only)" 
             and scorer in st.session_state.player_stats):
             player_stats = st.session_state.player_stats[scorer]
             
