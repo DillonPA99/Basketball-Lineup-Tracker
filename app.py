@@ -435,6 +435,101 @@ def roster_exists(user_id):
         st.error(f"Error checking roster existence: {str(e)}")
         return False
 
+# ------------------------------------------------------------------
+# Roster Validation Function
+# ------------------------------------------------------------------
+def validate_roster(roster):
+    """
+    Validate the roster to ensure it meets game requirements.
+    
+    Args:
+        roster (list): List of player dictionaries with keys: name, jersey, position
+        
+    Returns:
+        tuple: (is_valid: bool, error_message: str)
+    """
+    try:
+        if not roster:
+            return False, "Roster cannot be empty"
+        
+        if len(roster) < 5:
+            return False, f"Need at least 5 players to start a game (currently have {len(roster)})"
+        
+        # Check for duplicate jersey numbers
+        jersey_numbers = [player.get('jersey') for player in roster]
+        if len(jersey_numbers) != len(set(jersey_numbers)):
+            return False, "Duplicate jersey numbers found - each player must have a unique number"
+        
+        # Check for duplicate player names
+        player_names = [player.get('name', '').strip().lower() for player in roster]
+        if len(player_names) != len(set(player_names)):
+            return False, "Duplicate player names found - each player must have a unique name"
+        
+        # Check that all players have required fields
+        for i, player in enumerate(roster):
+            if not isinstance(player, dict):
+                return False, f"Player {i+1} has invalid format"
+            
+            if not player.get('name', '').strip():
+                return False, f"Player {i+1} is missing a name"
+            
+            if 'jersey' not in player or player['jersey'] is None:
+                return False, f"Player '{player.get('name', 'Unknown')}' is missing a jersey number"
+            
+            if not isinstance(player['jersey'], int) or player['jersey'] < 0 or player['jersey'] > 99:
+                return False, f"Player '{player.get('name', 'Unknown')}' has invalid jersey number (must be 0-99)"
+            
+            if not player.get('position', '').strip():
+                return False, f"Player '{player.get('name', 'Unknown')}' is missing a position"
+            
+            # Validate position
+            valid_positions = ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F']
+            if player['position'] not in valid_positions:
+                return False, f"Player '{player.get('name', 'Unknown')}' has invalid position '{player['position']}'. Valid positions: {', '.join(valid_positions)}"
+        
+        # Check for reasonable roster size (not too many players)
+        if len(roster) > 20:
+            return False, f"Roster is too large ({len(roster)} players). Maximum recommended: 20 players"
+        
+        # All validations passed
+        return True, "Roster is valid"
+        
+    except Exception as e:
+        return False, f"Error validating roster: {str(e)}"
+
+
+# ------------------------------------------------------------------
+# Optional: Roster Statistics Function
+# ------------------------------------------------------------------
+def get_roster_stats(roster):
+    """
+    Get basic statistics about the roster composition.
+    
+    Args:
+        roster (list): List of player dictionaries
+        
+    Returns:
+        dict: Statistics about the roster
+    """
+    if not roster:
+        return {}
+    
+    # Count positions
+    position_counts = {}
+    for player in roster:
+        pos = player.get('position', 'Unknown')
+        position_counts[pos] = position_counts.get(pos, 0) + 1
+    
+    # Jersey number range
+    jersey_numbers = [p.get('jersey', 0) for p in roster]
+    
+    return {
+        'total_players': len(roster),
+        'position_breakdown': position_counts,
+        'jersey_range': f"{min(jersey_numbers)}-{max(jersey_numbers)}" if jersey_numbers else "N/A",
+        'average_jersey': sum(jersey_numbers) / len(jersey_numbers) if jersey_numbers else 0
+    }
+
 # ============================================================================
 # ADMIN FUNCTIONS (SUPABASE VERSION)
 # ============================================================================
