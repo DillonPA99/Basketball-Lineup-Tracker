@@ -2402,9 +2402,6 @@ tab1, tab2, tab3 = st.tabs(["🏀 Live Game", "📊 Analytics", "📝 Event Log"
 # ------------------------------------------------------------------
 # Tab 1: Live Game
 # ------------------------------------------------------------------
-# ------------------------------------------------------------------
-# Tab 1: Live Game
-# ------------------------------------------------------------------
 with tab1:
     st.header("Live Game Management")
     # Current game status
@@ -2441,7 +2438,7 @@ with tab1:
         # Get current players for dropdown (home team only)
         current_players = st.session_state.current_lineup if st.session_state.quarter_lineup_set else []
 
-        # OPTION 1: Side-by-side team scoring (most intuitive)
+        # Side-by-side team scoring (eliminates need to select home/away)
         home_col, away_col = st.columns(2)
         
         with home_col:
@@ -2449,7 +2446,7 @@ with tab1:
             
             # Player selection for home team
             if st.session_state.quarter_lineup_set:
-                player_options = ["Quick Score (Team Only)"] + current_players
+                player_options = ["Quick Score (No Player)"] + current_players
                 home_scorer = st.selectbox(
                     "Player:",
                     player_options,
@@ -2457,7 +2454,7 @@ with tab1:
                     key="home_scorer_select"
                 )
             else:
-                home_scorer = "Quick Score (Team Only)"
+                home_scorer = "Quick Score (No Player)"
 
             # Home team scoring buttons
             st.write("**Score Entry**")
@@ -2500,28 +2497,28 @@ with tab1:
             away_ft_make, away_ft_miss = st.columns(2)
             with away_ft_make:
                 if st.button("✅ FT", key="away_ft_make", use_container_width=True, type="primary"):
-                    handle_score_entry("away", 1, "Quick Score (Team Only)", "free_throw", True)
+                    handle_score_entry("away", 1, "Quick Score (No Player)", "free_throw", True)
             with away_ft_miss:
                 if st.button("❌ FT", key="away_ft_miss", use_container_width=True):
-                    handle_score_entry("away", 0, "Quick Score (Team Only)", "free_throw", False)
+                    handle_score_entry("away", 0, "Quick Score (No Player)", "free_throw", False)
 
             # 2-Point Field Goals
             away_2pt_make, away_2pt_miss = st.columns(2)
             with away_2pt_make:
                 if st.button("✅ 2PT", key="away_2pt_make", use_container_width=True, type="primary"):
-                    handle_score_entry("away", 2, "Quick Score (Team Only)", "field_goal", True)
+                    handle_score_entry("away", 2, "Quick Score (No Player)", "field_goal", True)
             with away_2pt_miss:
                 if st.button("❌ 2PT", key="away_2pt_miss", use_container_width=True):
-                    handle_score_entry("away", 0, "Quick Score (Team Only)", "field_goal", False)
+                    handle_score_entry("away", 0, "Quick Score (No Player)", "field_goal", False)
 
             # 3-Point Field Goals
             away_3pt_make, away_3pt_miss = st.columns(2)
             with away_3pt_make:
                 if st.button("✅ 3PT", key="away_3pt_make", use_container_width=True, type="primary"):
-                    handle_score_entry("away", 3, "Quick Score (Team Only)", "three_pointer", True)
+                    handle_score_entry("away", 3, "Quick Score (No Player)", "three_pointer", True)
             with away_3pt_miss:
                 if st.button("❌ 3PT", key="away_3pt_miss", use_container_width=True):
-                    handle_score_entry("away", 0, "Quick Score (Team Only)", "three_pointer", False)
+                    handle_score_entry("away", 0, "Quick Score (No Player)", "three_pointer", False)
 
         # Quick stats display
         if st.session_state.player_stats:
@@ -2557,7 +2554,7 @@ with tab1:
             else:
                 undo_text += f"+{points}"
 
-            if last_score.get('scorer') and last_score.get('scorer') != "Quick Score (Team Only)":
+            if last_score.get('scorer') and last_score.get('scorer') != "Quick Score (No Player)":
                 undo_text += f" by {last_score['scorer'].split('(')[0].strip()}"
 
             if st.button(undo_text):
@@ -2567,7 +2564,7 @@ with tab1:
         """Handle score entry with improved logic - player stats only for home team."""
         
         # Only track player stats for home team with actual player selected
-        if team == "home" and scorer != "Quick Score (Team Only)":
+        if team == "home" and scorer != "Quick Score (No Player)":
             # Use add_score_with_player which handles both team score AND player stats
             add_score_with_player(
                 team=team,
@@ -2638,7 +2635,7 @@ with tab1:
         
         # Remove from player stats if applicable (only for home team)
         scorer = last_score.get('scorer')
-        if (last_score['team'] == "home" and scorer and scorer != "Quick Score (Team Only)" 
+        if (last_score['team'] == "home" and scorer and scorer != "Quick Score (No Player)" 
             and scorer in st.session_state.player_stats):
             player_stats = st.session_state.player_stats[scorer]
             
