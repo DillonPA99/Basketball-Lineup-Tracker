@@ -596,6 +596,7 @@ if "roster_set" not in st.session_state:
 if "current_quarter" not in st.session_state:
     st.session_state.current_quarter = "Q1"
 
+# Initialize quarter_length BEFORE using it in current_game_time
 if "quarter_length" not in st.session_state:
     st.session_state.quarter_length = 12
 
@@ -617,8 +618,9 @@ if "score_history" not in st.session_state:
 if "quarter_lineup_set" not in st.session_state:
     st.session_state.quarter_lineup_set = False
 
+# Now initialize current_game_time using quarter_length
 if "current_game_time" not in st.session_state:
-    st.session_state.current_game_time = "12:00"
+    st.session_state.current_game_time = f"{st.session_state.quarter_length}:00"
 
 if "quarter_end_history" not in st.session_state:
     st.session_state.quarter_end_history = []  # optional: stores quarter-end snapshots
@@ -644,7 +646,6 @@ if "user_info" not in st.session_state:
 
 if "show_admin_panel" not in st.session_state:
     st.session_state.show_admin_panel = False
-
 # ------------------------------------------------------------------
 # Initialize the database
 # ------------------------------------------------------------------
@@ -790,7 +791,6 @@ def reset_game():
     st.session_state.lineup_history = []
     st.session_state.score_history = []
     st.session_state.quarter_lineup_set = False
-    st.session_state.current_game_time = f"{st.session_state.quarter_length}:00"
     st.session_state.quarter_end_history = []
     st.session_state.player_stats = defaultdict(lambda: {
         'points': 0,
