@@ -33,40 +33,15 @@ st.set_page_config(
 # SUPABASE CONNECTION SETUP WITH ERROR HANDLING
 # ============================================================================
 
+st.write("Available secrets:")
 try:
-    # Get credentials from Streamlit secrets
-    SUPABASE_URL = st.secrets["supabase"]["database_url"]
-    SUPABASE_KEY = st.secrets["supabase"]["api_key"]
-except KeyError as e:
-    st.error("❌ **Configuration Error**: Supabase credentials are missing!")
-    st.write("**How to fix this:**")
-    
-    st.write("""
-    **For Streamlit Cloud:**
-    1. Go to your app settings in Streamlit Cloud
-    2. Click on the "Secrets" tab
-    3. Add the following secrets in TOML format:
-    
-    ```toml
-    [supabase]
-    database_url = "your_supabase_project_url"
-    api_key = "your_supabase_anon_key"
-    ```
-    
-    4. Save and redeploy your app
-    
-    **For local development:**
-    1. Create a `.streamlit/secrets.toml` file in your app directory
-    2. Add the same TOML content as above
-    3. Restart your Streamlit app
-    """)
-    
-    st.write("**To get your Supabase credentials:**")
-    st.write("""
-    1. Go to your Supabase project dashboard
-    2. Click on "Settings" → "API"
-    3. Copy the "Project URL" and "anon/public" key
-    """)
+    st.write("All secrets keys:", list(st.secrets.keys()))
+    if "supabase" in st.secrets:
+        st.write("Supabase section keys:", list(st.secrets["supabase"].keys()))
+    else:
+        st.write("No 'supabase' section found in secrets")
+except Exception as e:
+    st.write("Error accessing secrets:", str(e))
     
     st.stop()
 
