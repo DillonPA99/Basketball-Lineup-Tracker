@@ -120,7 +120,7 @@ def init_database():
         try:
             supabase.table('users').select("count", count="exact").limit(1).execute()
         except Exception:
-            # Create users table via RPC call or handle via Supabase dashboard
+            # Create users table via RPC call or  via Supabase dashboard
             st.warning("Please ensure 'users' table exists in Supabase")
             
         # Test user_rosters table  
@@ -2474,11 +2474,11 @@ with tab1:
             
             with ft_make_col:
                 if st.button("✅ FT Make", key="ft_make", use_container_width=True, type="primary"):
-                    handle_score_entry(scoring_team.lower(), 1, scorer, "free_throw", True)
+                    _score_entry(scoring_team.lower(), 1, scorer, "free_throw", True)
             
             with ft_miss_col:
                 if st.button("❌ FT Miss", key="ft_miss", use_container_width=True):
-                    handle_score_entry(scoring_team.lower(), 0, scorer, "free_throw", False)
+                    _score_entry(scoring_team.lower(), 0, scorer, "free_throw", False)
         
         with fg2_col:
             st.write("**2-Point Field Goals**")
@@ -2486,11 +2486,11 @@ with tab1:
             
             with fg2_make_col:
                 if st.button("✅ 2PT Make", key="fg2_make", use_container_width=True, type="primary"):
-                    handle_score_entry(scoring_team.lower(), 2, scorer, "field_goal", True)
+                    _score_entry(scoring_team.lower(), 2, scorer, "field_goal", True)
             
             with fg2_miss_col:
                 if st.button("❌ 2PT Miss", key="fg2_miss", use_container_width=True):
-                    handle_score_entry(scoring_team.lower(), 0, scorer, "field_goal", False)
+                    _score_entry(scoring_team.lower(), 0, scorer, "field_goal", False)
         
         with fg3_col:
             st.write("**3-Point Field Goals**")
@@ -2547,12 +2547,9 @@ with tab1:
     def handle_score_entry(team, points, scorer, shot_type, made):
         """Handle score entry with improved logic - player stats only for home team."""
         
-        # Always add to team score if points > 0
-        if points > 0:
-            add_score(team, points)
-        
-        # Only track player stats for home team
+        # Only track player stats for home team with actual player selected
         if team == "home" and scorer != "Quick Score (No Player)":
+            # Use add_score_with_player which handles both team score AND player stats
             add_score_with_player(
                 team=team,
                 points=points,
@@ -2576,12 +2573,21 @@ with tab1:
                 st.info(f"📊 {result_text} {shot_text} by {scorer.split('(')[0].strip()} (Recorded)")
         else:
             # Quick score mode (always used for away team, optional for home team)
+            # Only add to team score, no double counting
+            if points > 0:
+                add_score(team, points)
+            
+            # Add to history for tracking purposes
             st.session_state.score_history.append({
                 'team': team,
                 'points': points,
                 'shot_type': shot_type,
                 'made': made,
-                'scorer': scorer if team == "home" else None  # Only store scorer for home team
+                'scorer': scorer if team == "home" else None,
+                'quarter': st.session_state.current_quarter,
+                'lineup': st.session_state.current_lineup.copy() if st.session_state.current_lineup else [],
+                'game_time': st.session_state.current_game_time,
+                'timestamp': datetime.now()
             })
             
             team_name = "Home" if team == "home" else "Away"
