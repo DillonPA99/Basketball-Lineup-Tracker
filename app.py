@@ -35,22 +35,6 @@ st.set_page_config(
 # SUPABASE CONNECTION SETUP WITH ERROR HANDLING
 # ============================================================================
 
-# ------------------------------------------------------------------
-# REMOVE THIS OLD CODE:
-# ------------------------------------------------------------------
-# @st.cache_resource
-# def init_supabase():
-#     """Initialize Supabase client."""
-#     try:
-#         return create_client(SUPABASE_URL, SUPABASE_KEY)
-#     except Exception as e:
-#         st.error(f"Failed to connect to Supabase: {e}")
-#         st.stop()
-# supabase: Client = init_supabase()
-
-# ------------------------------------------------------------------
-# REPLACE WITH THIS NEW CODE:
-# ------------------------------------------------------------------
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
