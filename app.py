@@ -73,54 +73,34 @@ def load_supabase_credentials():
 def get_supabase_client():
     """Get Supabase client with robust error handling and caching."""
     
-    # Try up to 3 times with delays
-    for attempt in range(3):
-        try:
-            url, key = load_supabase_credentials()
-            
-            if not url or not key:
-                logger.error(f"Attempt {attempt + 1}: Missing credentials")
-                if attempt < 2:
-                    time.sleep(1)
-                    continue
-                else:
-                    return None
-            
-            # Create client
-            supabase = create_client(url, key)
-            
-            # Test connection with a table-agnostic query
-            try:
-                # Test connection using a query that works regardless of your tables
-                # This tests both connection and API key validity
-                response = supabase.rpc('version').execute()
-                logger.info(f"Supabase connection successful on attempt {attempt + 1}")
-                return supabase
-            except Exception as test_error:
-                # If version RPC doesn't work, try a different approach
-                try:
-                    # Alternative test - this will work even if it returns an error about table not existing
-                    supabase.table('_non_existent_test_table').select("*").limit(1).execute()
-                except Exception:
-                    pass  # We expect this to fail, but if we get here, connection is working
-                
-                logger.warning(f"Attempt {attempt + 1}: Connection test failed - {str(test_error)}")
-                if attempt < 2:
-                    time.sleep(1 * (attempt + 1))  # Exponential backoff
-                    continue
-                else:
-                    logger.error(f"Final attempt failed: {str(test_error)}")
-                    return None
-                    
-        except Exception as e:
-            logger.error(f"Attempt {attempt + 1}: Failed to create client - {str(e)}")
-            if attempt < 2:
-                time.sleep(1 * (attempt + 1))
-                continue
-            else:
-                return None
+    url, key = load_supabase_credentials()
     
-    return None
+    # Debug: Show what we found (safely)
+    st.write("🔍 **Debug Info:**")
+    st.write(f"- URL found: {'✅ Yes' if url else '❌ No'}")
+    st.write(f"- API Key found: {'✅ Yes' if key else '❌ No'}")
+    
+    if url:
+        st.write(f"- URL starts with: {url[:20]}...")
+    if key:
+        st.write(f"- Key starts with: {key[:10]}...")
+    
+    if not url or not key:
+        st.error("❌ **Missing credentials!** Please check your Streamlit secrets or environment variables.")
+        return None
+    
+    # Try to create client
+    try:
+        supabase = create_client(url, key)
+        st.write("✅ Supabase client created successfully")
+        
+        # Simplified connection test - just return the client for now
+        # We'll test it in init_database instead
+        return supabase
+        
+    except Exception as e:
+        st.error(f"❌ **Failed to create Supabase client:** {str(e)}")
+        return None
 
 # Initialize Supabase with user-friendly error handling
 with st.spinner("Connecting to database..."):
@@ -128,19 +108,18 @@ with st.spinner("Connecting to database..."):
 
 if supabase is None:
     st.error("""
-    **Sorry, we're having trouble connecting to our database right now.**
-    
-    This could be due to:
-    - Missing or incorrect database credentials
-    - Database server being temporarily unavailable
-    - Network connectivity issues
-    
-    Please try:
-    - Refreshing the page
-    - Checking your internet connection
-    - Contacting support if the problem persists
+    **Connection failed!** Check the debug info above to see what's missing.
     """)
     st.stop()
+else:
+    st.success("✅ **Supabase client created!** Now testing database access...")
+
+# Test the database connection
+if not init_database():
+    st.error("❌ **Database connection test failed!** Check the details above.")
+    st.stop()
+else:
+    st.success("🎉 **Database connection successful!**")
 
 # If you get here, supabase is ready to use!
 
@@ -151,24 +130,55 @@ if supabase is None:
 def init_database():
     """Initialize the database tables in Supabase."""
     try:
-        # Check if tables exist by trying to query them
+        st.write("🔍 **Testing database connection...**")
+        
+        # Test connection with each table and show detailed results
         tables_to_check = ['product_keys', 'users', 'user_rosters', 'game_sessions']
         
         for table_name in tables_to_check:
             try:
-                supabase.table(table_name).select("count", count="exact").limit(1).execute()
+                response = supabase.table(table_name).select("count", count="exact").limit(1).execute()
+                st.write(f"✅ Table '{table_name}' exists and is accessible")
                 logger.info(f"Table '{table_name}' exists and is accessible")
             except Exception as e:
-                st.warning(f"Table '{table_name}' may not exist or is not accessible: {str(e)}")
+                error_msg = str(e)
+                st.write(f"⚠️ Table '{table_name}': {error_msg}")
+                
+                # Check if this is a "table doesn't exist" error vs connection error
+                if any(keyword in error_msg.lower() for keyword in ['relation', 'table', 'does not exist', 'not found']):
+                    st.warning(f"Please create table '{table_name}' in your Supabase dashboard")
+                else:
+                    # This might be a connection/auth error
+                    st.error(f"Connection/Auth error for table '{table_name}': {error_msg}")
+                
                 logger.warning(f"Table check failed for '{table_name}': {str(e)}")
+        
+        # Try a simple connection test
+        st.write("🔍 **Testing basic connection...**")
+        try:
+            # Try the RPC version call
+            response = supabase.rpc('version').execute()
+            st.write("✅ Basic connection test passed (RPC version)")
+        except Exception as e:
+            st.write(f"❌ RPC version test failed: {str(e)}")
+            
+            # Try alternative connection test
+            try:
+                supabase.table('test_connection_123456').select("*").limit(1).execute()
+            except Exception as e2:
+                error_msg = str(e2).lower()
+                if 'relation' in error_msg or 'table' in error_msg or 'does not exist' in error_msg:
+                    st.write("✅ Basic connection test passed (table query)")
+                else:
+                    st.error(f"❌ Connection test failed: {str(e2)}")
+                    return False
+        
+        return True
             
     except Exception as e:
-        st.error(f"Database initialization error: {e}")
+        st.error(f"❌ Database initialization error: {e}")
         logger.error(f"Database initialization failed: {str(e)}")
-
-# Run database initialization
-init_database()
-
+        return False
 # ============================================================================
 # PASSWORD SECURITY (UNCHANGED)
 # ============================================================================
