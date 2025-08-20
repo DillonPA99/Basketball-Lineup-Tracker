@@ -31,13 +31,13 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ============================================================================
-# SUPABASE CONNECTION SETUP WITH ERROR HANDLING
-# ============================================================================
-
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# ============================================================================
+# FUNCTION DEFINITIONS (DEFINE ALL FUNCTIONS FIRST)
+# ============================================================================
 
 def load_supabase_credentials():
     """Load Supabase credentials with multiple fallback methods."""
@@ -68,64 +68,6 @@ def load_supabase_credentials():
         pass
     
     return None, None
-
-@st.cache_resource
-def get_supabase_client():
-    """Get Supabase client with robust error handling and caching."""
-    
-    url, key = load_supabase_credentials()
-    
-    # Debug: Show what we found (safely)
-    st.write("🔍 **Debug Info:**")
-    st.write(f"- URL found: {'✅ Yes' if url else '❌ No'}")
-    st.write(f"- API Key found: {'✅ Yes' if key else '❌ No'}")
-    
-    if url:
-        st.write(f"- URL starts with: {url[:20]}...")
-    if key:
-        st.write(f"- Key starts with: {key[:10]}...")
-    
-    if not url or not key:
-        st.error("❌ **Missing credentials!** Please check your Streamlit secrets or environment variables.")
-        return None
-    
-    # Try to create client
-    try:
-        supabase = create_client(url, key)
-        st.write("✅ Supabase client created successfully")
-        
-        # Simplified connection test - just return the client for now
-        # We'll test it in init_database instead
-        return supabase
-        
-    except Exception as e:
-        st.error(f"❌ **Failed to create Supabase client:** {str(e)}")
-        return None
-
-# Initialize Supabase with user-friendly error handling
-with st.spinner("Connecting to database..."):
-    supabase: Client = get_supabase_client()
-
-if supabase is None:
-    st.error("""
-    **Connection failed!** Check the debug info above to see what's missing.
-    """)
-    st.stop()
-else:
-    st.success("✅ **Supabase client created!** Now testing database access...")
-
-# Test the database connection
-if not init_database(supabase):
-    st.error("❌ **Database connection test failed!** Check the details above.")
-    st.stop()
-else:
-    st.success("🎉 **Database connection successful!**")
-
-# If you get here, supabase is ready to use!
-
-# ============================================================================
-# DATABASE INITIALIZATION (SUPABASE)
-# ============================================================================
 
 def init_database(supabase_client):
     """Initialize the database tables in Supabase."""
@@ -179,9 +121,40 @@ def init_database(supabase_client):
         st.error(f"❌ Database initialization error: {e}")
         logger.error(f"Database initialization failed: {str(e)}")
         return False
-# ============================================================================
-# PASSWORD SECURITY (UNCHANGED)
-# ============================================================================
+
+@st.cache_resource
+def get_supabase_client():
+    """Get Supabase client with robust error handling and caching."""
+    
+    url, key = load_supabase_credentials()
+    
+    # Debug: Show what we found (safely)
+    st.write("🔍 **Debug Info:**")
+    st.write(f"- URL found: {'✅ Yes' if url else '❌ No'}")
+    st.write(f"- API Key found: {'✅ Yes' if key else '❌ No'}")
+    
+    if url:
+        st.write(f"- URL starts with: {url[:20]}...")
+    if key:
+        st.write(f"- Key starts with: {key[:10]}...")
+    
+    if not url or not key:
+        st.error("❌ **Missing credentials!** Please check your Streamlit secrets or environment variables.")
+        return None
+    
+    # Try to create client
+    try:
+        supabase = create_client(url, key)
+        st.write("✅ Supabase client created successfully")
+        
+        # Simplified connection test - just return the client for now
+        # We'll test it in init_database instead
+        return supabase
+        
+    except Exception as e:
+        st.error(f"❌ **Failed to create Supabase client:** {str(e)}")
+        return None
+
 def hash_password(password):
     """Hash a password for storing."""
     return hashlib.sha256(password.encode()).hexdigest()
@@ -190,6 +163,28 @@ def verify_password(password, hashed):
     """Verify a password against its hash."""
     return hash_password(password) == hashed
 
+# ============================================================================
+# MAIN EXECUTION (CALL FUNCTIONS AFTER THEY'RE DEFINED)
+# ============================================================================
+
+# Initialize Supabase with user-friendly error handling
+with st.spinner("Connecting to database..."):
+    supabase: Client = get_supabase_client()
+
+if supabase is None:
+    st.error("""
+    **Connection failed!** Check the debug info above to see what's missing.
+    """)
+    st.stop()
+else:
+    st.success("✅ **Supabase client created!** Now testing database access...")
+
+# Test the database connection
+if not init_database(supabase):
+    st.error("❌ **Database connection test failed!** Check the details above.")
+    st.stop()
+else:
+    st.success("🎉 **Database connection successful!**")
 # ============================================================================
 # PRODUCT KEY MANAGEMENT
 # ============================================================================
