@@ -784,8 +784,13 @@ if "show_admin_panel" not in st.session_state:
 # ------------------------------------------------------------------
 # Initialize the database
 # ------------------------------------------------------------------
-init_database()
-
+# Note: This assumes 'supabase' variable exists from earlier initialization
+# If this code runs before supabase is created, you need to move it later
+if 'supabase' in locals() or 'supabase' in globals():
+    init_database(supabase)
+else:
+    st.error("❌ Supabase client not available. Make sure database connection is established first.")
+    
 def create_default_admin():
     """Create default admin user if no admin exists - with better error handling."""
     try:
@@ -829,8 +834,11 @@ VALUES ('DEMO-2024-KEYS-ABCD', 'Initial key', 10, 0, NOW() + INTERVAL '365 days'
         st.info("This might be due to Row Level Security policies. Check the setup instructions above.")
         return False
         
-# AND ADD THIS CALL RIGHT AFTER:
-create_default_admin()
+# Create default admin - but only if supabase exists
+if 'supabase' in locals() or 'supabase' in globals():
+    create_default_admin()
+else:
+    st.warning("⚠️ Cannot create default admin - database connection not available.")
 
 # ------------------------------------------------------------------
 # User Authentication Gate
