@@ -115,7 +115,7 @@ else:
     st.success("✅ **Supabase client created!** Now testing database access...")
 
 # Test the database connection
-if not init_database():
+if not init_database(supabase):
     st.error("❌ **Database connection test failed!** Check the details above.")
     st.stop()
 else:
@@ -127,7 +127,7 @@ else:
 # DATABASE INITIALIZATION (SUPABASE)
 # ============================================================================
 
-def init_database():
+def init_database(supabase_client):
     """Initialize the database tables in Supabase."""
     try:
         st.write("🔍 **Testing database connection...**")
@@ -137,7 +137,7 @@ def init_database():
         
         for table_name in tables_to_check:
             try:
-                response = supabase.table(table_name).select("count", count="exact").limit(1).execute()
+                response = supabase_client.table(table_name).select("count", count="exact").limit(1).execute()
                 st.write(f"✅ Table '{table_name}' exists and is accessible")
                 logger.info(f"Table '{table_name}' exists and is accessible")
             except Exception as e:
@@ -157,14 +157,14 @@ def init_database():
         st.write("🔍 **Testing basic connection...**")
         try:
             # Try the RPC version call
-            response = supabase.rpc('version').execute()
+            response = supabase_client.rpc('version').execute()
             st.write("✅ Basic connection test passed (RPC version)")
         except Exception as e:
             st.write(f"❌ RPC version test failed: {str(e)}")
             
             # Try alternative connection test
             try:
-                supabase.table('test_connection_123456').select("*").limit(1).execute()
+                supabase_client.table('test_connection_123456').select("*").limit(1).execute()
             except Exception as e2:
                 error_msg = str(e2).lower()
                 if 'relation' in error_msg or 'table' in error_msg or 'does not exist' in error_msg:
