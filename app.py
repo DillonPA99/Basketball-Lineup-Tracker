@@ -95,33 +95,33 @@ def init_database(supabase_client):
                 
                 logger.warning(f"Table check failed for '{table_name}': {str(e)}")
         
-        # Try a simple connection test
+        # Try a simple connection test with a basic query
         st.write("🔍 **Testing basic connection...**")
         try:
-            # Try the RPC version call
-            response = supabase_client.rpc('version').execute()
-            st.write("✅ Basic connection test passed (RPC version)")
+            # Try a simple query that should work - just get one row from users table
+            response = supabase_client.table('users').select("count", count="exact").limit(1).execute()
+            st.write("✅ Basic connection test passed!")
+            st.write(f"Database is accessible and responding to queries")
+            return True
+            
         except Exception as e:
-            st.write(f"❌ RPC version test failed: {str(e)}")
+            error_msg = str(e).lower()
             
-            # Try alternative connection test
-            try:
-                supabase_client.table('test_connection_123456').select("*").limit(1).execute()
-            except Exception as e2:
-                error_msg = str(e2).lower()
-                if 'relation' in error_msg or 'table' in error_msg or 'does not exist' in error_msg:
-                    st.write("✅ Basic connection test passed (table query)")
-                else:
-                    st.error(f"❌ Connection test failed: {str(e2)}")
-                    return False
+            # If it's just a "table doesn't exist" error, connection is still good
+            if any(keyword in error_msg for keyword in ['relation', 'table', 'does not exist']):
+                st.write("✅ Basic connection test passed (table query responded)")
+                st.info("Connection is working, but you need to create the required tables")
+                return True
+            else:
+                # This is a real connection/auth error
+                st.error(f"❌ Connection test failed: {str(e)}")
+                return False
         
-        return True
-            
     except Exception as e:
         st.error(f"❌ Database initialization error: {e}")
         logger.error(f"Database initialization failed: {str(e)}")
         return False
-
+        
 @st.cache_resource
 def get_supabase_client():
     """Get Supabase client with robust error handling and caching."""
