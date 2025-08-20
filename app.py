@@ -10,6 +10,8 @@ import plotly.graph_objects as go
 from supabase import create_client, Client
 import hashlib
 import os
+import time
+import logging
 from datetime import datetime, timedelta
 import pickle
 import base64
@@ -33,65 +35,116 @@ st.set_page_config(
 # SUPABASE CONNECTION SETUP WITH ERROR HANDLING
 # ============================================================================
 
-st.write("Available secrets:")
-# Replace your existing secret loading section with this:
+# ------------------------------------------------------------------
+# REMOVE THIS OLD CODE:
+# ------------------------------------------------------------------
+# @st.cache_resource
+# def init_supabase():
+#     """Initialize Supabase client."""
+#     try:
+#         return create_client(SUPABASE_URL, SUPABASE_KEY)
+#     except Exception as e:
+#         st.error(f"Failed to connect to Supabase: {e}")
+#         st.stop()
+# supabase: Client = init_supabase()
 
-try:
-    # Get credentials from Streamlit secrets (root level)
-    SUPABASE_URL = st.secrets["database_url"]
-    SUPABASE_KEY = st.secrets["api_key"]
-    
-    # Verify the values aren't empty
-    if not SUPABASE_URL or not SUPABASE_KEY:
-        st.error("❌ Supabase credentials are empty")
-        st.stop()
-        
-except KeyError as e:
-    st.error(f"❌ **Configuration Error**: Missing secret key: {e}")
-    st.write("**How to fix this:**")
-    
-    st.write("""
-    **For Streamlit Cloud:**
-    1. Go to your app settings in Streamlit Cloud
-    2. Click on the "Secrets" tab
-    3. Add the following secrets:
-    
-    ```
-    database_url = "your_supabase_project_url"
-    api_key = "your_supabase_anon_key"
-    ```
-    
-    4. Save and redeploy your app
-    
-    **For local development:**
-    1. Create a `.streamlit/secrets.toml` file in your app directory
-    2. Add the same content as above (without the [supabase] section)
-    3. Restart your Streamlit app
-    """)
-    
-    st.write("**To get your Supabase credentials:**")
-    st.write("""
-    1. Go to your Supabase project dashboard
-    2. Click on "Settings" → "API"
-    3. Copy the "Project URL" and "anon/public" key
-    """)
-    
-    st.stop()
+# ------------------------------------------------------------------
+# REPLACE WITH THIS NEW CODE:
+# ------------------------------------------------------------------
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-except Exception as e:
-    st.error(f"❌ Error loading Supabase credentials: {str(e)}")
-    st.stop()
+def load_supabase_credentials():
+    """Load Supabase credentials with multiple fallback methods."""
+    # Try different secret key variations
+    secret_variations = [
+        ("database_url", "api_key"),
+        ("SUPABASE_URL", "SUPABASE_KEY"),
+        ("supabase_url", "supabase_key"),
+    ]
+    
+    for url_key, key_key in secret_variations:
+        try:
+            if hasattr(st, 'secrets') and url_key in st.secrets and key_key in st.secrets:
+                url = st.secrets[url_key]
+                key = st.secrets[key_key]
+                if url and key:
+                    return url, key
+        except Exception:
+            continue
+    
+    # Fallback to environment variables
+    try:
+        url = os.getenv("SUPABASE_URL")
+        key = os.getenv("SUPABASE_KEY")
+        if url and key:
+            return url, key
+    except Exception:
+        pass
+    
+    return None, None
 
 @st.cache_resource
-def init_supabase():
-    """Initialize Supabase client."""
-    try:
-        return create_client(SUPABASE_URL, SUPABASE_KEY)
-    except Exception as e:
-        st.error(f"Failed to connect to Supabase: {e}")
-        st.stop()
+def get_supabase_client():
+    """Get Supabase client with robust error handling and caching."""
+    
+    # Try up to 3 times with delays
+    for attempt in range(3):
+        try:
+            url, key = load_supabase_credentials()
+            
+            if not url or not key:
+                logger.error(f"Attempt {attempt + 1}: Missing credentials")
+                if attempt < 2:
+                    time.sleep(1)
+                    continue
+                else:
+                    return None
+            
+            # Create client
+            supabase = create_client(url, key)
+            
+            # Test connection
+            try:
+                _ = supabase.auth.get_user()
+                logger.info(f"Supabase connection successful on attempt {attempt + 1}")
+                return supabase
+            except Exception as test_error:
+                logger.warning(f"Attempt {attempt + 1}: Connection test failed")
+                if attempt < 2:
+                    time.sleep(1 * (attempt + 1))  # Exponential backoff
+                    continue
+                else:
+                    return None
+                    
+        except Exception as e:
+            logger.error(f"Attempt {attempt + 1}: Failed to create client")
+            if attempt < 2:
+                time.sleep(1 * (attempt + 1))
+                continue
+            else:
+                return None
+    
+    return None
 
-supabase: Client = init_supabase()
+# Initialize Supabase with user-friendly error handling
+with st.spinner("Connecting to database..."):
+    supabase: Client = get_supabase_client()
+
+if supabase is None:
+    st.error("""
+    **Sorry, we're having trouble connecting to our database right now.**
+    
+    Please try:
+    - Refreshing the page
+    - Waiting a moment and trying again
+    
+    If the problem persists, please contact support.
+    """)
+    st.stop()
+
+# If you get here, supabase is ready to use!
 
 # ============================================================================
 # DATABASE INITIALIZATION (SUPABASE)
