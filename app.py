@@ -89,21 +89,31 @@ def get_supabase_client():
             # Create client
             supabase = create_client(url, key)
             
-            # Test connection
+            # Test connection with a table-agnostic query
             try:
-                _ = supabase.auth.get_user()
+                # Test connection using a query that works regardless of your tables
+                # This tests both connection and API key validity
+                response = supabase.rpc('version').execute()
                 logger.info(f"Supabase connection successful on attempt {attempt + 1}")
                 return supabase
             except Exception as test_error:
-                logger.warning(f"Attempt {attempt + 1}: Connection test failed")
+                # If version RPC doesn't work, try a different approach
+                try:
+                    # Alternative test - this will work even if it returns an error about table not existing
+                    supabase.table('_non_existent_test_table').select("*").limit(1).execute()
+                except Exception:
+                    pass  # We expect this to fail, but if we get here, connection is working
+                
+                logger.warning(f"Attempt {attempt + 1}: Connection test failed - {str(test_error)}")
                 if attempt < 2:
                     time.sleep(1 * (attempt + 1))  # Exponential backoff
                     continue
                 else:
+                    logger.error(f"Final attempt failed: {str(test_error)}")
                     return None
                     
         except Exception as e:
-            logger.error(f"Attempt {attempt + 1}: Failed to create client")
+            logger.error(f"Attempt {attempt + 1}: Failed to create client - {str(e)}")
             if attempt < 2:
                 time.sleep(1 * (attempt + 1))
                 continue
@@ -120,11 +130,15 @@ if supabase is None:
     st.error("""
     **Sorry, we're having trouble connecting to our database right now.**
     
+    This could be due to:
+    - Missing or incorrect database credentials
+    - Database server being temporarily unavailable
+    - Network connectivity issues
+    
     Please try:
     - Refreshing the page
-    - Waiting a moment and trying again
-    
-    If the problem persists, please contact support.
+    - Checking your internet connection
+    - Contacting support if the problem persists
     """)
     st.stop()
 
@@ -133,42 +147,27 @@ if supabase is None:
 # ============================================================================
 # DATABASE INITIALIZATION (SUPABASE)
 # ============================================================================
-# Note: Tables should be created in Supabase dashboard or via SQL
-# This function now just checks if tables exist and creates them if needed
 
 def init_database():
     """Initialize the database tables in Supabase."""
     try:
         # Check if tables exist by trying to query them
-        # If they don't exist, Supabase will return an error
-
-        # Test product_keys table
-        try:
-            supabase.table('product_keys').select("count", count="exact").limit(1).execute()
-        except Exception:
-            st.warning("Please ensure 'product_keys' table exists in Supabase")
+        tables_to_check = ['product_keys', 'users', 'user_rosters', 'game_sessions']
         
-        # Test users table
-        try:
-            supabase.table('users').select("count", count="exact").limit(1).execute()
-        except Exception:
-            # Create users table via RPC call or  via Supabase dashboard
-            st.warning("Please ensure 'users' table exists in Supabase")
-            
-        # Test user_rosters table  
-        try:
-            supabase.table('user_rosters').select("count", count="exact").limit(1).execute()
-        except Exception:
-            st.warning("Please ensure 'user_rosters' table exists in Supabase")
-            
-        # Test game_sessions table
-        try:
-            supabase.table('game_sessions').select("count", count="exact").limit(1).execute()
-        except Exception:
-            st.warning("Please ensure 'game_sessions' table exists in Supabase")
+        for table_name in tables_to_check:
+            try:
+                supabase.table(table_name).select("count", count="exact").limit(1).execute()
+                logger.info(f"Table '{table_name}' exists and is accessible")
+            except Exception as e:
+                st.warning(f"Table '{table_name}' may not exist or is not accessible: {str(e)}")
+                logger.warning(f"Table check failed for '{table_name}': {str(e)}")
             
     except Exception as e:
         st.error(f"Database initialization error: {e}")
+        logger.error(f"Database initialization failed: {str(e)}")
+
+# Run database initialization
+init_database()
 
 # ============================================================================
 # PASSWORD SECURITY (UNCHANGED)
