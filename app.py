@@ -161,11 +161,12 @@ def create_user_account(email, password, display_name):
         return False, f"Error creating account: {str(e)}"
 
 def render_auth_ui():
-    """Render authentication interface"""
+    """Render authentication interface with admin account support"""
     
     if 'authenticated' not in st.session_state:
         st.session_state.authenticated = False
         st.session_state.user_info = None
+        st.session_state.is_admin = False  # Add admin flag
     
     if not st.session_state.authenticated:
         st.title("🏀 Basketball Lineup Tracker")
@@ -176,27 +177,54 @@ def render_auth_ui():
         with auth_tab1:
             st.subheader("Welcome Back, Coach!")
             with st.form("login_form"):
-                email = st.text_input("Email Address")
+                email = st.text_input("Email Address / Username")
                 password = st.text_input("Password", type="password")
                 login_button = st.form_submit_button("🏀 Start Coaching", type="primary")
                 
                 if login_button:
                     if email and password:
-                        # For demo purposes - in production you'd verify against Firebase Auth
-                        if email and password:  # Basic validation
+                        # Check for admin account FIRST
+                        if email.lower() == "admin" and password == "admin123":
                             st.session_state.authenticated = True
+                            st.session_state.is_admin = True
                             st.session_state.user_info = {
-                                'uid': email.split('@')[0],  # Use email prefix as UID for demo
+                                'uid': 'admin_user',
+                                'email': 'admin@system.local',
+                                'name': 'Administrator'
+                            }
+                            st.success("✅ Admin login successful!")
+                            st.balloons()  # Special effect for admin
+                            st.rerun()
+                        # Regular user authentication
+                        elif '@' in email:  # Basic email validation for regular users
+                            st.session_state.authenticated = True
+                            st.session_state.is_admin = False
+                            st.session_state.user_info = {
+                                'uid': email.split('@')[0],
                                 'email': email,
                                 'name': email.split('@')[0].title()
                             }
                             st.success("Login successful!")
                             st.rerun()
+                        else:
+                            st.error("❌ Invalid credentials. Use 'admin' with password 'admin123' for admin access.")
                     else:
-                        st.error("Please enter both email and password")
+                        st.error("Please enter both email/username and password")
+            
+            # Add admin hint (optional - remove in production)
+            with st.expander("💡 Admin Access Info"):
+                st.info("""
+                **Admin Credentials:**
+                - Username: `admin`
+                - Password: `admin123`
+                
+                Admin account has access to all features and can manage all games.
+                """)
         
         with auth_tab2:
             st.subheader("Join the Team!")
+            st.info("ℹ️ Regular coaches can create accounts here. Admin account is pre-configured.")
+            
             with st.form("signup_form"):
                 new_email = st.text_input("Email Address", key="new_email")
                 new_password = st.text_input("Password", type="password", key="new_password", help="Minimum 6 characters")
@@ -522,8 +550,267 @@ def setup_auto_save(db_handler, user_id):
                 else:
                     st.error(f"❌ Error loading game: {game_data}")
 
+def setup_auto_save_admin(db_handler, user_id):
+    """Enhanced auto-save functionality for admin users"""
+    
+    def save_current_state():
+        """Save current game state"""
+        game_state = {
+            'home_score': st.session_state.get('home_score', 0),
+            'away_score': st.session_state.get('away_score', 0),
+            'current_quarter': st.session_state.get('current_quarter', 'Q1'),
+            'current_game_time': st.session_state.get('current_game_time', '10:00'),
+            'roster': st.session_state.get('roster', []),
+            'current_lineup': st.session_state.get('current_lineup', []),
+            'lineup_history': st.session_state.get('lineup_history', []),
+            'score_history': st.session_state.get('score_history', []),
+            'player_stats': st.session_state.get('player_stats', {}),
+            'quarter_lineup_set': st.session_state.get('quarter_lineup_set', False),
+            'saved_by_admin': True  # Mark as admin save
+        }
+        
+        success, message = db_handler.save_game_state(user_id, game_state)
+        if success:
+            st.success("✅ Game auto-saved by ADMIN!", icon="👑")
+        else:
+            st.error(f"❌ Auto-save failed: {message}")
+    
+    # Auto-save controls in sidebar
+    with st.sidebar:
+        st.markdown("---")
+        st.subheader("🔄 Cloud Sync (Admin)")
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("💾 Save", help="Save current game state to cloud"):
+                save_current_state()
+        
+        with col2:
+            if st.button("📂 Load", help="Load previously saved game"):
+                success, game_data = db_handler.load_game_state(user_id)
+                if success and game_data:
+                    # Load game state back to session_state
+                    for key, value in game_data.items():
+                        if key not in ['last_updated', 'user_id', 'saved_by_admin']:
+                            st.session_state[key] = value
+                    st.success("✅ Game loaded from cloud!")
+                    st.rerun()
+                elif success:
+                    st.info("ℹ️ No saved game found")
+                else:
+                    st.error(f"❌ Error loading game: {game_data}")
+        
+        with col3:
+            # Admin can load any user's game
+            if st.button("🔍 Load Any", help="Load game from any user"):
+                with st.form("load_any_game"):
+                    target_user = st.text_input("Enter User ID:")
+                    if st.form_submit_button("Load"):
+                        if target_user:
+                            success, game_data = db_handler.load_game_state(target_user)
+                            if success and game_data:
+                                for key, value in game_data.items():
+                                    if key not in ['last_updated', 'user_id']:
+                                        st.session_state[key] = value
+                                st.success(f"✅ Loaded game from user: {target_user}")
+                                st.rerun()
+                            else:
+                                st.error(f"No game found for user: {target_user}")
+
+def render_admin_panel(db, db_handler):
+    """Render admin panel in sidebar"""
+    with st.sidebar:
+        st.markdown("---")
+        st.header("👑 Admin Panel")
+        
+        with st.expander("🔧 Admin Tools", expanded=False):
+            st.write("**Quick Actions:**")
+            
+            # Reset current game
+            if st.button("🔄 Reset Current Game", type="secondary"):
+                st.session_state.home_score = 0
+                st.session_state.away_score = 0
+                st.session_state.current_quarter = "Q1"
+                st.session_state.current_game_time = "10:00"
+                st.session_state.current_lineup = []
+                st.session_state.quarter_lineup_set = False
+                st.session_state.lineup_history = []
+                st.session_state.score_history = []
+                st.session_state.player_stats = {}
+                st.success("✅ Game reset successfully!")
+                st.rerun()
+            
+            # Clear all data
+            if st.button("⚠️ Clear All Data", type="secondary"):
+                if st.checkbox("I confirm data deletion"):
+                    for key in list(st.session_state.keys()):
+                        if key not in ['authenticated', 'user_info', 'is_admin']:
+                            del st.session_state[key]
+                    st.success("✅ All data cleared!")
+                    st.rerun()
+            
+            st.write("**Database Management:**")
+            
+            # View all games (admin only)
+            if st.button("📊 View All Games"):
+                try:
+                    games_ref = db.collection('games')
+                    games = games_ref.stream()
+                    
+                    st.write("**All Saved Games:**")
+                    game_count = 0
+                    for game in games:
+                        game_count += 1
+                        game_data = game.to_dict()
+                        st.write(f"• Game ID: {game.id}")
+                        st.write(f"  User: {game_data.get('user_id', 'Unknown')}")
+                        st.write(f"  Score: {game_data.get('home_score', 0)} - {game_data.get('away_score', 0)}")
+                        st.write(f"  Updated: {game_data.get('last_updated', 'Unknown')}")
+                        st.markdown("---")
+                    
+                    if game_count == 0:
+                        st.info("No games found in database")
+                    else:
+                        st.success(f"Found {game_count} games")
+                except Exception as e:
+                    st.error(f"Error accessing database: {str(e)}")
+            
+            # Export current game data
+            if st.button("💾 Export Game Data"):
+                game_data = {
+                    'home_score': st.session_state.get('home_score', 0),
+                    'away_score': st.session_state.get('away_score', 0),
+                    'current_quarter': st.session_state.get('current_quarter', 'Q1'),
+                    'roster': st.session_state.get('roster', []),
+                    'lineup_history': st.session_state.get('lineup_history', []),
+                    'score_history': st.session_state.get('score_history', []),
+                    'player_stats': st.session_state.get('player_stats', {}),
+                    'exported_at': datetime.now().isoformat(),
+                    'exported_by': 'admin'
+                }
+                
+                # Convert to JSON string for download
+                json_str = json.dumps(game_data, default=str, indent=2)
+                
+                st.download_button(
+                    label="📥 Download JSON",
+                    data=json_str,
+                    file_name=f"game_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                    mime="application/json"
+                )
+        
+        st.markdown("---")
+
+def render_roster_management(db_handler, user_id):
+    """Render roster management section"""
+    with st.expander("👥 Manage Roster", expanded=not st.session_state.roster):
+        st.write("**Add New Player**")
+        with st.form("add_player_form"):
+            player_name = st.text_input("Player Name")
+            jersey_number = st.number_input("Jersey #", min_value=0, max_value=99, value=1)
+            add_player = st.form_submit_button("➕ Add Player")
+            
+            if add_player and player_name:
+                # Check for duplicate jersey numbers
+                if any(p['jersey'] == jersey_number for p in st.session_state.roster):
+                    st.error(f"Jersey #{jersey_number} already taken!")
+                else:
+                    new_player = {"name": player_name, "jersey": int(jersey_number)}
+                    st.session_state.roster.append(new_player)
+                    
+                    # Save roster to Firebase
+                    success, message = db_handler.save_team_roster(user_id, st.session_state.roster)
+                    if success:
+                        st.success(f"✅ {player_name} added!")
+                    else:
+                        st.error(f"Error saving roster: {message}")
+                    st.rerun()
+        
+        # Display current roster
+        if st.session_state.roster:
+            st.write("**Current Roster:**")
+            for i, player in enumerate(st.session_state.roster):
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    st.write(f"#{player['jersey']} {player['name']}")
+                with col2:
+                    if st.button("🗑️", key=f"remove_{i}", help="Remove player"):
+                        st.session_state.roster.pop(i)
+                        # Save updated roster
+                        db_handler.save_team_roster(user_id, st.session_state.roster)
+                        st.rerun()
+        else:
+            st.info("No players in roster. Add players to get started!")
+            
+def setup_auto_save_admin(db_handler, user_id):
+    """Enhanced auto-save functionality for admin users"""
+    
+    def save_current_state():
+        """Save current game state"""
+        game_state = {
+            'home_score': st.session_state.get('home_score', 0),
+            'away_score': st.session_state.get('away_score', 0),
+            'current_quarter': st.session_state.get('current_quarter', 'Q1'),
+            'current_game_time': st.session_state.get('current_game_time', '10:00'),
+            'roster': st.session_state.get('roster', []),
+            'current_lineup': st.session_state.get('current_lineup', []),
+            'lineup_history': st.session_state.get('lineup_history', []),
+            'score_history': st.session_state.get('score_history', []),
+            'player_stats': st.session_state.get('player_stats', {}),
+            'quarter_lineup_set': st.session_state.get('quarter_lineup_set', False),
+            'saved_by_admin': True  # Mark as admin save
+        }
+        
+        success, message = db_handler.save_game_state(user_id, game_state)
+        if success:
+            st.success("✅ Game auto-saved by ADMIN!", icon="👑")
+        else:
+            st.error(f"❌ Auto-save failed: {message}")
+    
+    # Auto-save controls in sidebar
+    with st.sidebar:
+        st.markdown("---")
+        st.subheader("🔄 Cloud Sync (Admin)")
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("💾 Save", help="Save current game state to cloud"):
+                save_current_state()
+        
+        with col2:
+            if st.button("📂 Load", help="Load previously saved game"):
+                success, game_data = db_handler.load_game_state(user_id)
+                if success and game_data:
+                    # Load game state back to session_state
+                    for key, value in game_data.items():
+                        if key not in ['last_updated', 'user_id', 'saved_by_admin']:
+                            st.session_state[key] = value
+                    st.success("✅ Game loaded from cloud!")
+                    st.rerun()
+                elif success:
+                    st.info("ℹ️ No saved game found")
+                else:
+                    st.error(f"❌ Error loading game: {game_data}")
+        
+        with col3:
+            # Admin can load any user's game
+            if st.button("🔍 Load Any", help="Load game from any user"):
+                with st.form("load_any_game"):
+                    target_user = st.text_input("Enter User ID:")
+                    if st.form_submit_button("Load"):
+                        if target_user:
+                            success, game_data = db_handler.load_game_state(target_user)
+                            if success and game_data:
+                                for key, value in game_data.items():
+                                    if key not in ['last_updated', 'user_id']:
+                                        st.session_state[key] = value
+                                st.success(f"✅ Loaded game from user: {target_user}")
+                                st.rerun()
+                            else:
+                                st.error(f"No game found for user: {target_user}")
+
 def main():
-    """Main application"""
+    """Main application with admin features"""
     
     # Initialize Firebase
     db = init_firebase()
@@ -542,6 +829,9 @@ def main():
     db_handler = FirebaseGameDB(db)
     user_id = st.session_state.user_info.get('uid')
     
+    # Check if admin
+    is_admin = st.session_state.get('is_admin', False)
+    
     # Auto-load roster on startup
     if 'roster_loaded' not in st.session_state:
         success, roster = db_handler.load_team_roster(user_id)
@@ -549,67 +839,48 @@ def main():
             st.session_state.roster = roster
             st.session_state.roster_loaded = True
     
-    # Main app header
-    st.title("🏀 Basketball Lineup Tracker Pro")
+    # Main app header with admin indicator
+    if is_admin:
+        st.title("🏀 Basketball Lineup Tracker Pro - ADMIN MODE 👑")
+        st.warning("⚡ You are logged in as Administrator with full access")
+    else:
+        st.title("🏀 Basketball Lineup Tracker Pro")
     
     # User info and logout
     col1, col2, col3 = st.columns([1, 2, 1])
     with col1:
-        st.metric("Coach", st.session_state.user_info.get('name', 'Unknown'))
+        coach_name = st.session_state.user_info.get('name', 'Unknown')
+        if is_admin:
+            st.metric("Coach", f"👑 {coach_name}")
+        else:
+            st.metric("Coach", coach_name)
     with col2:
         st.metric("Current Game", f"{st.session_state.home_score} - {st.session_state.away_score}")
     with col3:
         if st.button("🚪 Logout"):
             st.session_state.authenticated = False
             st.session_state.user_info = None
+            st.session_state.is_admin = False
             st.rerun()
     
-    # Setup auto-save
-    setup_auto_save(db_handler, user_id)
+    # Admin Panel in Sidebar (only for admin users)
+    if is_admin:
+        render_admin_panel(db, db_handler)
+    
+    # Setup auto-save (modified for admin)
+    if is_admin:
+        setup_auto_save_admin(db_handler, user_id)
+    else:
+        setup_auto_save(db_handler, user_id)
     
     # Sidebar - Team Setup
     with st.sidebar:
         st.header("⚙️ Team Setup")
+        render_roster_management(db_handler, user_id)
         
-        # Roster Management
-        with st.expander("👥 Manage Roster", expanded=not st.session_state.roster):
-            st.write("**Add New Player**")
-            with st.form("add_player_form"):
-                player_name = st.text_input("Player Name")
-                jersey_number = st.number_input("Jersey #", min_value=0, max_value=99, value=1)
-                add_player = st.form_submit_button("➕ Add Player")
-                
-                if add_player and player_name:
-                    # Check for duplicate jersey numbers
-                    if any(p['jersey'] == jersey_number for p in st.session_state.roster):
-                        st.error(f"Jersey #{jersey_number} already taken!")
-                    else:
-                        new_player = {"name": player_name, "jersey": int(jersey_number)}
-                        st.session_state.roster.append(new_player)
-                        
-                        # Save roster to Firebase
-                        success, message = db_handler.save_team_roster(user_id, st.session_state.roster)
-                        if success:
-                            st.success(f"✅ {player_name} added!")
-                        else:
-                            st.error(f"Error saving roster: {message}")
-                        st.rerun()
-            
-            # Display current roster
-            if st.session_state.roster:
-                st.write("**Current Roster:**")
-                for i, player in enumerate(st.session_state.roster):
-                    col1, col2 = st.columns([3, 1])
-                    with col1:
-                        st.write(f"#{player['jersey']} {player['name']}")
-                    with col2:
-                        if st.button("🗑️", key=f"remove_{i}", help="Remove player"):
-                            st.session_state.roster.pop(i)
-                            # Save updated roster
-                            db_handler.save_team_roster(user_id, st.session_state.roster)
-                            st.rerun()
-            else:
-                st.info("No players in roster. Add players to get started!")
+    # Main content area
+    st.markdown("---")
+
     
     # Main tabs
     tab1, tab2, tab3 = st.tabs(["🏀 Live Game", "📊 Analytics", "📝 Event Log"])
