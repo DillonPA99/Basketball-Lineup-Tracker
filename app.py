@@ -1394,4 +1394,168 @@ def main():
                     lineup_data.append({
                         "Lineup #": label,
                         "Quarter": lineup_event.get("quarter", "Unknown"),
-                        "Game Time": lineup_event.
+                        "Game Time": lineup_event.get("game_time", "Unknown"),
+                        "Score": f"{lineup_event.get('home_score', 0)}-{lineup_event.get('away_score', 0)}",
+                        "Lineup": " | ".join(lineup_event.get("new_lineup", [])),
+                        "Time Logged": lineup_event.get("timestamp", "").strftime("%H:%M:%S") if lineup_event.get("timestamp") else "Unknown"
+                    })
+
+                if lineup_data:
+                    lineup_df = pd.DataFrame(lineup_data)
+                    st.dataframe(
+                        lineup_df,
+                        use_container_width=True,
+                        hide_index=True
+                    )
+
+            # Plus/Minus Analytics
+            st.subheader("Plus/Minus Analytics")
+            
+            # Individual Player Plus/Minus
+            st.write("**Individual Player Plus/Minus**")
+            individual_stats = calculate_individual_plus_minus()
+            
+            if individual_stats:
+                plus_minus_data = []
+                for player, stats in individual_stats.items():
+                    plus_minus_data.append({
+                        "Player": player,
+                        "Plus/Minus": f"+{stats['plus_minus']}" if stats['plus_minus'] >= 0 else str(stats['plus_minus']),
+                        "Raw +/-": stats['plus_minus']
+                    })
+                
+                if plus_minus_data:
+                    plus_minus_df = pd.DataFrame(plus_minus_data)
+                    plus_minus_df = plus_minus_df.sort_values("Raw +/-", ascending=False)
+                    
+                    # Color coding for plus/minus
+                    def color_plus_minus(val):
+                        if '+' in str(val):
+                            return 'background-color: lightgreen'
+                        elif '-' in str(val):
+                            return 'background-color: lightcoral'
+                        else:
+                            return ''
+                    
+                    st.dataframe(
+                        plus_minus_df[["Player", "Plus/Minus"]].style.applymap(
+                            color_plus_minus, subset=["Plus/Minus"]
+                        ),
+                        use_container_width=True,
+                        hide_index=True
+                    )
+                    
+                    # Plus/Minus Chart
+                    fig_individual = px.bar(
+                        plus_minus_df, 
+                        x="Player", 
+                        y="Raw +/-",
+                        title="Individual Player Plus/Minus",
+                        color="Raw +/-",
+                        color_continuous_scale=["red", "white", "green"],
+                        color_continuous_midpoint=0
+                    )
+                    fig_individual.update_xaxes(tickangle=45)
+                    st.plotly_chart(fig_individual, use_container_width=True)
+            else:
+                st.info("No plus/minus data available yet.")
+            
+            # Lineup Plus/Minus
+            st.write("**Lineup Plus/Minus**")
+            lineup_stats = calculate_lineup_plus_minus()
+            
+            if lineup_stats:
+                lineup_plus_minus_data = []
+                for lineup, stats in lineup_stats.items():
+                    lineup_plus_minus_data.append({
+                        "Lineup": lineup,
+                        "Plus/Minus": f"+{stats['plus_minus']}" if stats['plus_minus'] >= 0 else str(stats['plus_minus']),
+                        "Appearances": stats['appearances'],
+                        "Raw +/-": stats['plus_minus']
+                    })
+                
+                if lineup_plus_minus_data:
+                    lineup_df = pd.DataFrame(lineup_plus_minus_data)
+                    lineup_df = lineup_df.sort_values("Raw +/-", ascending=False)
+                    
+                    st.dataframe(
+                        lineup_df[["Lineup", "Plus/Minus", "Appearances"]].style.applymap(
+                            color_plus_minus, subset=["Plus/Minus"]
+                        ),
+                        use_container_width=True,
+                        hide_index=True
+                    )
+                    
+                    # Best and Worst Lineups
+                    if len(lineup_df) > 0:
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.success(f"**Best Lineup:** +{lineup_df.iloc[0]['Raw +/-']}")
+                            st.write(f"_{lineup_df.iloc[0]['Lineup']}_")
+                        with col2:
+                            st.error(f"**Worst Lineup:** {lineup_df.iloc[-1]['Raw +/-']}")
+                            st.write(f"_{lineup_df.iloc[-1]['Lineup']}_")
+            else:
+                st.info("No lineup plus/minus data available yet.")
+
+    # ------------------------------------------------------------------
+    # Tab 3: Event Log
+    # ------------------------------------------------------------------
+    with tab3:
+        st.header("Game Event Log")
+        if not st.session_state.score_history and not st.session_state.lineup_history and not st.session_state.quarter_end_history:
+            st.info("No events logged yet.")
+        else:
+            # Combine all events
+            all_events = []
+            # Add score events
+            for score in st.session_state.score_history:
+                all_events.append({
+                    'type': 'Score',
+                    'description': f"{score['team'].title()} +{score['points']} points",
+                    'quarter': score['quarter'],
+                    'game_time': score.get('game_time', 'Unknown'),
+                    'details': f"Lineup: {' | '.join(score['lineup'])}"
+                })
+            # Add lineup events (including quarter-end snapshots)
+            for lineup in st.session_state.lineup_history:
+                if lineup.get('is_quarter_end'):
+                    desc = f"{lineup['quarter']} ended (snapshot)"
+                else:
+                    desc = "New lineup set"
+                all_events.append({
+                    'type': 'Lineup Change' if not lineup.get('is_quarter_end') else 'Quarter End Snapshot',
+                    'description': desc,
+                    'quarter': lineup['quarter'],
+                    'game_time': lineup.get('game_time', 'Unknown'),
+                    'details': f"Players: {' | '.join(lineup['new_lineup'])}"
+                })
+            # Add quarter end events (legacy)
+            for quarter_end in st.session_state.quarter_end_history:
+                all_events.append({
+                    'type': 'Quarter End',
+                    'description': f"{quarter_end['quarter']} ended",
+                    'quarter': quarter_end['quarter'],
+                    'game_time': quarter_end.get('game_time', 'Unknown'),
+                    'details': f"Final Score: {quarter_end['final_score']}"
+                })
+            
+            # Display events sequentially numbered
+            for i, event in enumerate(all_events, 1):
+                st.subheader(f"Event {i}")
+                st.write(f"**Type:** {event['type']}")
+                st.write(f"**Quarter:** {event['quarter']}")
+                st.write(f"**Game Time:** {event['game_time']}")
+                st.write(f"**Description:** {event['description']}")
+                st.write(f"**Details:** {event['details']}")
+                st.divider()
+
+    # ------------------------------------------------------------------
+    # Footer
+    # ------------------------------------------------------------------
+    st.divider()
+    st.markdown("*Basketball Lineup Tracker Pro - Track your team's performance in real-time*")
+
+# Run the application
+if __name__ == "__main__":
+    main()
