@@ -1,22 +1,235 @@
 import streamlit as st
+import firebase_admin
+from firebase_admin import credentials, firestore, auth
 import pandas as pd
 import plotly.express as px
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 
 # Page configuration
 st.set_page_config(
     page_title="Basketball Lineup Tracker Pro",
     page_icon="🏀",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
-def init_session_state():
-    """Initialize all session state variables"""
-    # Core game state
+# Firebase initialization
+@st.cache_resource
+def init_firebase():
+    """Initialize Firebase connection"""
+    if not firebase_admin._apps:
+        try:
+            # Use Streamlit secrets (TOML format)
+            firebase_config = {
+                "type": st.secrets["firebase"]["type"],
+                "project_id": st.secrets["firebase"]["project_id"],
+                "private_key_id": st.secrets["firebase"]["private_key_id"],
+                "private_key": st.secrets["firebase"]["private_key"],
+                "client_email": st.secrets["firebase"]["client_email"],
+                "client_id": st.secrets["firebase"]["client_id"],
+                "auth_uri": st.secrets["firebase"]["auth_uri"],
+                "token_uri": st.secrets["firebase"]["token_uri"],
+                "auth_provider_x509_cert_url": st.secrets["firebase"]["auth_provider_x509_cert_url"],
+                "client_x509_cert_url": st.secrets["firebase"]["client_x509_cert_url"],
+                "universe_domain": st.secrets["firebase"]["universe_domain"]
+            }
+            
+            cred = credentials.Certificate(firebase_config)
+            firebase_admin.initialize_app(cred)
+            return firestore.client()
+        except Exception as e:
+            st.error(f"Firebase initialization failed: {str(e)}")
+            return None
+    else:
+        return firestore.client()
+
+# Database handler class
+class FirebaseGameDB:
+    def __init__(self, db):
+        self.db = db
+        
+    def save_game_state(self, user_id, game_data):
+        """Save complete game state to Firestore"""
+        try:
+            doc_ref = self.db.collection('games').document(f"{user_id}_current_game")
+            
+            # Prepare data for Firestore (handle datetime objects)
+            clean_data = self._prepare_data_for_firestore(game_data)
+            clean_data.update({
+                'last_updated': datetime.now(),
+                'user_id': user_id
+            })
+            
+            doc_ref.set(clean_data)
+            return True, "Game saved successfully!"
+        except Exception as e:
+            return False, f"Error saving game: {str(e)}"
+    
+    def load_game_state(self, user_id):
+        """Load game state from Firestore"""
+        try:
+            doc_ref = self.db.collection('games').document(f"{user_id}_current_game")
+            doc = doc_ref.get()
+            if doc.exists:
+                data = doc.to_dict()
+                # Convert string timestamps back to datetime objects
+                data = self._restore_datetime_objects(data)
+                return True, data
+            else:
+                return True, None  # No saved game
+        except Exception as e:
+            return False, str(e)
+    
+    def save_team_roster(self, user_id, roster):
+        """Save team roster"""
+        try:
+            doc_ref = self.db.collection('rosters').document(f"{user_id}_roster")
+            doc_ref.set({
+                'roster': roster,
+                'last_updated': datetime.now(),
+                'user_id': user_id
+            })
+            return True, "Roster saved!"
+        except Exception as e:
+            return False, f"Error saving roster: {str(e)}"
+    
+    def load_team_roster(self, user_id):
+        """Load team roster"""
+        try:
+            doc_ref = self.db.collection('rosters').document(f"{user_id}_roster")
+            doc = doc_ref.get()
+            if doc.exists:
+                return True, doc.to_dict().get('roster', [])
+            else:
+                return True, []
+        except Exception as e:
+            return False, str(e)
+    
+    def _prepare_data_for_firestore(self, data):
+        """Convert datetime objects to strings for Firestore"""
+        clean_data = {}
+        for key, value in data.items():
+            if key == 'lineup_history' and isinstance(value, list):
+                clean_data[key] = []
+                for item in value:
+                    clean_item = item.copy()
+                    if 'timestamp' in clean_item and hasattr(clean_item['timestamp'], 'isoformat'):
+                        clean_item['timestamp'] = clean_item['timestamp'].isoformat()
+                    clean_data[key].append(clean_item)
+            elif key == 'score_history' and isinstance(value, list):
+                clean_data[key] = []
+                for item in value:
+                    clean_item = item.copy()
+                    if 'timestamp' in clean_item and hasattr(clean_item['timestamp'], 'isoformat'):
+                        clean_item['timestamp'] = clean_item['timestamp'].isoformat()
+                    clean_data[key].append(clean_item)
+            else:
+                clean_data[key] = value
+        return clean_data
+    
+    def _restore_datetime_objects(self, data):
+        """Convert string timestamps back to datetime objects"""
+        if 'lineup_history' in data:
+            for item in data['lineup_history']:
+                if 'timestamp' in item and isinstance(item['timestamp'], str):
+                    try:
+                        item['timestamp'] = datetime.fromisoformat(item['timestamp'])
+                    except:
+                        item['timestamp'] = datetime.now()
+        
+        if 'score_history' in data:
+            for item in data['score_history']:
+                if 'timestamp' in item and isinstance(item['timestamp'], str):
+                    try:
+                        item['timestamp'] = datetime.fromisoformat(item['timestamp'])
+                    except:
+                        item['timestamp'] = datetime.now()
+        
+        return data
+
+# Authentication functions
+def create_user_account(email, password, display_name):
+    """Create new user account"""
+    try:
+        user = auth.create_user(
+            email=email,
+            password=password,
+            display_name=display_name
+        )
+        return True, f"Account created successfully! You can now log in."
+    except Exception as e:
+        return False, f"Error creating account: {str(e)}"
+
+def render_auth_ui():
+    """Render authentication interface"""
+    
     if 'authenticated' not in st.session_state:
         st.session_state.authenticated = False
+        st.session_state.user_info = None
+    
+    if not st.session_state.authenticated:
+        st.title("🏀 Basketball Lineup Tracker")
+        st.markdown("### Secure Coach Access Portal")
+        
+        auth_tab1, auth_tab2 = st.tabs(["🔑 Login", "✨ Create Account"])
+        
+        with auth_tab1:
+            st.subheader("Welcome Back, Coach!")
+            with st.form("login_form"):
+                email = st.text_input("Email Address")
+                password = st.text_input("Password", type="password")
+                login_button = st.form_submit_button("🏀 Start Coaching", type="primary")
+                
+                if login_button:
+                    if email and password:
+                        # For demo purposes - in production you'd verify against Firebase Auth
+                        if email and password:  # Basic validation
+                            st.session_state.authenticated = True
+                            st.session_state.user_info = {
+                                'uid': email.split('@')[0],  # Use email prefix as UID for demo
+                                'email': email,
+                                'name': email.split('@')[0].title()
+                            }
+                            st.success("Login successful!")
+                            st.rerun()
+                    else:
+                        st.error("Please enter both email and password")
+        
+        with auth_tab2:
+            st.subheader("Join the Team!")
+            with st.form("signup_form"):
+                new_email = st.text_input("Email Address", key="new_email")
+                new_password = st.text_input("Password", type="password", key="new_password", help="Minimum 6 characters")
+                confirm_password = st.text_input("Confirm Password", type="password")
+                display_name = st.text_input("Coach Name", placeholder="Coach Johnson")
+                team_name = st.text_input("Team Name", placeholder="Eagles Basketball")
+                signup_button = st.form_submit_button("🚀 Create Account", type="primary")
+                
+                if signup_button:
+                    if all([new_email, new_password, confirm_password, display_name]):
+                        if len(new_password) < 6:
+                            st.error("Password must be at least 6 characters long")
+                        elif new_password != confirm_password:
+                            st.error("Passwords don't match!")
+                        else:
+                            success, message = create_user_account(new_email, new_password, display_name)
+                            if success:
+                                st.success(message)
+                                st.info("✅ Please switch to the Login tab and sign in with your new credentials")
+                            else:
+                                st.error(message)
+                    else:
+                        st.error("Please fill in all required fields")
+        
+        return False
+    
+    return True
+
+# Initialize session state for basketball game
+def init_session_state():
+    """Initialize all session state variables"""
+    
+    # Game state
     if 'home_score' not in st.session_state:
         st.session_state.home_score = 0
     if 'away_score' not in st.session_state:
@@ -24,155 +237,151 @@ def init_session_state():
     if 'current_quarter' not in st.session_state:
         st.session_state.current_quarter = "Q1"
     if 'current_game_time' not in st.session_state:
-        st.session_state.current_game_time = "12:00"
+        st.session_state.current_game_time = "10:00"
     if 'quarter_length' not in st.session_state:
-        st.session_state.quarter_length = 12  # minutes
+        st.session_state.quarter_length = 10
     
-    # Roster and lineup management
-    if 'roster' not in st.session_state:
-        st.session_state.roster = []
-    if 'roster_set' not in st.session_state:
-        st.session_state.roster_set = False
+    # Lineup management
     if 'current_lineup' not in st.session_state:
         st.session_state.current_lineup = []
     if 'quarter_lineup_set' not in st.session_state:
         st.session_state.quarter_lineup_set = False
-    
-    # Game tracking
     if 'lineup_history' not in st.session_state:
         st.session_state.lineup_history = []
+    
+    # Player and team management
+    if 'roster' not in st.session_state:
+        st.session_state.roster = []
+    if 'player_stats' not in st.session_state:
+        st.session_state.player_stats = {}
+    
+    # Scoring history
     if 'score_history' not in st.session_state:
         st.session_state.score_history = []
     if 'quarter_end_history' not in st.session_state:
         st.session_state.quarter_end_history = []
-    if 'player_stats' not in st.session_state:
-        st.session_state.player_stats = {}
-    
-    # Team settings
-    if 'home_team_name' not in st.session_state:
-        st.session_state.home_team_name = "Home Team"
-    if 'away_team_name' not in st.session_state:
-        st.session_state.away_team_name = "Away Team"
 
-def authenticate_user():
-    """Simple authentication gate"""
-    if st.session_state.authenticated:
+# Game management functions
+def add_score(team, points):
+    """Add score to team total"""
+    if team == "home":
+        st.session_state.home_score += points
+    else:
+        st.session_state.away_score += points
+
+def add_score_with_player(team, points, scorer_player, shot_type, made, attempted=True):
+    """Add score with player statistics tracking"""
+    # Add to team score if made
+    if made:
+        add_score(team, points)
+    
+    # Initialize player stats if not exists
+    if scorer_player not in st.session_state.player_stats:
+        st.session_state.player_stats[scorer_player] = {
+            'points': 0,
+            'field_goals_made': 0,
+            'field_goals_attempted': 0,
+            'three_pointers_made': 0,
+            'three_pointers_attempted': 0,
+            'free_throws_made': 0,
+            'free_throws_attempted': 0
+        }
+    
+    player_stats = st.session_state.player_stats[scorer_player]
+    
+    # Update player stats
+    if made:
+        player_stats['points'] += points
+    
+    if attempted:
+        if shot_type == 'field_goal':
+            player_stats['field_goals_attempted'] += 1
+            if made:
+                player_stats['field_goals_made'] += 1
+        elif shot_type == 'three_pointer':
+            player_stats['three_pointers_attempted'] += 1
+            player_stats['field_goals_attempted'] += 1
+            if made:
+                player_stats['three_pointers_made'] += 1
+                player_stats['field_goals_made'] += 1
+        elif shot_type == 'free_throw':
+            player_stats['free_throws_attempted'] += 1
+            if made:
+                player_stats['free_throws_made'] += 1
+    
+    # Add to score history
+    st.session_state.score_history.append({
+        'team': team,
+        'points': points,
+        'shot_type': shot_type,
+        'made': made,
+        'scorer': scorer_player,
+        'quarter': st.session_state.current_quarter,
+        'lineup': st.session_state.current_lineup.copy(),
+        'game_time': st.session_state.current_game_time,
+        'timestamp': datetime.now()
+    })
+
+def get_top_scorers(limit=3):
+    """Get top scoring players"""
+    if not st.session_state.player_stats:
+        return []
+    
+    sorted_players = sorted(
+        st.session_state.player_stats.items(),
+        key=lambda x: x[1]['points'],
+        reverse=True
+    )
+    return sorted_players[:limit]
+
+def end_quarter():
+    """End current quarter and advance"""
+    quarters = ["Q1", "Q2", "Q3", "Q4", "OT1", "OT2", "OT3"]
+    current_idx = quarters.index(st.session_state.current_quarter)
+    
+    if current_idx < len(quarters) - 1:
+        # Save quarter end snapshot
+        st.session_state.lineup_history.append({
+            'quarter': st.session_state.current_quarter,
+            'game_time': '0:00',
+            'new_lineup': st.session_state.current_lineup.copy(),
+            'home_score': st.session_state.home_score,
+            'away_score': st.session_state.away_score,
+            'is_quarter_end': True,
+            'timestamp': datetime.now()
+        })
+        
+        # Advance quarter
+        st.session_state.current_quarter = quarters[current_idx + 1]
+        st.session_state.quarter_lineup_set = False
+        st.session_state.current_game_time = "10:00"
         return True
-    
-    st.title("🏀 Basketball Lineup Tracker Pro")
-    st.markdown("### Welcome to the professional basketball tracking system")
-    
-    # Team setup
-    col1, col2 = st.columns(2)
-    with col1:
-        home_name = st.text_input("Home Team Name", value=st.session_state.home_team_name)
-    with col2:
-        away_name = st.text_input("Away Team Name", value=st.session_state.away_team_name)
-    
-    # Game settings
-    quarter_length = st.selectbox("Quarter Length (minutes)", [12, 10, 8], index=0)
-    
-    if st.button("🚀 Start Game Setup", type="primary"):
-        st.session_state.home_team_name = home_name
-        st.session_state.away_team_name = away_name
-        st.session_state.quarter_length = quarter_length
-        st.session_state.current_game_time = f"{quarter_length}:00"
-        st.session_state.authenticated = True
-        st.rerun()
-    
     return False
 
-def roster_setup_gate():
-    """Roster setup interface"""
-    st.title(f"🏀 {st.session_state.home_team_name} - Roster Setup")
-    st.markdown("### Add players to your roster before starting the game")
-    
-    # Add new player
-    st.subheader("Add New Player")
-    col1, col2, col3 = st.columns([2, 1, 1])
-    
-    with col1:
-        player_name = st.text_input("Player Name", placeholder="Enter player name")
-    with col2:
-        jersey_number = st.number_input("Jersey #", min_value=0, max_value=99, value=0)
-    with col3:
-        if st.button("➕ Add Player", type="primary"):
-            if player_name and jersey_number >= 0:
-                # Check for duplicate jersey numbers
-                existing_jerseys = [p['jersey'] for p in st.session_state.roster]
-                if jersey_number in existing_jerseys:
-                    st.error(f"Jersey #{jersey_number} is already taken!")
-                else:
-                    new_player = {
-                        'name': player_name.strip(),
-                        'jersey': jersey_number
-                    }
-                    st.session_state.roster.append(new_player)
-                    
-                    # Initialize player stats
-                    player_key = f"{player_name.strip()} (#{jersey_number})"
-                    st.session_state.player_stats[player_key] = {
-                        'points': 0,
-                        'field_goals_made': 0,
-                        'field_goals_attempted': 0,
-                        'three_pointers_made': 0,
-                        'three_pointers_attempted': 0,
-                        'free_throws_made': 0,
-                        'free_throws_attempted': 0,
-                        'minutes_played': 0
-                    }
-                    
-                    st.success(f"Added {player_name} (#{jersey_number})")
-                    st.rerun()
-            else:
-                st.error("Please enter a valid name and jersey number!")
-    
-    # Current roster display
-    if st.session_state.roster:
-        st.subheader("Current Roster")
+def update_lineup(new_lineup, game_time):
+    """Update current lineup"""
+    try:
+        st.session_state.current_lineup = new_lineup.copy()
+        st.session_state.current_game_time = game_time
+        st.session_state.quarter_lineup_set = True
         
-        roster_data = []
-        for i, player in enumerate(st.session_state.roster):
-            roster_data.append({
-                'Player': player['name'],
-                'Jersey': f"#{player['jersey']}",
-                'Remove': i
-            })
+        # Add to lineup history
+        st.session_state.lineup_history.append({
+            'quarter': st.session_state.current_quarter,
+            'game_time': game_time,
+            'new_lineup': new_lineup.copy(),
+            'home_score': st.session_state.home_score,
+            'away_score': st.session_state.away_score,
+            'timestamp': datetime.now()
+        })
         
-        roster_df = pd.DataFrame(roster_data)
-        
-        # Display roster
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            st.dataframe(roster_df[['Player', 'Jersey']], use_container_width=True, hide_index=True)
-        
-        with col2:
-            st.write("**Remove Player:**")
-            for i, player in enumerate(st.session_state.roster):
-                if st.button(f"❌ {player['name']}", key=f"remove_{i}"):
-                    player_key = f"{player['name']} (#{player['jersey']})"
-                    if player_key in st.session_state.player_stats:
-                        del st.session_state.player_stats[player_key]
-                    st.session_state.roster.pop(i)
-                    st.rerun()
-        
-        # Ready to proceed
-        if len(st.session_state.roster) >= 5:
-            st.success(f"✅ Roster complete! {len(st.session_state.roster)} players added.")
-            if st.button("🏀 Start Game", type="primary", use_container_width=True):
-                st.session_state.roster_set = True
-                st.rerun()
-        else:
-            st.warning(f"⚠️ Need at least 5 players. Currently have {len(st.session_state.roster)}.")
-    else:
-        st.info("No players added yet. Add at least 5 players to start the game.")
+        return True, "Lineup updated successfully"
+    except Exception as e:
+        return False, str(e)
 
 def validate_game_time(time_str, quarter_length):
     """Validate game time format and range"""
     try:
-        if ':' not in time_str:
-            return False, "Use MM:SS format (e.g., 5:30)"
-        
         parts = time_str.split(':')
         if len(parts) != 2:
             return False, "Use MM:SS format (e.g., 5:30)"
@@ -180,419 +389,232 @@ def validate_game_time(time_str, quarter_length):
         minutes = int(parts[0])
         seconds = int(parts[1])
         
-        if seconds < 0 or seconds >= 60:
-            return False, "Seconds must be between 0-59"
-        
-        if minutes < 0 or minutes > quarter_length:
-            return False, f"Minutes must be between 0-{quarter_length}"
-        
+        if seconds >= 60:
+            return False, "Seconds must be less than 60"
+        if minutes < 0 or seconds < 0:
+            return False, "Time cannot be negative"
+        if minutes > quarter_length:
+            return False, f"Minutes cannot exceed {quarter_length}"
+            
         return True, "Valid time"
     except ValueError:
-        return False, "Use MM:SS format with numbers only"
+        return False, "Please enter numbers only"
 
-def add_score(team, points):
-    """Add score to team total"""
-    if team == "home":
-        st.session_state.home_score += points
-    elif team == "away":
-        st.session_state.away_score += points
-
-def add_score_with_player(team, points, scorer_player, shot_type, made, attempted=True):
-    """Add score with player statistics tracking"""
-    # Add to team score if made
-    if made and points > 0:
-        add_score(team, points)
-    
-    # Update player stats (only for home team)
-    if team == "home" and scorer_player in st.session_state.player_stats:
-        player_stats = st.session_state.player_stats[scorer_player]
-        
-        # Add points if made
-        if made:
-            player_stats['points'] += points
-        
-        # Update shot statistics
-        if attempted:
-            if shot_type == 'field_goal':
-                player_stats['field_goals_attempted'] += 1
-                if made:
-                    player_stats['field_goals_made'] += 1
-            elif shot_type == 'three_pointer':
-                player_stats['three_pointers_attempted'] += 1
-                player_stats['field_goals_attempted'] += 1
-                if made:
-                    player_stats['three_pointers_made'] += 1
-                    player_stats['field_goals_made'] += 1
-            elif shot_type == 'free_throw':
-                player_stats['free_throws_attempted'] += 1
-                if made:
-                    player_stats['free_throws_made'] += 1
-
-def update_lineup(new_lineup, game_time=None):
-    """Update current lineup and log the change"""
-    try:
-        if game_time:
-            is_valid_time, time_message = validate_game_time(game_time, st.session_state.quarter_length)
-            if not is_valid_time:
-                return False, time_message
-            st.session_state.current_game_time = game_time
-        
-        # Record lineup change
-        st.session_state.lineup_history.append({
-            'quarter': st.session_state.current_quarter,
-            'game_time': st.session_state.current_game_time,
-            'old_lineup': st.session_state.current_lineup.copy(),
-            'new_lineup': new_lineup.copy(),
-            'timestamp': datetime.now(),
-            'is_quarter_end': False
-        })
-        
-        st.session_state.current_lineup = new_lineup.copy()
-        st.session_state.quarter_lineup_set = True
-        
-        return True, "Lineup updated successfully"
-    except Exception as e:
-        return False, str(e)
-
-def end_quarter():
-    """End current quarter and advance to next"""
-    quarter_map = {
-        "Q1": "Q2",
-        "Q2": "Q3", 
-        "Q3": "Q4",
-        "Q4": "OT1",
-        "OT1": "OT2",
-        "OT2": "OT3",
-        "OT3": "FINAL"
-    }
-    
-    if st.session_state.current_quarter == "FINAL":
-        return False
-    
-    # Record quarter end
-    st.session_state.quarter_end_history.append({
-        'quarter': st.session_state.current_quarter,
-        'final_score': f"{st.session_state.home_score}-{st.session_state.away_score}",
-        'lineup': st.session_state.current_lineup.copy(),
-        'game_time': st.session_state.current_game_time,
-        'timestamp': datetime.now()
-    })
-    
-    # Record lineup snapshot at quarter end
-    if st.session_state.current_lineup:
-        st.session_state.lineup_history.append({
-            'quarter': st.session_state.current_quarter,
-            'game_time': "0:00",
-            'old_lineup': st.session_state.current_lineup.copy(),
-            'new_lineup': st.session_state.current_lineup.copy(),
-            'timestamp': datetime.now(),
-            'is_quarter_end': True
-        })
-    
-    # Advance quarter
-    st.session_state.current_quarter = quarter_map[st.session_state.current_quarter]
-    
-    # Reset for new quarter
-    if st.session_state.current_quarter.startswith('OT'):
-        st.session_state.current_game_time = "5:00"  # Overtime length
-    else:
-        st.session_state.current_game_time = f"{st.session_state.quarter_length}:00"
-    
-    st.session_state.quarter_lineup_set = False
-    
-    return True
-
+# Analytics functions
 def calculate_individual_plus_minus():
-    """Calculate plus/minus for individual players"""
-    player_plus_minus = {}
+    """Calculate individual player plus/minus"""
+    player_stats = {}
     
-    for player_key in st.session_state.player_stats.keys():
-        player_plus_minus[player_key.split('(')[0].strip()] = {'plus_minus': 0}
-    
-    current_lineup_players = set()
-    
-    for i, lineup_change in enumerate(st.session_state.lineup_history):
-        # Calculate score differential for this period
-        period_start_score = {"home": 0, "away": 0}
-        period_end_score = {"home": 0, "away": 0}
-        
-        # Find scores during this lineup period
-        for score in st.session_state.score_history:
-            score_time = datetime.fromisoformat(str(score['timestamp'])) if isinstance(score['timestamp'], str) else score['timestamp']
-            lineup_time = datetime.fromisoformat(str(lineup_change['timestamp'])) if isinstance(lineup_change['timestamp'], str) else lineup_change['timestamp']
+    for i, lineup_event in enumerate(st.session_state.lineup_history):
+        if i == 0:
+            continue
             
-            # Check if this score happened during current lineup
-            next_lineup_time = None
-            if i + 1 < len(st.session_state.lineup_history):
-                next_change = st.session_state.lineup_history[i + 1]
-                next_lineup_time = datetime.fromisoformat(str(next_change['timestamp'])) if isinstance(next_change['timestamp'], str) else next_change['timestamp']
-            
-            if score_time >= lineup_time and (next_lineup_time is None or score_time < next_lineup_time):
-                if score['team'] == 'home':
-                    period_end_score['home'] += score['points']
-                else:
-                    period_end_score['away'] += score['points']
+        prev_event = st.session_state.lineup_history[i-1]
         
-        # Calculate plus/minus for players in this lineup
-        plus_minus = period_end_score['home'] - period_end_score['away']
+        # Calculate score change
+        home_change = lineup_event['home_score'] - prev_event['home_score']
+        away_change = lineup_event['away_score'] - prev_event['away_score']
+        plus_minus_change = home_change - away_change
         
-        for player in lineup_change['new_lineup']:
-            player_name = player.split('(')[0].strip()
-            if player_name in player_plus_minus:
-                player_plus_minus[player_name]['plus_minus'] += plus_minus
+        # Apply to all players in previous lineup
+        for player in prev_event['new_lineup']:
+            if player not in player_stats:
+                player_stats[player] = {'plus_minus': 0}
+            player_stats[player]['plus_minus'] += plus_minus_change
     
-    return player_plus_minus
+    return player_stats
 
 def calculate_lineup_plus_minus():
-    """Calculate plus/minus for different lineup combinations"""
+    """Calculate lineup combinations plus/minus"""
     lineup_stats = {}
     
-    for i, lineup_change in enumerate(st.session_state.lineup_history):
-        lineup_key = " | ".join([p.split('(')[0].strip() for p in sorted(lineup_change['new_lineup'])])
+    for i, lineup_event in enumerate(st.session_state.lineup_history):
+        if i == 0:
+            continue
+            
+        prev_event = st.session_state.lineup_history[i-1]
+        lineup_key = " | ".join(sorted([p.split('(')[0].strip() for p in prev_event['new_lineup']]))
+        
+        # Calculate score change
+        home_change = lineup_event['home_score'] - prev_event['home_score']
+        away_change = lineup_event['away_score'] - prev_event['away_score']
+        plus_minus_change = home_change - away_change
         
         if lineup_key not in lineup_stats:
             lineup_stats[lineup_key] = {'plus_minus': 0, 'appearances': 0}
         
+        lineup_stats[lineup_key]['plus_minus'] += plus_minus_change
         lineup_stats[lineup_key]['appearances'] += 1
-        
-        # Calculate score differential for this period
-        period_score_diff = 0
-        
-        # Find scores during this lineup period
-        for score in st.session_state.score_history:
-            score_time = datetime.fromisoformat(str(score['timestamp'])) if isinstance(score['timestamp'], str) else score['timestamp']
-            lineup_time = datetime.fromisoformat(str(lineup_change['timestamp'])) if isinstance(lineup_change['timestamp'], str) else lineup_change['timestamp']
-            
-            # Check if this score happened during current lineup
-            next_lineup_time = None
-            if i + 1 < len(st.session_state.lineup_history):
-                next_change = st.session_state.lineup_history[i + 1]
-                next_lineup_time = datetime.fromisoformat(str(next_change['timestamp'])) if isinstance(next_change['timestamp'], str) else next_change['timestamp']
-            
-            if score_time >= lineup_time and (next_lineup_time is None or score_time < next_lineup_time):
-                if score['team'] == 'home':
-                    period_score_diff += score['points']
-                else:
-                    period_score_diff -= score['points']
-        
-        lineup_stats[lineup_key]['plus_minus'] += period_score_diff
     
     return lineup_stats
 
-def render_enhanced_sidebar():
-    """Render enhanced sidebar with game controls"""
-    with st.sidebar:
-        st.title("🏀 Game Control")
-        
-        # Game status
-        st.subheader("Current Status")
-        st.write(f"**Quarter:** {st.session_state.current_quarter}")
-        st.write(f"**Time:** {st.session_state.current_game_time}")
-        st.write(f"**Score:** {st.session_state.home_score} - {st.session_state.away_score}")
-        
-        st.divider()
-        
-        # Quick game controls
-        st.subheader("Game Controls")
-        
-        # Time update
-        new_time = st.text_input(
-            "Update Game Clock",
-            value=st.session_state.current_game_time,
-            help="Format: MM:SS (e.g., 8:45)"
-        )
-        
-        if st.button("⏰ Update Time"):
-            is_valid, message = validate_game_time(new_time, st.session_state.quarter_length)
-            if is_valid:
-                st.session_state.current_game_time = new_time
-                st.success("Time updated!")
-                st.rerun()
-            else:
-                st.error(f"Invalid time: {message}")
-        
-        # Reset game
-        if st.button("🔄 Reset Game", type="secondary"):
-            for key in list(st.session_state.keys()):
-                if key != 'authenticated':
-                    del st.session_state[key]
-            st.rerun()
-        
-        st.divider()
-        
-        # Current roster
-        st.subheader("Current Roster")
-        if st.session_state.roster:
-            for player in st.session_state.roster:
-                st.write(f"#{player['jersey']} {player['name']}")
-        else:
-            st.write("No players added")
-
-def get_top_scorers(n=3):
-    """Get top N scorers from player stats"""
-    if not st.session_state.player_stats:
-        return []
-    
-    # Convert to list and sort by points
-    scorers = [(player, stats) for player, stats in st.session_state.player_stats.items()]
-    scorers.sort(key=lambda x: x[1]['points'], reverse=True)
-    
-    return scorers[:n]
-
 def calculate_player_shooting_stats():
-    """Calculate detailed shooting statistics for all players"""
+    """Calculate detailed shooting statistics for players"""
     shooting_stats = {}
     
     for player, stats in st.session_state.player_stats.items():
-        # Calculate shooting percentages
-        fg_percentage = (stats['field_goals_made'] / stats['field_goals_attempted'] * 100) if stats['field_goals_attempted'] > 0 else 0
-        three_pt_percentage = (stats['three_pointers_made'] / stats['three_pointers_attempted'] * 100) if stats['three_pointers_attempted'] > 0 else 0
-        ft_percentage = (stats['free_throws_made'] / stats['free_throws_attempted'] * 100) if stats['free_throws_attempted'] > 0 else 0
+        fg_pct = (stats['field_goals_made'] / stats['field_goals_attempted'] * 100) if stats['field_goals_attempted'] > 0 else 0
+        three_pt_pct = (stats['three_pointers_made'] / stats['three_pointers_attempted'] * 100) if stats['three_pointers_attempted'] > 0 else 0
+        ft_pct = (stats['free_throws_made'] / stats['free_throws_attempted'] * 100) if stats['free_throws_attempted'] > 0 else 0
         
         shooting_stats[player] = {
             'points': stats['points'],
             'fg_made': stats['field_goals_made'],
             'fg_attempted': stats['field_goals_attempted'],
-            'fg_percentage': fg_percentage,
+            'fg_percentage': fg_pct,
             'three_pt_made': stats['three_pointers_made'],
             'three_pt_attempted': stats['three_pointers_attempted'],
-            'three_pt_percentage': three_pt_percentage,
+            'three_pt_percentage': three_pt_pct,
             'ft_made': stats['free_throws_made'],
             'ft_attempted': stats['free_throws_attempted'],
-            'ft_percentage': ft_percentage,
-            'minutes_played': stats['minutes_played']
+            'ft_percentage': ft_pct
         }
     
     return shooting_stats
 
-def handle_score_entry(team, points, scorer, shot_type, made):
-    """Handle score entry with improved logic - player stats only for home team."""
+# Auto-save functionality
+def setup_auto_save(db_handler, user_id):
+    """Setup automatic saving of game state"""
     
-    # Only track player stats for home team with actual player selected
-    if team == "home" and scorer != "Quick Score (No Player)":
-        # Use add_score_with_player which handles both team score AND player stats
-        add_score_with_player(
-            team=team,
-            points=points,
-            scorer_player=scorer,
-            shot_type=shot_type,
-            made=made,
-            attempted=True
-        )
+    def save_current_state():
+        """Save current game state"""
+        game_state = {
+            'home_score': st.session_state.get('home_score', 0),
+            'away_score': st.session_state.get('away_score', 0),
+            'current_quarter': st.session_state.get('current_quarter', 'Q1'),
+            'current_game_time': st.session_state.get('current_game_time', '10:00'),
+            'roster': st.session_state.get('roster', []),
+            'current_lineup': st.session_state.get('current_lineup', []),
+            'lineup_history': st.session_state.get('lineup_history', []),
+            'score_history': st.session_state.get('score_history', []),
+            'player_stats': st.session_state.get('player_stats', {}),
+            'quarter_lineup_set': st.session_state.get('quarter_lineup_set', False)
+        }
         
-        # Success message with player info
-        result_text = "Made" if made else "Missed"
-        shot_text = {
-            "free_throw": "FT",
-            "field_goal": "2PT", 
-            "three_pointer": "3PT"
-        }.get(shot_type, "Shot")
-        
-        if made:
-            st.success(f"✅ {shot_text} Make by {scorer.split('(')[0].strip()} (+{points})")
+        success, message = db_handler.save_game_state(user_id, game_state)
+        if success:
+            st.success("✅ Game auto-saved to cloud!", icon="☁️")
         else:
-            st.info(f"📊 {shot_text} Miss by {scorer.split('(')[0].strip()}")
-    else:
-        # Quick score mode (always used for away team, optional for home team)
-        if points > 0:
-            add_score(team, points)
-        
-        # Add to history for tracking purposes
-        st.session_state.score_history.append({
-            'team': team,
-            'points': points,
-            'shot_type': shot_type,
-            'made': made,
-            'scorer': scorer if team == "home" else None,
-            'quarter': st.session_state.current_quarter,
-            'lineup': st.session_state.current_lineup.copy() if st.session_state.current_lineup else [],
-            'game_time': st.session_state.current_game_time,
-            'timestamp': datetime.now()
-        })
-        
-        team_name = "HOME" if team == "home" else "AWAY"
-        shot_text = {
-            "free_throw": "FT",
-            "field_goal": "2PT", 
-            "three_pointer": "3PT"
-        }.get(shot_type, "Shot")
-        
-        if made:
-            st.success(f"✅ {team_name} {shot_text} Make (+{points})")
-        else:
-            st.info(f"📊 {team_name} {shot_text} Miss")
+            st.error(f"❌ Auto-save failed: {message}")
     
-    st.rerun()
-
-def undo_last_score():
-    """Improved undo functionality."""
-    if not st.session_state.score_history:
-        return
+    # Auto-save controls in sidebar
+    with st.sidebar:
+        st.markdown("---")
+        st.subheader("🔄 Cloud Sync")
         
-    last_score = st.session_state.score_history[-1]
-    
-    # Remove from team score if points were added
-    if last_score['points'] > 0:
-        if last_score['team'] == "home":
-            st.session_state.home_score -= last_score['points']
-        else:
-            st.session_state.away_score -= last_score['points']
-    
-    # Remove from player stats if applicable (only for home team)
-    scorer = last_score.get('scorer')
-    if (last_score['team'] == "home" and scorer and scorer != "Quick Score (No Player)" 
-        and scorer in st.session_state.player_stats):
-        player_stats = st.session_state.player_stats[scorer]
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("💾 Save", help="Save current game state to cloud"):
+                save_current_state()
         
-        # Remove points if made
-        if last_score.get('made', True):
-            player_stats['points'] -= last_score['points']
-        
-        # Remove attempt and make stats
-        shot_type = last_score.get('shot_type', 'field_goal')
-        if shot_type == 'field_goal':
-            player_stats['field_goals_attempted'] -= 1
-            if last_score.get('made', True):
-                player_stats['field_goals_made'] -= 1
-        elif shot_type == 'three_pointer':
-            player_stats['three_pointers_attempted'] -= 1
-            player_stats['field_goals_attempted'] -= 1
-            if last_score.get('made', True):
-                player_stats['three_pointers_made'] -= 1
-                player_stats['field_goals_made'] -= 1
-        elif shot_type == 'free_throw':
-            player_stats['free_throws_attempted'] -= 1
-            if last_score.get('made', True):
-                player_stats['free_throws_made'] -= 1
-    
-    # Remove from history
-    st.session_state.score_history.pop()
-    st.success("Last entry undone!")
-    st.rerun()
+        with col2:
+            if st.button("📂 Load", help="Load previously saved game"):
+                success, game_data = db_handler.load_game_state(user_id)
+                if success and game_data:
+                    # Load game state back to session_state
+                    for key, value in game_data.items():
+                        if key not in ['last_updated', 'user_id']:
+                            st.session_state[key] = value
+                    st.success("✅ Game loaded from cloud!")
+                    st.rerun()
+                elif success:
+                    st.info("ℹ️ No saved game found")
+                else:
+                    st.error(f"❌ Error loading game: {game_data}")
 
 def main():
-    """Main application function"""
+    """Main application"""
+    
+    # Initialize Firebase
+    db = init_firebase()
+    if not db:
+        st.error("Failed to connect to Firebase. Please check your configuration.")
+        return
+    
+    # Authentication check
+    if not render_auth_ui():
+        return
+    
     # Initialize session state
     init_session_state()
     
-    # Authentication gate
-    if not authenticate_user():
-        return
+    # Initialize database handler
+    db_handler = FirebaseGameDB(db)
+    user_id = st.session_state.user_info.get('uid')
     
-    # Roster setup gate
-    if not st.session_state.roster_set:
-        roster_setup_gate()
-        return
+    # Auto-load roster on startup
+    if 'roster_loaded' not in st.session_state:
+        success, roster = db_handler.load_team_roster(user_id)
+        if success:
+            st.session_state.roster = roster
+            st.session_state.roster_loaded = True
     
-    # Render sidebar
-    render_enhanced_sidebar()
+    # Main app header
+    st.title("🏀 Basketball Lineup Tracker Pro")
     
-    # Main content area: Tabs
+    # User info and logout
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col1:
+        st.metric("Coach", st.session_state.user_info.get('name', 'Unknown'))
+    with col2:
+        st.metric("Current Game", f"{st.session_state.home_score} - {st.session_state.away_score}")
+    with col3:
+        if st.button("🚪 Logout"):
+            st.session_state.authenticated = False
+            st.session_state.user_info = None
+            st.rerun()
+    
+    # Setup auto-save
+    setup_auto_save(db_handler, user_id)
+    
+    # Sidebar - Team Setup
+    with st.sidebar:
+        st.header("⚙️ Team Setup")
+        
+        # Roster Management
+        with st.expander("👥 Manage Roster", expanded=not st.session_state.roster):
+            st.write("**Add New Player**")
+            with st.form("add_player_form"):
+                player_name = st.text_input("Player Name")
+                jersey_number = st.number_input("Jersey #", min_value=0, max_value=99, value=1)
+                add_player = st.form_submit_button("➕ Add Player")
+                
+                if add_player and player_name:
+                    # Check for duplicate jersey numbers
+                    if any(p['jersey'] == jersey_number for p in st.session_state.roster):
+                        st.error(f"Jersey #{jersey_number} already taken!")
+                    else:
+                        new_player = {"name": player_name, "jersey": int(jersey_number)}
+                        st.session_state.roster.append(new_player)
+                        
+                        # Save roster to Firebase
+                        success, message = db_handler.save_team_roster(user_id, st.session_state.roster)
+                        if success:
+                            st.success(f"✅ {player_name} added!")
+                        else:
+                            st.error(f"Error saving roster: {message}")
+                        st.rerun()
+            
+            # Display current roster
+            if st.session_state.roster:
+                st.write("**Current Roster:**")
+                for i, player in enumerate(st.session_state.roster):
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.write(f"#{player['jersey']} {player['name']}")
+                    with col2:
+                        if st.button("🗑️", key=f"remove_{i}", help="Remove player"):
+                            st.session_state.roster.pop(i)
+                            # Save updated roster
+                            db_handler.save_team_roster(user_id, st.session_state.roster)
+                            st.rerun()
+            else:
+                st.info("No players in roster. Add players to get started!")
+    
+    # Main tabs
     tab1, tab2, tab3 = st.tabs(["🏀 Live Game", "📊 Analytics", "📝 Event Log"])
     
-    # ------------------------------------------------------------------
-    # Tab 1: Live Game (Enhanced with detailed scoring)
-    # ------------------------------------------------------------------
+    # Tab 1: Live Game
     with tab1:
         st.header("Live Game Management")
         
@@ -860,9 +882,7 @@ def main():
         
         st.divider()
     
-    # ------------------------------------------------------------------
-    # Tab 2: Analytics (Enhanced with shooting stats)
-    # ------------------------------------------------------------------
+    # Tab 2: Analytics
     with tab2:
         st.header("Game Analytics")
         
@@ -881,54 +901,6 @@ def main():
                 st.metric("Scoring Plays", len(st.session_state.score_history))
             with col4:
                 st.metric("Quarters Completed", len(st.session_state.quarter_end_history))
-            
-            # Individual Player Statistics
-            if st.session_state.player_stats:
-                st.subheader("🏀 Individual Player Statistics")
-                
-                # Shooting statistics table
-                shooting_stats = calculate_player_shooting_stats()
-                
-                if shooting_stats:
-                    stats_data = []
-                    for player, stats in shooting_stats.items():
-                        stats_data.append({
-                            'Player': player.split('(')[0].strip(),
-                            'Points': stats['points'],
-                            'FG Made-Att': f"{stats['fg_made']}-{stats['fg_attempted']}",
-                            'FG%': f"{stats['fg_percentage']:.1f}%" if stats['fg_percentage'] > 0 else "0.0%",
-                            '3PT Made-Att': f"{stats['three_pt_made']}-{stats['three_pt_attempted']}",
-                            '3PT%': f"{stats['three_pt_percentage']:.1f}%" if stats['three_pt_percentage'] > 0 else "0.0%",
-                            'FT Made-Att': f"{stats['ft_made']}-{stats['ft_attempted']}",
-                            'FT%': f"{stats['ft_percentage']:.1f}%" if stats['ft_percentage'] > 0 else "0.0%"
-                        })
-                    
-                    if stats_data:
-                        stats_df = pd.DataFrame(stats_data)
-                        stats_df = stats_df.sort_values('Points', ascending=False)
-                        
-                        st.dataframe(
-                            stats_df,
-                            use_container_width=True,
-                            hide_index=True
-                        )
-                        
-                        # Top scorer highlight
-                        if len(stats_df) > 0:
-                            top_scorer = stats_df.iloc[0]
-                            st.success(f"🏆 Leading Scorer: {top_scorer['Player']} with {top_scorer['Points']} points")
-                        
-                        # Scoring chart
-                        fig_scoring = px.bar(
-                            stats_df.head(10),  # Top 10 scorers
-                            x='Player',
-                            y='Points',
-                            title='Top Scorers',
-                            color='Points',
-                            color_continuous_scale='viridis'
-                        )
-                        fig_scoring.update_xaxes(tickangle=45)
-                        st.plotly_chart(fig_scoring, use_container_width=True)
             
             # Plus/Minus Analytics
             st.subheader("Plus/Minus Analytics")
@@ -982,55 +954,55 @@ def main():
             else:
                 st.info("No plus/minus data available yet.")
             
-            # Lineup Plus/Minus
-            st.write("**Lineup Plus/Minus**")
-            lineup_stats = calculate_lineup_plus_minus()
-            
-            if lineup_stats:
-                lineup_plus_minus_data = []
-                for lineup, stats in lineup_stats.items():
-                    lineup_plus_minus_data.append({
-                        "Lineup": lineup,
-                        "Plus/Minus": f"+{stats['plus_minus']}" if stats['plus_minus'] >= 0 else str(stats['plus_minus']),
-                        "Appearances": stats['appearances'],
-                        "Raw +/-": stats['plus_minus']
-                    })
+            # Individual Player Statistics
+            if st.session_state.player_stats:
+                st.subheader("🏀 Individual Player Statistics")
                 
-                if lineup_plus_minus_data:
-                    lineup_df = pd.DataFrame(lineup_plus_minus_data)
-                    lineup_df = lineup_df.sort_values("Raw +/-", ascending=False)
+                # Shooting statistics table
+                shooting_stats = calculate_player_shooting_stats()
+                
+                if shooting_stats:
+                    stats_data = []
+                    for player, stats in shooting_stats.items():
+                        stats_data.append({
+                            'Player': player.split('(')[0].strip(),
+                            'Points': stats['points'],
+                            'FG Made-Att': f"{stats['fg_made']}-{stats['fg_attempted']}",
+                            'FG%': f"{stats['fg_percentage']:.1f}%" if stats['fg_percentage'] > 0 else "0.0%",
+                            '3PT Made-Att': f"{stats['three_pt_made']}-{stats['three_pt_attempted']}",
+                            '3PT%': f"{stats['three_pt_percentage']:.1f}%" if stats['three_pt_percentage'] > 0 else "0.0%",
+                            'FT Made-Att': f"{stats['ft_made']}-{stats['ft_attempted']}",
+                            'FT%': f"{stats['ft_percentage']:.1f}%" if stats['ft_percentage'] > 0 else "0.0%"
+                        })
                     
-                    def color_plus_minus(val):
-                        if '+' in str(val):
-                            return 'background-color: lightgreen'
-                        elif '-' in str(val):
-                            return 'background-color: lightcoral'
-                        else:
-                            return ''
-                    
-                    st.dataframe(
-                        lineup_df[["Lineup", "Plus/Minus", "Appearances"]].style.applymap(
-                            color_plus_minus, subset=["Plus/Minus"]
-                        ),
-                        use_container_width=True,
-                        hide_index=True
-                    )
-                    
-                    # Best and Worst Lineups
-                    if len(lineup_df) > 0:
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.success(f"**Best Lineup:** +{lineup_df.iloc[0]['Raw +/-']}")
-                            st.write(f"_{lineup_df.iloc[0]['Lineup']}_")
-                        with col2:
-                            st.error(f"**Worst Lineup:** {lineup_df.iloc[-1]['Raw +/-']}")
-                            st.write(f"_{lineup_df.iloc[-1]['Lineup']}_")
-            else:
-                st.info("No lineup plus/minus data available yet.")
+                    if stats_data:
+                        stats_df = pd.DataFrame(stats_data)
+                        stats_df = stats_df.sort_values('Points', ascending=False)
+                        
+                        st.dataframe(
+                            stats_df,
+                            use_container_width=True,
+                            hide_index=True
+                        )
+                        
+                        # Top scorer highlight
+                        if len(stats_df) > 0:
+                            top_scorer = stats_df.iloc[0]
+                            st.success(f"🏆 Leading Scorer: {top_scorer['Player']} with {top_scorer['Points']} points")
+                        
+                        # Scoring chart
+                        fig_scoring = px.bar(
+                            stats_df.head(10),  # Top 10 scorers
+                            x='Player',
+                            y='Points',
+                            title='Top Scorers',
+                            color='Points',
+                            color_continuous_scale='viridis'
+                        )
+                        fig_scoring.update_xaxes(tickangle=45)
+                        st.plotly_chart(fig_scoring, use_container_width=True)
     
-    # ------------------------------------------------------------------
-    # Tab 3: Event Log (Enhanced with filtering)
-    # ------------------------------------------------------------------
+    # Tab 3: Event Log
     with tab3:
         st.header("Game Event Log")
         
@@ -1059,7 +1031,7 @@ def main():
                 if quarter_filter == "All Quarters" or score['quarter'] == quarter_filter:
                     if event_filter in ["All Events", "Scoring Only"]:
                         description = f"{score['team'].title()} +{score['points']} points"
-                        if score.get('scorer') and score.get('scorer') != "Quick Score (No Player)":
+                        if score.get('scorer'):
                             description += f" by {score['scorer'].split('(')[0].strip()}"
                         if score.get('shot_type'):
                             shot_display = {
@@ -1067,9 +1039,7 @@ def main():
                                 'three_pointer': '3PT Field Goal', 
                                 'free_throw': 'Free Throw'
                             }
-                            shot_type_text = shot_display.get(score['shot_type'], 'Shot')
-                            made_text = " Make" if score.get('made', True) else " Miss"
-                            description += f" ({shot_type_text}{made_text})"
+                            description += f" ({shot_display.get(score['shot_type'], 'Shot')})"
                         
                         all_events.append({
                             'type': 'Score',
@@ -1098,87 +1068,124 @@ def main():
                             'timestamp': lineup.get('timestamp', datetime.now())
                         })
             
-            # Add quarter end events (legacy support)
-            for quarter_end in st.session_state.quarter_end_history:
-                if quarter_filter == "All Quarters" or quarter_end['quarter'] == quarter_filter:
-                    if event_filter in ["All Events", "Lineup Changes Only"]:
-                        all_events.append({
-                            'type': 'Quarter End (Legacy)',
-                            'description': f"{quarter_end['quarter']} ended",
-                            'quarter': quarter_end['quarter'],
-                            'game_time': quarter_end.get('game_time', '0:00'),
-                            'details': f"Final Score: {quarter_end['final_score']}",
-                            'timestamp': quarter_end.get('timestamp', datetime.now())
-                        })
+            # Sort by timestamp
+            all_events.sort(key=lambda x: x['timestamp'])
             
-            # Sort by timestamp (most recent first)
-            all_events.sort(key=lambda x: x['timestamp'], reverse=True)
-            
-            # Display events with enhanced formatting
-            if all_events:
-                st.write(f"**Showing {len(all_events)} events**")
-                
-                # Summary stats for filtered events
-                if event_filter == "All Events":
-                    score_events = len([e for e in all_events if e['type'] == 'Score'])
-                    lineup_events = len([e for e in all_events if 'Lineup' in e['type'] or 'Quarter End' in e['type']])
-                    
-                    summary_col1, summary_col2 = st.columns(2)
-                    with summary_col1:
-                        st.metric("Scoring Events", score_events)
-                    with summary_col2:
-                        st.metric("Lineup/Quarter Events", lineup_events)
-                
+            # Display events
+            for i, event in enumerate(all_events, 1):
+                st.write(f"**{i}. {event['type']}** - {event['quarter']} at {event['game_time']}")
+                st.write(f"_{event['description']}_")
+                st.write(f"Details: {event['details']}")
                 st.divider()
-                
-                # Display events in chronological order (most recent first)
-                for i, event in enumerate(all_events, 1):
-                    # Color coding based on event type
-                    if event['type'] == 'Score':
-                        if 'Home' in event['description']:
-                            st.success(f"**{i}. {event['type']}** - {event['quarter']} at {event['game_time']}")
-                        else:
-                            st.info(f"**{i}. {event['type']}** - {event['quarter']} at {event['game_time']}")
-                    elif 'Quarter End' in event['type']:
-                        st.warning(f"**{i}. {event['type']}** - {event['quarter']} at {event['game_time']}")
-                    else:
-                        st.write(f"**{i}. {event['type']}** - {event['quarter']} at {event['game_time']}")
-                    
-                    st.write(f"📝 _{event['description']}_")
-                    
-                    # Show additional details in expandable section for complex events
-                    if len(event['details']) > 50:
-                        with st.expander("View Details"):
-                            st.write(event['details'])
-                    else:
-                        st.write(f"🔍 {event['details']}")
-                    
-                    # Show timestamp for debugging/reference
-                    if event.get('timestamp'):
-                        st.caption(f"⏰ {event['timestamp'].strftime('%H:%M:%S')}")
-                    
-                    st.divider()
-            else:
-                st.info("No events match the current filter criteria.")
-                
-                # Show what events are available
-                if st.session_state.score_history or st.session_state.lineup_history:
-                    available_quarters = set()
-                    if st.session_state.score_history:
-                        available_quarters.update([s['quarter'] for s in st.session_state.score_history])
-                    if st.session_state.lineup_history:
-                        available_quarters.update([l['quarter'] for l in st.session_state.lineup_history])
-                    
-                    st.write(f"**Available quarters:** {', '.join(sorted(available_quarters))}")
-                    
-                    total_events = len(st.session_state.score_history) + len(st.session_state.lineup_history)
-                    st.write(f"**Total events in game:** {total_events}")
     
     # Footer
     st.divider()
     st.markdown("*Basketball Lineup Tracker Pro - Track your team's performance in real-time*")
 
+def handle_score_entry(team, points, scorer, shot_type, made):
+    """Handle score entry with improved logic - player stats only for home team."""
+    
+    # Only track player stats for home team with actual player selected
+    if team == "home" and scorer != "Quick Score (No Player)":
+        # Use add_score_with_player which handles both team score AND player stats
+        add_score_with_player(
+            team=team,
+            points=points,
+            scorer_player=scorer,
+            shot_type=shot_type,
+            made=made,
+            attempted=True
+        )
+        
+        # Success message with player info
+        result_text = "Made" if made else "Missed"
+        shot_text = {
+            "free_throw": "FT",
+            "field_goal": "2PT", 
+            "three_pointer": "3PT"
+        }.get(shot_type, "Shot")
+        
+        if made:
+            st.success(f"✅ {shot_text} Make by {scorer.split('(')[0].strip()} (+{points})")
+        else:
+            st.info(f"📊 {shot_text} Miss by {scorer.split('(')[0].strip()}")
+    else:
+        # Quick score mode (always used for away team, optional for home team)
+        if points > 0:
+            add_score(team, points)
+        
+        # Add to history for tracking purposes
+        st.session_state.score_history.append({
+            'team': team,
+            'points': points,
+            'shot_type': shot_type,
+            'made': made,
+            'scorer': scorer if team == "home" else None,
+            'quarter': st.session_state.current_quarter,
+            'lineup': st.session_state.current_lineup.copy() if st.session_state.current_lineup else [],
+            'game_time': st.session_state.current_game_time,
+            'timestamp': datetime.now()
+        })
+        
+        team_name = "HOME" if team == "home" else "AWAY"
+        shot_text = {
+            "free_throw": "FT",
+            "field_goal": "2PT", 
+            "three_pointer": "3PT"
+        }.get(shot_type, "Shot")
+        
+        if made:
+            st.success(f"✅ {team_name} {shot_text} Make (+{points})")
+        else:
+            st.info(f"📊 {team_name} {shot_text} Miss")
+    
+    st.rerun()
 
-# Run the application
+def undo_last_score():
+    """Improved undo functionality."""
+    if not st.session_state.score_history:
+        return
+        
+    last_score = st.session_state.score_history[-1]
+    
+    # Remove from team score if points were added
+    if last_score['points'] > 0:
+        if last_score['team'] == "home":
+            st.session_state.home_score -= last_score['points']
+        else:
+            st.session_state.away_score -= last_score['points']
+    
+    # Remove from player stats if applicable (only for home team)
+    scorer = last_score.get('scorer')
+    if (last_score['team'] == "home" and scorer and scorer != "Quick Score (No Player)" 
+        and scorer in st.session_state.player_stats):
+        player_stats = st.session_state.player_stats[scorer]
+        
+        # Remove points if made
+        if last_score.get('made', True):
+            player_stats['points'] -= last_score['points']
+        
+        # Remove attempt and make stats
+        shot_type = last_score.get('shot_type', 'field_goal')
+        if shot_type == 'field_goal':
+            player_stats['field_goals_attempted'] -= 1
+            if last_score.get('made', True):
+                player_stats['field_goals_made'] -= 1
+        elif shot_type == 'three_pointer':
+            player_stats['three_pointers_attempted'] -= 1
+            player_stats['field_goals_attempted'] -= 1
+            if last_score.get('made', True):
+                player_stats['three_pointers_made'] -= 1
+                player_stats['field_goals_made'] -= 1
+        elif shot_type == 'free_throw':
+            player_stats['free_throws_attempted'] -= 1
+            if last_score.get('made', True):
+                player_stats['free_throws_made'] -= 1
+    
+    # Remove from history
+    st.session_state.score_history.pop()
+    st.success("Last entry undone!")
+    st.rerun()
+
 if __name__ == "__main__":
     main()
