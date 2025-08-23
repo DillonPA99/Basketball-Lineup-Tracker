@@ -79,37 +79,30 @@ def init_firebase():
     
     cred_data = load_firebase_credentials()
     
-    # Debug: Show what we found (safely)
-    st.write("🔍 **Debug Info:**")
-    st.write(f"- Firebase Credentials found: {'✅ Yes' if cred_data else '❌ No'}")
-    
-    if cred_data:
-        if isinstance(cred_data, dict) and 'project_id' in cred_data:
-            st.write(f"- Project ID: {cred_data.get('project_id', 'Unknown')}")
-        
     if not cred_data:
         st.error("❌ **Missing Firebase credentials!** Please check your Streamlit secrets or environment variables.")
-        st.write("""
-        **Setup Instructions:**
-        1. Go to Firebase Console → Project Settings → Service Accounts
-        2. Generate a new private key (JSON file)
-        3. Add the JSON content to Streamlit secrets as `firebase_key`
-        
-        **Expected format in .streamlit/secrets.toml:**
-        ```toml
-        [firebase_key]
-        type = "service_account"
-        project_id = "your-project-id"
-        private_key_id = "..."
-        private_key = "-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n"
-        client_email = "..."
-        client_id = "..."
-        auth_uri = "https://accounts.google.com/o/oauth2/auth"
-        token_uri = "https://oauth2.googleapis.com/token"
-        auth_provider_x509_cert_url = "https://www.googleapis.com/oauth2/v1/certs"
-        client_x509_cert_url = "..."
-        ```
-        """)
+        with st.expander("🔧 Setup Instructions"):
+            st.markdown("""
+            **Setup Instructions:**
+            1. Go to Firebase Console → Project Settings → Service Accounts
+            2. Generate a new private key (JSON file)
+            3. Add the JSON content to Streamlit secrets as `firebase_key`
+            
+            **Expected format in .streamlit/secrets.toml:**
+            ```toml
+            [firebase_key]
+            type = "service_account"
+            project_id = "your-project-id"
+            private_key_id = "..."
+            private_key = "-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n"
+            client_email = "..."
+            client_id = "..."
+            auth_uri = "https://accounts.google.com/o/oauth2/auth"
+            token_uri = "https://oauth2.googleapis.com/token"
+            auth_provider_x509_cert_url = "https://www.googleapis.com/oauth2/v1/certs"
+            client_x509_cert_url = "..."
+            ```
+            """)
         return None, None
     
     # Try to create Firebase app
@@ -124,184 +117,59 @@ def init_firebase():
         app = firebase_admin.initialize_app(cred)
         db = firestore.client()
         
-        st.write("✅ Firebase client created successfully")
+        # Only show success message in debug mode
+        if st.secrets.get("debug_mode", False):
+            st.success("✅ Firebase initialized successfully")
+        
         return app, db
         
     except Exception as e:
-        st.error(f"❌ **Failed to create Firebase client:** {str(e)}")
+        st.error(f"❌ **Failed to initialize Firebase:** {str(e)}")
+        logger.error(f"Firebase initialization failed: {str(e)}")
         return None, None
 
-def test_firebase_connection(db):
-    """Test Firebase connection and setup collections."""
+def test_firebase_connection(db, show_details=False):
+    """Test Firebase connection with optional detailed output."""
     try:
-        st.write("🔍 **Testing Firebase connection...**")
-        
         # Test connection with a simple read
-        collections_to_check = ['users', 'user_rosters', 'game_sessions', 'product_keys']
+        test_collection = db.collection('users').limit(1)
+        docs = test_collection.get()
         
-        for collection_name in collections_to_check:
-            try:
-                # Try to get one document from each collection
-                docs = db.collection(collection_name).limit(1).get()
-                st.write(f"✅ Collection '{collection_name}' accessible ({len(docs)} docs)")
-                logger.info(f"Collection '{collection_name}' is accessible")
-            except Exception as e:
-                error_msg = str(e)
-                st.write(f"⚠️ Collection '{collection_name}': {error_msg}")
-                
-                # Collections will be created automatically when first document is added
-                if "not found" in error_msg.lower():
-                    st.info(f"Collection '{collection_name}' will be created automatically when first document is added")
-                else:
-                    st.error(f"Connection/Auth error for collection '{collection_name}': {error_msg}")
-                
-                logger.warning(f"Collection check failed for '{collection_name}': {str(e)}")
+        if show_details:
+            st.success("🔥 Firebase connection successful!")
+            st.info(f"✅ Database access verified - found {len(docs)} test documents")
         
-        # Test basic write operation
-        st.write("🔍 **Testing write permissions...**")
-        try:
-            # Try to write a test document
-            test_ref = db.collection('test').document('connection_test')
-            test_ref.set({
-                'test': True,
-                'timestamp': datetime.now()
-            })
-            
-            # Try to read it back
-            doc = test_ref.get()
-            if doc.exists:
-                st.write("✅ Write/Read test passed!")
-                
-                # Clean up test document
-                test_ref.delete()
-                st.write("✅ Delete test passed!")
-                
-                return True
-            else:
-                st.error("❌ Write test failed - document not found after creation")
-                return False
-                
-        except Exception as e:
-            st.error(f"❌ Write test failed: {str(e)}")
-            return False
-            
+        return True
+        
     except Exception as e:
-        st.error(f"❌ Firebase connection test failed: {e}")
-        logger.error(f"Firebase connection test failed: {str(e)}")
+        error_msg = str(e)
+        if show_details:
+            st.error(f"❌ Firebase connection failed: {error_msg}")
+        logger.error(f"Firebase connection test failed: {error_msg}")
         return False
 
-
-def display_lineup_and_player_stats():
-    """Display lineup plus/minus and player statistics."""
-    # Lineup Plus/Minus
-    st.write("**Lineup Plus/Minus**")
-    lineup_stats = calculate_lineup_plus_minus()
-    
-    if lineup_stats:
-        lineup_plus_minus_data = []
-        for lineup, stats in lineup_stats.items():
-            lineup_plus_minus_data.append({
-                "Lineup": lineup,
-                "Plus/Minus": f"+{stats['plus_minus']}" if stats['plus_minus'] >= 0 else str(stats['plus_minus']),
-                "Appearances": stats['appearances'],
-                "Raw +/-": stats['plus_minus']
-            })
+# Get database connection (replaces the old initialization block)
+@st.cache_resource
+def get_database_connection():
+    """Get database connection with error handling."""
+    try:
+        firebase_app, db = init_firebase()
+        if db is None:
+            st.error("Database connection failed. Please check your configuration.")
+            st.stop()
         
-        if lineup_plus_minus_data:
-            lineup_df = pd.DataFrame(lineup_plus_minus_data)
-            lineup_df = lineup_df.sort_values("Raw +/-", ascending=False)
+        # Test connection quietly
+        if not test_firebase_connection(db, show_details=False):
+            st.error("Database connection test failed.")
+            st.stop()
             
-            st.dataframe(
-                lineup_df[["Lineup", "Plus/Minus", "Appearances"]].style.applymap(
-                    color_plus_minus, subset=["Plus/Minus"]
-                ),
-                use_container_width=True,
-                hide_index=True
-            )
-            
-            # Best and Worst Lineups
-            if len(lineup_df) > 0:
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.success(f"**Best Lineup:** +{lineup_df.iloc[0]['Raw +/-']}")
-                    st.write(f"_{lineup_df.iloc[0]['Lineup']}_")
-                with col2:
-                    st.error(f"**Worst Lineup:** {lineup_df.iloc[-1]['Raw +/-']}")
-                    st.write(f"_{lineup_df.iloc[-1]['Lineup']}_")
-    else:
-        st.info("No lineup plus/minus data available yet.")
+        return db
+    except Exception as e:
+        st.error(f"Failed to connect to database: {str(e)}")
+        st.stop()
 
-    # Individual Player Statistics
-    if st.session_state.player_stats:
-        st.subheader("🏀 Individual Player Statistics")
-        
-        # Shooting statistics table
-        shooting_stats = calculate_player_shooting_stats()
-        
-        if shooting_stats:
-            stats_data = []
-            for player, stats in shooting_stats.items():
-                stats_data.append({
-                    'Player': player.split('(')[0].strip(),
-                    'Points': stats['points'],
-                    'FG Made-Att': f"{stats['fg_made']}-{stats['fg_attempted']}",
-                    'FG%': f"{stats['fg_percentage']:.1f}%" if stats['fg_percentage'] > 0 else "0.0%",
-                    '3PT Made-Att': f"{stats['three_pt_made']}-{stats['three_pt_attempted']}",
-                    '3PT%': f"{stats['three_pt_percentage']:.1f}%" if stats['three_pt_percentage'] > 0 else "0.0%",
-                    'FT Made-Att': f"{stats['ft_made']}-{stats['ft_attempted']}",
-                    'FT%': f"{stats['ft_percentage']:.1f}%" if stats['ft_percentage'] > 0 else "0.0%"
-                })
-            
-            if stats_data:
-                stats_df = pd.DataFrame(stats_data)
-                stats_df = stats_df.sort_values('Points', ascending=False)
-                
-                st.dataframe(
-                    stats_df,
-                    use_container_width=True,
-                    hide_index=True
-                )
-                
-                # Top scorer highlight
-                if len(stats_df) > 0:
-                    top_scorer = stats_df.iloc[0]
-                    st.success(f"🏆 Leading Scorer: {top_scorer['Player']} with {top_scorer['Points']} points")
-                
-                # Scoring chart
-                fig_scoring = px.bar(
-                    stats_df.head(10),  # Top 10 scorers
-                    x='Player',
-                    y='Points',
-                    title='Top Scorers',
-                    color='Points',
-                    color_continuous_scale='viridis'
-                )
-                fig_scoring.update_xaxes(tickangle=45)
-                st.plotly_chart(fig_scoring, use_container_width=True)
-
-
-# Initialize Firebase with user-friendly error handling
-with st.spinner("Connecting to Firebase..."):
-    firebase_app, db = init_firebase()
-
-if db is None:
-    st.error("""
-    **Firebase connection failed!** Check the debug info above to see what's missing.
-    """)
-    st.stop()
-else:
-    st.success("✅ **Firebase client created!** Now testing database access...")
-
-# Test the Firebase connection
-if not test_firebase_connection(db):
-    st.error("❌ **Firebase connection test failed!** Check the details above.")
-    st.stop()
-else:
-    st.success("🎉 **Firebase connection successful!**")
-    
-    # Display statistics if connection is successful
-    display_lineup_and_player_stats()
-
+# Initialize database connection
+db = get_database_connection()
 # ============================================================================
 # FIREBASE DATABASE FUNCTIONS (REPLACE SUPABASE FUNCTIONS)
 # ============================================================================
