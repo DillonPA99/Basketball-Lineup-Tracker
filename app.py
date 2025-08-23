@@ -22,46 +22,6 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 
-st.write("🔍 **Debug Information:**")
-
-# Check if secrets are available
-if hasattr(st, 'secrets'):
-    st.write("✅ st.secrets is available")
-    
-    # List all available secret keys
-    try:
-        secret_keys = list(st.secrets.keys())
-        st.write(f"📋 Available secret keys: {secret_keys}")
-    except Exception as e:
-        st.write(f"❌ Error reading secret keys: {e}")
-    
-    # Check for firebase_key specifically
-    if 'firebase_key' in st.secrets:
-        st.write("✅ firebase_key found in secrets")
-        
-        # Check individual fields
-        firebase_config = st.secrets['firebase_key']
-        required_fields = ['type', 'project_id', 'private_key_id', 'private_key', 'client_email']
-        
-        for field in required_fields:
-            if field in firebase_config:
-                if field == 'private_key':
-                    # Don't show the full private key for security
-                    key_preview = firebase_config[field][:50] + "..." if len(firebase_config[field]) > 50 else firebase_config[field]
-                    st.write(f"✅ {field}: {key_preview}")
-                else:
-                    st.write(f"✅ {field}: {firebase_config[field]}")
-            else:
-                st.write(f"❌ Missing field: {field}")
-                
-    else:
-        st.write("❌ firebase_key NOT found in secrets")
-        st.write("Available keys:", list(st.secrets.keys()) if st.secrets else "No secrets available")
-        
-else:
-    st.write("❌ st.secrets is not available")
-
-st.write("---")
 
 # ------------------------------------------------------------------
 # Page configuration
@@ -111,6 +71,7 @@ def load_firebase_credentials():
     return None
 
 @st.cache_resource
+@st.cache_resource
 def init_firebase():
     """Initialize Firebase with robust error handling and caching."""
     
@@ -122,28 +83,40 @@ def init_firebase():
     
     if not cred_data:
         st.error("❌ **Missing Firebase credentials!** Please check your Streamlit secrets or environment variables.")
-        with st.expander("🔧 Setup Instructions"):
-            st.markdown("""
-            **Setup Instructions:**
-            1. Go to Firebase Console → Project Settings → Service Accounts
-            2. Generate a new private key (JSON file)
-            3. Add the JSON content to Streamlit secrets as `firebase_key`
-            
-            **Expected format in .streamlit/secrets.toml:**
-            ```toml
-            [firebase_key]
-            type = "service_account"
-            project_id = "your-project-id"
-            private_key_id = "..."
-            private_key = "-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n"
-            client_email = "..."
-            client_id = "..."
-            auth_uri = "https://accounts.google.com/o/oauth2/auth"
-            token_uri = "https://oauth2.googleapis.com/token"
-            auth_provider_x509_cert_url = "https://www.googleapis.com/oauth2/v1/certs"
-            client_x509_cert_url = "..."
-            ```
-            """)
+        # ... existing error display code ...
+        return None, None
+    
+    # Try to create Firebase app
+    try:
+        # Convert secrets format to dict if needed
+        if hasattr(cred_data, '_asdict'):
+            cred_dict = dict(cred_data._asdict())
+        else:
+            cred_dict = dict(cred_data)
+        
+        st.write("🔍 Attempting Firebase connection...")  # Debug line
+        st.write(f"📧 Using service account: {cred_dict.get('client_email', 'Unknown')}")  # Debug line
+        
+        cred = credentials.Certificate(cred_dict)
+        app = firebase_admin.initialize_app(cred)
+        db = firestore.client()
+        
+        st.success("✅ Firebase initialized successfully!")
+        return app, db
+        
+    except Exception as e:
+        st.error(f"❌ **Firebase initialization failed:** {str(e)}")
+        st.error(f"🔍 **Detailed error:** {type(e).__name__}")  # Show error type
+        
+        # Show more specific error information
+        if "private key" in str(e).lower():
+            st.error("🔑 **Private key issue** - Please verify your private key is complete and properly formatted")
+        elif "project" in str(e).lower():
+            st.error("📁 **Project issue** - Please verify your Firebase project ID and that Firestore is enabled")
+        elif "permission" in str(e).lower():
+            st.error("🔒 **Permission issue** - Please verify your service account has proper permissions")
+        
+        logger.error(f"Firebase initialization failed: {str(e)}")
         return None, None
     
     # Try to create Firebase app
