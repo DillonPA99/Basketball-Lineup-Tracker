@@ -22,6 +22,47 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 
+st.write("🔍 **Debug Information:**")
+
+# Check if secrets are available
+if hasattr(st, 'secrets'):
+    st.write("✅ st.secrets is available")
+    
+    # List all available secret keys
+    try:
+        secret_keys = list(st.secrets.keys())
+        st.write(f"📋 Available secret keys: {secret_keys}")
+    except Exception as e:
+        st.write(f"❌ Error reading secret keys: {e}")
+    
+    # Check for firebase_key specifically
+    if 'firebase_key' in st.secrets:
+        st.write("✅ firebase_key found in secrets")
+        
+        # Check individual fields
+        firebase_config = st.secrets['firebase_key']
+        required_fields = ['type', 'project_id', 'private_key_id', 'private_key', 'client_email']
+        
+        for field in required_fields:
+            if field in firebase_config:
+                if field == 'private_key':
+                    # Don't show the full private key for security
+                    key_preview = firebase_config[field][:50] + "..." if len(firebase_config[field]) > 50 else firebase_config[field]
+                    st.write(f"✅ {field}: {key_preview}")
+                else:
+                    st.write(f"✅ {field}: {firebase_config[field]}")
+            else:
+                st.write(f"❌ Missing field: {field}")
+                
+    else:
+        st.write("❌ firebase_key NOT found in secrets")
+        st.write("Available keys:", list(st.secrets.keys()) if st.secrets else "No secrets available")
+        
+else:
+    st.write("❌ st.secrets is not available")
+
+st.write("---")
+
 # ------------------------------------------------------------------
 # Page configuration
 # ------------------------------------------------------------------
