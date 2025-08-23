@@ -144,100 +144,6 @@ def test_firebase_connection(db):
                 # Try to get one document from each collection
                 docs = db.collection(collection_name).limit(1).get()
                 st.write(f"✅ Collection '{collection_name}' accessible ({len(docs)} docs)")
-            except Exception as e:
-                st.write(f"⚠️ Collection '{collection_name}': {str(e)}")
-        
-        # Lineup Plus/Minus
-        st.write("**Lineup Plus/Minus**")
-        lineup_stats = calculate_lineup_plus_minus()
-        
-        if lineup_stats:
-            lineup_plus_minus_data = []
-            for lineup, stats in lineup_stats.items():
-                lineup_plus_minus_data.append({
-                    "Lineup": lineup,
-                    "Plus/Minus": f"+{stats['plus_minus']}" if stats['plus_minus'] >= 0 else str(stats['plus_minus']),
-                    "Appearances": stats['appearances'],
-                    "Raw +/-": stats['plus_minus']
-                })
-            
-            if lineup_plus_minus_data:
-                lineup_df = pd.DataFrame(lineup_plus_minus_data)
-                lineup_df = lineup_df.sort_values("Raw +/-", ascending=False)
-                
-                st.dataframe(
-                    lineup_df[["Lineup", "Plus/Minus", "Appearances"]].style.applymap(
-                        color_plus_minus, subset=["Plus/Minus"]
-                    ),
-                    use_container_width=True,
-                    hide_index=True
-                )
-                
-                # Best and Worst Lineups
-                if len(lineup_df) > 0:
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.success(f"**Best Lineup:** +{lineup_df.iloc[0]['Raw +/-']}")
-                        st.write(f"_{lineup_df.iloc[0]['Lineup']}_")
-                    with col2:
-                        st.error(f"**Worst Lineup:** {lineup_df.iloc[-1]['Raw +/-']}")
-                        st.write(f"_{lineup_df.iloc[-1]['Lineup']}_")
-        else:
-            st.info("No lineup plus/minus data available yet.")
-
-        # Individual Player Statistics
-        if st.session_state.player_stats:
-            st.subheader("🏀 Individual Player Statistics")
-            
-            # Shooting statistics table
-            shooting_stats = calculate_player_shooting_stats()
-            
-            if shooting_stats:
-                stats_data = []
-                for player, stats in shooting_stats.items():
-                    stats_data.append({
-                        'Player': player.split('(')[0].strip(),
-                        'Points': stats['points'],
-                        'FG Made-Att': f"{stats['fg_made']}-{stats['fg_attempted']}",
-                        'FG%': f"{stats['fg_percentage']:.1f}%" if stats['fg_percentage'] > 0 else "0.0%",
-                        '3PT Made-Att': f"{stats['three_pt_made']}-{stats['three_pt_attempted']}",
-                        '3PT%': f"{stats['three_pt_percentage']:.1f}%" if stats['three_pt_percentage'] > 0 else "0.0%",
-                        'FT Made-Att': f"{stats['ft_made']}-{stats['ft_attempted']}",
-                        'FT%': f"{stats['ft_percentage']:.1f}%" if stats['ft_percentage'] > 0 else "0.0%"
-                    })
-                
-                if stats_data:
-                    stats_df = pd.DataFrame(stats_data)
-                    stats_df = stats_df.sort_values('Points', ascending=False)
-                    
-                    st.dataframe(
-                        stats_df,
-                        use_container_width=True,
-                        hide_index=True
-                    )
-                    
-                    # Top scorer highlight
-                    if len(stats_df) > 0:
-                        top_scorer = stats_df.iloc[0]
-                        st.success(f"🏆 Leading Scorer: {top_scorer['Player']} with {top_scorer['Points']} points")
-                    
-                    # Scoring chart
-                    fig_scoring = px.bar(
-                        stats_df.head(10),  # Top 10 scorers
-                        x='Player',
-                        y='Points',
-                        title='Top Scorers',
-                        color='Points',
-                        color_continuous_scale='viridis'
-                    )
-                    fig_scoring.update_xaxes(tickangle=45)
-                    st.plotly_chart(fig_scoring, use_container_width=True)
-
-# ------------------------------------------------------------------
-# Footer
-# ------------------------------------------------------------------
-st.divider()
-st.markdown("*Basketball Lineup Tracker Pro - Track your team's performance in real-time*")write(f"✅ Collection '{collection_name}' is accessible")
                 logger.info(f"Collection '{collection_name}' is accessible")
             except Exception as e:
                 error_msg = str(e)
@@ -278,11 +184,101 @@ st.markdown("*Basketball Lineup Tracker Pro - Track your team's performance in r
         except Exception as e:
             st.error(f"❌ Write test failed: {str(e)}")
             return False
-        
+            
     except Exception as e:
         st.error(f"❌ Firebase connection test failed: {e}")
         logger.error(f"Firebase connection test failed: {str(e)}")
         return False
+
+
+def display_lineup_and_player_stats():
+    """Display lineup plus/minus and player statistics."""
+    # Lineup Plus/Minus
+    st.write("**Lineup Plus/Minus**")
+    lineup_stats = calculate_lineup_plus_minus()
+    
+    if lineup_stats:
+        lineup_plus_minus_data = []
+        for lineup, stats in lineup_stats.items():
+            lineup_plus_minus_data.append({
+                "Lineup": lineup,
+                "Plus/Minus": f"+{stats['plus_minus']}" if stats['plus_minus'] >= 0 else str(stats['plus_minus']),
+                "Appearances": stats['appearances'],
+                "Raw +/-": stats['plus_minus']
+            })
+        
+        if lineup_plus_minus_data:
+            lineup_df = pd.DataFrame(lineup_plus_minus_data)
+            lineup_df = lineup_df.sort_values("Raw +/-", ascending=False)
+            
+            st.dataframe(
+                lineup_df[["Lineup", "Plus/Minus", "Appearances"]].style.applymap(
+                    color_plus_minus, subset=["Plus/Minus"]
+                ),
+                use_container_width=True,
+                hide_index=True
+            )
+            
+            # Best and Worst Lineups
+            if len(lineup_df) > 0:
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.success(f"**Best Lineup:** +{lineup_df.iloc[0]['Raw +/-']}")
+                    st.write(f"_{lineup_df.iloc[0]['Lineup']}_")
+                with col2:
+                    st.error(f"**Worst Lineup:** {lineup_df.iloc[-1]['Raw +/-']}")
+                    st.write(f"_{lineup_df.iloc[-1]['Lineup']}_")
+    else:
+        st.info("No lineup plus/minus data available yet.")
+
+    # Individual Player Statistics
+    if st.session_state.player_stats:
+        st.subheader("🏀 Individual Player Statistics")
+        
+        # Shooting statistics table
+        shooting_stats = calculate_player_shooting_stats()
+        
+        if shooting_stats:
+            stats_data = []
+            for player, stats in shooting_stats.items():
+                stats_data.append({
+                    'Player': player.split('(')[0].strip(),
+                    'Points': stats['points'],
+                    'FG Made-Att': f"{stats['fg_made']}-{stats['fg_attempted']}",
+                    'FG%': f"{stats['fg_percentage']:.1f}%" if stats['fg_percentage'] > 0 else "0.0%",
+                    '3PT Made-Att': f"{stats['three_pt_made']}-{stats['three_pt_attempted']}",
+                    '3PT%': f"{stats['three_pt_percentage']:.1f}%" if stats['three_pt_percentage'] > 0 else "0.0%",
+                    'FT Made-Att': f"{stats['ft_made']}-{stats['ft_attempted']}",
+                    'FT%': f"{stats['ft_percentage']:.1f}%" if stats['ft_percentage'] > 0 else "0.0%"
+                })
+            
+            if stats_data:
+                stats_df = pd.DataFrame(stats_data)
+                stats_df = stats_df.sort_values('Points', ascending=False)
+                
+                st.dataframe(
+                    stats_df,
+                    use_container_width=True,
+                    hide_index=True
+                )
+                
+                # Top scorer highlight
+                if len(stats_df) > 0:
+                    top_scorer = stats_df.iloc[0]
+                    st.success(f"🏆 Leading Scorer: {top_scorer['Player']} with {top_scorer['Points']} points")
+                
+                # Scoring chart
+                fig_scoring = px.bar(
+                    stats_df.head(10),  # Top 10 scorers
+                    x='Player',
+                    y='Points',
+                    title='Top Scorers',
+                    color='Points',
+                    color_continuous_scale='viridis'
+                )
+                fig_scoring.update_xaxes(tickangle=45)
+                st.plotly_chart(fig_scoring, use_container_width=True)
+
 
 # Initialize Firebase with user-friendly error handling
 with st.spinner("Connecting to Firebase..."):
@@ -302,6 +298,9 @@ if not test_firebase_connection(db):
     st.stop()
 else:
     st.success("🎉 **Firebase connection successful!**")
+    
+    # Display statistics if connection is successful
+    display_lineup_and_player_stats()
 
 # ============================================================================
 # FIREBASE DATABASE FUNCTIONS (REPLACE SUPABASE FUNCTIONS)
