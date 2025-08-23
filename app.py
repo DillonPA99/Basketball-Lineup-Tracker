@@ -143,28 +143,9 @@ def test_firebase_connection(db):
             try:
                 # Try to get one document from each collection
                 docs = db.collection(collection_name).limit(1).get()
-                st.dataframe(
-                    plus_minus_df[["Player", "Plus/Minus"]].style.applymap(
-                        color_plus_minus, subset=["Plus/Minus"]
-                    ),
-                    use_container_width=True,
-                    hide_index=True
-                )
-                
-                # Plus/Minus Chart
-                fig_individual = px.bar(
-                    plus_minus_df, 
-                    x="Player", 
-                    y="Raw +/-",
-                    title="Individual Player Plus/Minus",
-                    color="Raw +/-",
-                    color_continuous_scale=["red", "white", "green"],
-                    color_continuous_midpoint=0
-                )
-                fig_individual.update_xaxes(tickangle=45)
-                st.plotly_chart(fig_individual, use_container_width=True)
-        else:
-            st.info("No plus/minus data available yet.")
+                st.write(f"✅ Collection '{collection_name}' accessible ({len(docs)} docs)")
+            except Exception as e:
+                st.write(f"⚠️ Collection '{collection_name}': {str(e)}")
         
         # Lineup Plus/Minus
         st.write("**Lineup Plus/Minus**")
@@ -251,84 +232,6 @@ def test_firebase_connection(db):
                     )
                     fig_scoring.update_xaxes(tickangle=45)
                     st.plotly_chart(fig_scoring, use_container_width=True)
-
-# ------------------------------------------------------------------
-# Tab 3: Event Log
-# ------------------------------------------------------------------
-with tab3:
-    st.header("Game Event Log")
-    
-    if not st.session_state.score_history and not st.session_state.lineup_history:
-        st.info("No events logged yet.")
-    else:
-        # Filter options
-        col1, col2 = st.columns(2)
-        with col1:
-            event_filter = st.selectbox(
-                "Filter Events:",
-                ["All Events", "Scoring Only", "Lineup Changes Only"]
-            )
-        
-        with col2:
-            quarter_filter = st.selectbox(
-                "Quarter Filter:",
-                ["All Quarters"] + [q for q in ["Q1", "Q2", "Q3", "Q4", "OT1", "OT2", "OT3"]]
-            )
-        
-        # Combine and filter events
-        all_events = []
-        
-        # Add score events with enhanced details
-        for score in st.session_state.score_history:
-            if quarter_filter == "All Quarters" or score['quarter'] == quarter_filter:
-                if event_filter in ["All Events", "Scoring Only"]:
-                    description = f"{score['team'].title()} +{score['points']} points"
-                    if score.get('scorer'):
-                        description += f" by {score['scorer'].split('(')[0].strip()}"
-                    if score.get('shot_type'):
-                        shot_display = {
-                            'field_goal': '2PT Field Goal',
-                            'three_pointer': '3PT Field Goal', 
-                            'free_throw': 'Free Throw'
-                        }
-                        description += f" ({shot_display.get(score['shot_type'], 'Shot')})"
-                    
-                    all_events.append({
-                        'type': 'Score',
-                        'description': description,
-                        'quarter': score['quarter'],
-                        'game_time': score.get('game_time', 'Unknown'),
-                        'details': f"Lineup: {' | '.join([p.split('(')[0].strip() for p in score['lineup']])}",
-                        'timestamp': score.get('timestamp', datetime.now())
-                    })
-        
-        # Add lineup events
-        for lineup in st.session_state.lineup_history:
-            if quarter_filter == "All Quarters" or lineup['quarter'] == quarter_filter:
-                if event_filter in ["All Events", "Lineup Changes Only"]:
-                    if lineup.get('is_quarter_end'):
-                        desc = f"{lineup['quarter']} ended (snapshot)"
-                    else:
-                        desc = "New lineup set"
-                    
-                    all_events.append({
-                        'type': 'Lineup Change' if not lineup.get('is_quarter_end') else 'Quarter End',
-                        'description': desc,
-                        'quarter': lineup['quarter'],
-                        'game_time': lineup.get('game_time', 'Unknown'),
-                        'details': f"Players: {' | '.join([p.split('(')[0].strip() for p in lineup['new_lineup']])}",
-                        'timestamp': lineup.get('timestamp', datetime.now())
-                    })
-        
-        # Sort by timestamp
-        all_events.sort(key=lambda x: x['timestamp'])
-        
-        # Display events
-        for i, event in enumerate(all_events, 1):
-            st.write(f"**{i}. {event['type']}** - {event['quarter']} at {event['game_time']}")
-            st.write(f"_{event['description']}_")
-            st.write(f"Details: {event['details']}")
-            st.divider()
 
 # ------------------------------------------------------------------
 # Footer
