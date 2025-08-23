@@ -7,10 +7,10 @@ import json
 from collections import defaultdict
 import plotly.express as px
 import plotly.graph_objects as go
-import firebase_admin
-from firebase_admin import credentials, firestore
 import hashlib
 import os
+import time
+import logging
 from datetime import datetime, timedelta
 import pickle
 import base64
@@ -18,7 +18,9 @@ import io
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils.dataframe import dataframe_to_rows
-
+import firebase_admin
+from firebase_admin import credentials, firestore
+from google.cloud.firestore_v1.base_query import FieldFilter
 
 # ------------------------------------------------------------------
 # Page configuration
@@ -30,114 +32,378 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # ============================================================================
-# FIREBASE CONNECTION SETUP WITH ERROR HANDLING
+# FIREBASE DATABASE FUNCTIONS
 # ============================================================================
 
-try:
-    # Get credentials from Streamlit secrets
-    firebase_config = {
-        "type": st.secrets["firebase"]["type"],
-        "project_id": st.secrets["firebase"]["project_id"],
-        "private_key_id": st.secrets["firebase"]["private_key_id"],
-        "private_key": st.secrets["firebase"]["private_key"],
-        "client_email": st.secrets["firebase"]["client_email"],
-        "client_id": st.secrets["firebase"]["client_id"],
-        "auth_uri": st.secrets["firebase"]["auth_uri"],
-        "token_uri": st.secrets["firebase"]["token_uri"],
-        "auth_provider_x509_cert_url": st.secrets["firebase"]["auth_provider_x509_cert_url"],
-        "client_x509_cert_url": st.secrets["firebase"]["client_x509_cert_url"],
-        "universe_domain": st.secrets["firebase"]["universe_domain"]
-    }
-except KeyError as e:
-    st.error("❌ **Configuration Error**: Firebase credentials are missing!")
-    st.write("**How to fix this:**")
+def load_firebase_credentials():
+    """Load Firebase credentials with multiple fallback methods."""
+    # Try different secret key variations
+    secret_variations = [
+        "firebase_key",
+        "FIREBASE_KEY", 
+        "firebase_credentials",
+        "FIREBASE_CREDENTIALS"
+    ]
     
-    st.write("""
-    **For Streamlit Cloud:**
-    1. Go to your app settings in Streamlit Cloud
-    2. Click on the "Secrets" tab
-    3. Add the following secrets in TOML format:
+    for key_name in secret_variations:
+        try:
+            if hasattr(st, 'secrets') and key_name in st.secrets:
+                cred_data = st.secrets[key_name]
+                if cred_data:
+                    return cred_data
+        except Exception:
+            continue
     
-    ```toml
-    [firebase]
-    type = "service_account"
-    project_id = "your_project_id"
-    private_key_id = "your_private_key_id"
-    private_key = "-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n"
-    client_email = "your_service_account_email"
-    client_id = "your_client_id"
-    auth_uri = "https://accounts.google.com/o/oauth2/auth"
-    token_uri = "https://oauth2.googleapis.com/token"
-    auth_provider_x509_cert_url = "https://www.googleapis.com/oauth2/v1/certs"
-    client_x509_cert_url = "your_cert_url"
-    universe_domain = "googleapis.com"
-    ```
+    # Fallback to environment variables
+    try:
+        cred_json = os.getenv("FIREBASE_CREDENTIALS")
+        if cred_json:
+            return json.loads(cred_json)
+    except Exception:
+        pass
     
-    4. Save and redeploy your app
-    
-    **For local development:**
-    1. Create a `.streamlit/secrets.toml` file in your app directory
-    2. Add the same TOML content as above
-    3. Restart your Streamlit app
-    """)
-    
-    st.write("**To get your Firebase credentials:**")
-    st.write("""
-    1. Go to your Firebase project console
-    2. Click on "Project Settings" → "Service accounts"
-    3. Click "Generate new private key"
-    4. Download the JSON file and extract the values for your secrets
-    """)
-    
-    st.stop()
+    return None
 
-# Firebase initialization
 @st.cache_resource
 def init_firebase():
-    """Initialize Firebase connection"""
-    if not firebase_admin._apps:
-        try:
-            cred = credentials.Certificate(firebase_config)
-            firebase_admin.initialize_app(cred)
-            return firestore.client()
-        except Exception as e:
-            st.error(f"Firebase initialization failed: {str(e)}")
-            return None
-    else:
-        return firestore.client()
-
-# Database handler class
-class FirebaseGameDB:
-    def __init__(self, db):
-        self.db = db
-
-db = init_firebase()
-if db is None:
-    st.error("Failed to initialize Firebase. Please check your configuration.")
-    st.stop()
-
-firebase_db = FirebaseGameDB(db)
-
-# ============================================================================
-# DATABASE INITIALIZATION (FIREBASE)
-# ============================================================================
-
-def init_database():
-    """Initialize the database collections in Firestore."""
+    """Initialize Firebase with robust error handling and caching."""
+    
+    # Check if Firebase is already initialized
+    if firebase_admin._apps:
+        return firebase_admin.get_app(), firestore.client()
+    
+    cred_data = load_firebase_credentials()
+    
+    # Debug: Show what we found (safely)
+    st.write("🔍 **Debug Info:**")
+    st.write(f"- Firebase Credentials found: {'✅ Yes' if cred_data else '❌ No'}")
+    
+    if cred_data:
+        if isinstance(cred_data, dict) and 'project_id' in cred_data:
+            st.write(f"- Project ID: {cred_data.get('project_id', 'Unknown')}")
+        
+    if not cred_data:
+        st.error("❌ **Missing Firebase credentials!** Please check your Streamlit secrets or environment variables.")
+        st.write("""
+        **Setup Instructions:**
+        1. Go to Firebase Console → Project Settings → Service Accounts
+        2. Generate a new private key (JSON file)
+        3. Add the JSON content to Streamlit secrets as `firebase_key`
+        
+        **Expected format in .streamlit/secrets.toml:**
+        ```toml
+        [firebase_key]
+        type = "service_account"
+        project_id = "your-project-id"
+        private_key_id = "..."
+        private_key = "-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n"
+        client_email = "..."
+        client_id = "..."
+        auth_uri = "https://accounts.google.com/o/oauth2/auth"
+        token_uri = "https://oauth2.googleapis.com/token"
+        auth_provider_x509_cert_url = "https://www.googleapis.com/oauth2/v1/certs"
+        client_x509_cert_url = "..."
+        ```
+        """)
+        return None, None
+    
+    # Try to create Firebase app
     try:
-        # Firestore creates collections automatically when first document is added
-        # We'll just verify the connection works
-        test_ref = db.collection('test').document('connection_test')
-        test_ref.set({'status': 'connected', 'timestamp': datetime.now()})
-        test_ref.delete()  # Clean up test document
-        st.success("✅ Firebase connection verified!")
+        # Convert secrets format to dict if needed
+        if hasattr(cred_data, '_asdict'):
+            cred_dict = dict(cred_data._asdict())
+        else:
+            cred_dict = dict(cred_data)
+        
+        cred = credentials.Certificate(cred_dict)
+        app = firebase_admin.initialize_app(cred)
+        db = firestore.client()
+        
+        st.write("✅ Firebase client created successfully")
+        return app, db
+        
     except Exception as e:
-        st.error(f"Database initialization error: {e}")
+        st.error(f"❌ **Failed to create Firebase client:** {str(e)}")
+        return None, None
+
+def test_firebase_connection(db):
+    """Test Firebase connection and setup collections."""
+    try:
+        st.write("🔍 **Testing Firebase connection...**")
+        
+        # Test connection with a simple read
+        collections_to_check = ['users', 'user_rosters', 'game_sessions', 'product_keys']
+        
+        for collection_name in collections_to_check:
+            try:
+                # Try to get one document from each collection
+                docs = db.collection(collection_name).limit(1).get()
+                st.dataframe(
+                    plus_minus_df[["Player", "Plus/Minus"]].style.applymap(
+                        color_plus_minus, subset=["Plus/Minus"]
+                    ),
+                    use_container_width=True,
+                    hide_index=True
+                )
+                
+                # Plus/Minus Chart
+                fig_individual = px.bar(
+                    plus_minus_df, 
+                    x="Player", 
+                    y="Raw +/-",
+                    title="Individual Player Plus/Minus",
+                    color="Raw +/-",
+                    color_continuous_scale=["red", "white", "green"],
+                    color_continuous_midpoint=0
+                )
+                fig_individual.update_xaxes(tickangle=45)
+                st.plotly_chart(fig_individual, use_container_width=True)
+        else:
+            st.info("No plus/minus data available yet.")
+        
+        # Lineup Plus/Minus
+        st.write("**Lineup Plus/Minus**")
+        lineup_stats = calculate_lineup_plus_minus()
+        
+        if lineup_stats:
+            lineup_plus_minus_data = []
+            for lineup, stats in lineup_stats.items():
+                lineup_plus_minus_data.append({
+                    "Lineup": lineup,
+                    "Plus/Minus": f"+{stats['plus_minus']}" if stats['plus_minus'] >= 0 else str(stats['plus_minus']),
+                    "Appearances": stats['appearances'],
+                    "Raw +/-": stats['plus_minus']
+                })
+            
+            if lineup_plus_minus_data:
+                lineup_df = pd.DataFrame(lineup_plus_minus_data)
+                lineup_df = lineup_df.sort_values("Raw +/-", ascending=False)
+                
+                st.dataframe(
+                    lineup_df[["Lineup", "Plus/Minus", "Appearances"]].style.applymap(
+                        color_plus_minus, subset=["Plus/Minus"]
+                    ),
+                    use_container_width=True,
+                    hide_index=True
+                )
+                
+                # Best and Worst Lineups
+                if len(lineup_df) > 0:
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.success(f"**Best Lineup:** +{lineup_df.iloc[0]['Raw +/-']}")
+                        st.write(f"_{lineup_df.iloc[0]['Lineup']}_")
+                    with col2:
+                        st.error(f"**Worst Lineup:** {lineup_df.iloc[-1]['Raw +/-']}")
+                        st.write(f"_{lineup_df.iloc[-1]['Lineup']}_")
+        else:
+            st.info("No lineup plus/minus data available yet.")
+
+        # Individual Player Statistics
+        if st.session_state.player_stats:
+            st.subheader("🏀 Individual Player Statistics")
+            
+            # Shooting statistics table
+            shooting_stats = calculate_player_shooting_stats()
+            
+            if shooting_stats:
+                stats_data = []
+                for player, stats in shooting_stats.items():
+                    stats_data.append({
+                        'Player': player.split('(')[0].strip(),
+                        'Points': stats['points'],
+                        'FG Made-Att': f"{stats['fg_made']}-{stats['fg_attempted']}",
+                        'FG%': f"{stats['fg_percentage']:.1f}%" if stats['fg_percentage'] > 0 else "0.0%",
+                        '3PT Made-Att': f"{stats['three_pt_made']}-{stats['three_pt_attempted']}",
+                        '3PT%': f"{stats['three_pt_percentage']:.1f}%" if stats['three_pt_percentage'] > 0 else "0.0%",
+                        'FT Made-Att': f"{stats['ft_made']}-{stats['ft_attempted']}",
+                        'FT%': f"{stats['ft_percentage']:.1f}%" if stats['ft_percentage'] > 0 else "0.0%"
+                    })
+                
+                if stats_data:
+                    stats_df = pd.DataFrame(stats_data)
+                    stats_df = stats_df.sort_values('Points', ascending=False)
+                    
+                    st.dataframe(
+                        stats_df,
+                        use_container_width=True,
+                        hide_index=True
+                    )
+                    
+                    # Top scorer highlight
+                    if len(stats_df) > 0:
+                        top_scorer = stats_df.iloc[0]
+                        st.success(f"🏆 Leading Scorer: {top_scorer['Player']} with {top_scorer['Points']} points")
+                    
+                    # Scoring chart
+                    fig_scoring = px.bar(
+                        stats_df.head(10),  # Top 10 scorers
+                        x='Player',
+                        y='Points',
+                        title='Top Scorers',
+                        color='Points',
+                        color_continuous_scale='viridis'
+                    )
+                    fig_scoring.update_xaxes(tickangle=45)
+                    st.plotly_chart(fig_scoring, use_container_width=True)
+
+# ------------------------------------------------------------------
+# Tab 3: Event Log
+# ------------------------------------------------------------------
+with tab3:
+    st.header("Game Event Log")
+    
+    if not st.session_state.score_history and not st.session_state.lineup_history:
+        st.info("No events logged yet.")
+    else:
+        # Filter options
+        col1, col2 = st.columns(2)
+        with col1:
+            event_filter = st.selectbox(
+                "Filter Events:",
+                ["All Events", "Scoring Only", "Lineup Changes Only"]
+            )
+        
+        with col2:
+            quarter_filter = st.selectbox(
+                "Quarter Filter:",
+                ["All Quarters"] + [q for q in ["Q1", "Q2", "Q3", "Q4", "OT1", "OT2", "OT3"]]
+            )
+        
+        # Combine and filter events
+        all_events = []
+        
+        # Add score events with enhanced details
+        for score in st.session_state.score_history:
+            if quarter_filter == "All Quarters" or score['quarter'] == quarter_filter:
+                if event_filter in ["All Events", "Scoring Only"]:
+                    description = f"{score['team'].title()} +{score['points']} points"
+                    if score.get('scorer'):
+                        description += f" by {score['scorer'].split('(')[0].strip()}"
+                    if score.get('shot_type'):
+                        shot_display = {
+                            'field_goal': '2PT Field Goal',
+                            'three_pointer': '3PT Field Goal', 
+                            'free_throw': 'Free Throw'
+                        }
+                        description += f" ({shot_display.get(score['shot_type'], 'Shot')})"
+                    
+                    all_events.append({
+                        'type': 'Score',
+                        'description': description,
+                        'quarter': score['quarter'],
+                        'game_time': score.get('game_time', 'Unknown'),
+                        'details': f"Lineup: {' | '.join([p.split('(')[0].strip() for p in score['lineup']])}",
+                        'timestamp': score.get('timestamp', datetime.now())
+                    })
+        
+        # Add lineup events
+        for lineup in st.session_state.lineup_history:
+            if quarter_filter == "All Quarters" or lineup['quarter'] == quarter_filter:
+                if event_filter in ["All Events", "Lineup Changes Only"]:
+                    if lineup.get('is_quarter_end'):
+                        desc = f"{lineup['quarter']} ended (snapshot)"
+                    else:
+                        desc = "New lineup set"
+                    
+                    all_events.append({
+                        'type': 'Lineup Change' if not lineup.get('is_quarter_end') else 'Quarter End',
+                        'description': desc,
+                        'quarter': lineup['quarter'],
+                        'game_time': lineup.get('game_time', 'Unknown'),
+                        'details': f"Players: {' | '.join([p.split('(')[0].strip() for p in lineup['new_lineup']])}",
+                        'timestamp': lineup.get('timestamp', datetime.now())
+                    })
+        
+        # Sort by timestamp
+        all_events.sort(key=lambda x: x['timestamp'])
+        
+        # Display events
+        for i, event in enumerate(all_events, 1):
+            st.write(f"**{i}. {event['type']}** - {event['quarter']} at {event['game_time']}")
+            st.write(f"_{event['description']}_")
+            st.write(f"Details: {event['details']}")
+            st.divider()
+
+# ------------------------------------------------------------------
+# Footer
+# ------------------------------------------------------------------
+st.divider()
+st.markdown("*Basketball Lineup Tracker Pro - Track your team's performance in real-time*")write(f"✅ Collection '{collection_name}' is accessible")
+                logger.info(f"Collection '{collection_name}' is accessible")
+            except Exception as e:
+                error_msg = str(e)
+                st.write(f"⚠️ Collection '{collection_name}': {error_msg}")
+                
+                # Collections will be created automatically when first document is added
+                if "not found" in error_msg.lower():
+                    st.info(f"Collection '{collection_name}' will be created automatically when first document is added")
+                else:
+                    st.error(f"Connection/Auth error for collection '{collection_name}': {error_msg}")
+                
+                logger.warning(f"Collection check failed for '{collection_name}': {str(e)}")
+        
+        # Test basic write operation
+        st.write("🔍 **Testing write permissions...**")
+        try:
+            # Try to write a test document
+            test_ref = db.collection('test').document('connection_test')
+            test_ref.set({
+                'test': True,
+                'timestamp': datetime.now()
+            })
+            
+            # Try to read it back
+            doc = test_ref.get()
+            if doc.exists:
+                st.write("✅ Write/Read test passed!")
+                
+                # Clean up test document
+                test_ref.delete()
+                st.write("✅ Delete test passed!")
+                
+                return True
+            else:
+                st.error("❌ Write test failed - document not found after creation")
+                return False
+                
+        except Exception as e:
+            st.error(f"❌ Write test failed: {str(e)}")
+            return False
+        
+    except Exception as e:
+        st.error(f"❌ Firebase connection test failed: {e}")
+        logger.error(f"Firebase connection test failed: {str(e)}")
+        return False
+
+# Initialize Firebase with user-friendly error handling
+with st.spinner("Connecting to Firebase..."):
+    firebase_app, db = init_firebase()
+
+if db is None:
+    st.error("""
+    **Firebase connection failed!** Check the debug info above to see what's missing.
+    """)
+    st.stop()
+else:
+    st.success("✅ **Firebase client created!** Now testing database access...")
+
+# Test the Firebase connection
+if not test_firebase_connection(db):
+    st.error("❌ **Firebase connection test failed!** Check the details above.")
+    st.stop()
+else:
+    st.success("🎉 **Firebase connection successful!**")
 
 # ============================================================================
-# PASSWORD SECURITY (UNCHANGED)
+# FIREBASE DATABASE FUNCTIONS (REPLACE SUPABASE FUNCTIONS)
 # ============================================================================
+
 def hash_password(password):
     """Hash a password for storing."""
     return hashlib.sha256(password.encode()).hexdigest()
@@ -160,7 +426,7 @@ def generate_product_key():
     return '-'.join(key_parts)
 
 def create_product_key(created_by_user_id, description="", max_uses=1, expires_days=30):
-    """Create a new product key in Firestore."""
+    """Create a new product key in Firebase."""
     try:
         key = generate_product_key()
         expires_at = datetime.now() + timedelta(days=expires_days) if expires_days else None
@@ -185,32 +451,30 @@ def create_product_key(created_by_user_id, description="", max_uses=1, expires_d
 def validate_product_key(key_code):
     """Validate a product key and check if it can be used."""
     try:
-        # Query for the product key
-        keys_ref = db.collection('product_keys')
-        query = keys_ref.where('key_code', '==', key_code).where('is_active', '==', True).limit(1)
-        docs = query.stream()
+        # Query for the key
+        docs = db.collection('product_keys').where(
+            filter=FieldFilter('key_code', '==', key_code)
+        ).where(
+            filter=FieldFilter('is_active', '==', True)
+        ).limit(1).get()
         
-        key_doc = None
-        for doc in docs:
-            key_doc = doc
-            break
-            
-        if not key_doc:
+        if not docs:
             return False, "Invalid product key"
         
-        key_info = key_doc.to_dict()
-        key_info['id'] = key_doc.id
+        key_doc = docs[0]
+        key_data = key_doc.to_dict()
+        key_data['id'] = key_doc.id  # Add document ID
         
         # Check if expired
-        if key_info['expires_at']:
-            if datetime.now() > key_info['expires_at']:
+        if key_data['expires_at']:
+            if datetime.now() > key_data['expires_at']:
                 return False, "Product key has expired"
         
         # Check if uses exceeded
-        if key_info['current_uses'] >= key_info['max_uses']:
+        if key_data['current_uses'] >= key_data['max_uses']:
             return False, "Product key has reached maximum uses"
         
-        return True, key_info
+        return True, key_data
         
     except Exception as e:
         return False, f"Error validating product key: {str(e)}"
@@ -222,7 +486,8 @@ def use_product_key(key_id, used_by_user_id):
         key_doc = key_ref.get()
         
         if key_doc.exists:
-            current_uses = key_doc.to_dict()['current_uses']
+            key_data = key_doc.to_dict()
+            current_uses = key_data.get('current_uses', 0)
             
             # Update usage count
             key_ref.update({
@@ -241,16 +506,15 @@ def use_product_key(key_id, used_by_user_id):
 def get_all_product_keys():
     """Get all product keys (for admin panel)."""
     try:
-        keys_ref = db.collection('product_keys').order_by('created_at', direction=firestore.Query.DESCENDING)
-        docs = keys_ref.stream()
+        docs = db.collection('product_keys').order_by('created_at', direction=firestore.Query.DESCENDING).get()
         
-        keys_data = []
+        keys = []
         for doc in docs:
             key_data = doc.to_dict()
             key_data['id'] = doc.id
-            keys_data.append(key_data)
-            
-        return keys_data
+            keys.append(key_data)
+        
+        return keys
         
     except Exception as e:
         st.error(f"Error fetching product keys: {str(e)}")
@@ -259,8 +523,9 @@ def get_all_product_keys():
 def toggle_product_key_status(key_id, is_active):
     """Enable/disable a product key."""
     try:
-        key_ref = db.collection('product_keys').document(key_id)
-        key_ref.update({'is_active': is_active})
+        db.collection('product_keys').document(key_id).update({
+            'is_active': is_active
+        })
         
     except Exception as e:
         st.error(f"Error toggling product key status: {str(e)}")
@@ -268,8 +533,7 @@ def toggle_product_key_status(key_id, is_active):
 def delete_product_key(key_id):
     """Delete a product key."""
     try:
-        key_ref = db.collection('product_keys').document(key_id)
-        key_ref.delete()
+        db.collection('product_keys').document(key_id).delete()
         return True
     except Exception as e:
         st.error(f"Error deleting product key: {str(e)}")
@@ -280,7 +544,7 @@ def delete_product_key(key_id):
 # ============================================================================
 
 def create_user(username, password, email=None, role='user', product_key=None):
-    """Create a new user in Firestore with product key validation."""
+    """Create a new user in Firebase with product key validation."""
     try:
         # Validate product key first
         if product_key:
@@ -291,16 +555,17 @@ def create_user(username, password, email=None, role='user', product_key=None):
             return False, "Product key is required for registration"
         
         # Check if username already exists
-        users_ref = db.collection('users')
-        existing_user = users_ref.where('username', '==', username).limit(1).stream()
+        existing_users = db.collection('users').where(
+            filter=FieldFilter('username', '==', username)
+        ).limit(1).get()
         
-        if any(existing_user):
+        if existing_users:
             return False, "Username already exists"
         
         password_hash = hash_password(password)
         
         # Create user
-        doc_ref = users_ref.document()
+        doc_ref = db.collection('users').document()
         doc_ref.set({
             'username': username,
             'password_hash': password_hash,
@@ -316,6 +581,8 @@ def create_user(username, password, email=None, role='user', product_key=None):
         # Mark product key as used
         use_success, use_message = use_product_key(key_info['id'], user_id)
         if not use_success:
+            # If we can't mark the key as used, we should probably still allow the user
+            # but log the issue
             st.warning(f"User created but couldn't update product key usage: {use_message}")
         
         return True, user_id
@@ -324,22 +591,21 @@ def create_user(username, password, email=None, role='user', product_key=None):
         return False, f"Error creating user: {str(e)}"
 
 def authenticate_user(username, password):
-    """Authenticate a user with Firestore."""
+    """Authenticate a user with Firebase."""
     try:
-        users_ref = db.collection('users')
-        query = users_ref.where('username', '==', username).limit(1)
-        docs = query.stream()
+        users = db.collection('users').where(
+            filter=FieldFilter('username', '==', username)
+        ).limit(1).get()
         
-        user_doc = None
-        for doc in docs:
-            user_doc = doc
-            break
-            
-        if user_doc:
+        if users:
+            user_doc = users[0]
             user_data = user_doc.to_dict()
+            
             if user_data['is_active'] and verify_password(password, user_data['password_hash']):
                 # Update last login
-                user_doc.reference.update({'last_login': datetime.now()})
+                db.collection('users').document(user_doc.id).update({
+                    'last_login': datetime.now()
+                })
                 
                 return True, {
                     'id': user_doc.id,
@@ -357,56 +623,55 @@ def authenticate_user(username, password):
 # ============================================================================
 
 def save_user_roster(user_id, roster_data, roster_name='My Team'):
-    """Save user's roster to Firestore."""
+    """Save user's roster to Firebase."""
     try:
         # Convert roster to JSON string
         roster_json = pickle.dumps(roster_data)
         roster_b64 = base64.b64encode(roster_json).decode()
         
         # Check if user already has a roster
-        rosters_ref = db.collection('user_rosters')
-        existing_query = rosters_ref.where('user_id', '==', user_id).limit(1)
-        existing_docs = list(existing_query.stream())
+        existing_rosters = db.collection('user_rosters').where(
+            filter=FieldFilter('user_id', '==', user_id)
+        ).limit(1).get()
         
-        roster_data_dict = {
-            'user_id': user_id,
-            'roster_name': roster_name,
-            'roster_data': roster_b64,
-            'updated_at': datetime.now()
-        }
-        
-        if existing_docs:
+        if existing_rosters:
             # Update existing roster
-            existing_docs[0].reference.update(roster_data_dict)
+            roster_doc = existing_rosters[0]
+            db.collection('user_rosters').document(roster_doc.id).update({
+                'roster_data': roster_b64,
+                'roster_name': roster_name,
+                'updated_at': datetime.now()
+            })
         else:
-            # Create new roster
-            roster_data_dict['created_at'] = datetime.now()
-            rosters_ref.document().set(roster_data_dict)
+            # Insert new roster
+            db.collection('user_rosters').document().set({
+                'user_id': user_id,
+                'roster_name': roster_name,
+                'roster_data': roster_b64,
+                'created_at': datetime.now(),
+                'updated_at': datetime.now()
+            })
             
-        return True
+        return True  # Return success indicator
         
     except Exception as e:
         st.error(f"Error saving roster: {str(e)}")
-        return False
+        return False  # Return failure indicator
 
 def load_user_roster(user_id):
-    """Load user's roster from Firestore."""
+    """Load user's roster from Firebase."""
     try:
-        rosters_ref = db.collection('user_rosters')
-        query = rosters_ref.where('user_id', '==', user_id).limit(1)
-        docs = query.stream()
+        rosters = db.collection('user_rosters').where(
+            filter=FieldFilter('user_id', '==', user_id)
+        ).limit(1).get()
         
-        roster_doc = None
-        for doc in docs:
-            roster_doc = doc
-            break
-            
-        if roster_doc:
-            result = roster_doc.to_dict()
-            roster_b64 = result['roster_data']
-            roster_name = result['roster_name']
-            roster_data = pickle.loads(base64.b64decode(roster_b64))
-            return roster_data, roster_name
+        if rosters:
+            roster_doc = rosters[0]
+            roster_data = roster_doc.to_dict()
+            roster_b64 = roster_data['roster_data']
+            roster_name = roster_data['roster_name']
+            roster_obj = pickle.loads(base64.b64decode(roster_b64))
+            return roster_obj, roster_name
             
         return None, None
         
@@ -415,40 +680,39 @@ def load_user_roster(user_id):
         return None, None
 
 def delete_user_roster(user_id):
-    """Delete user's saved roster from Firestore."""
+    """Delete user's saved roster from Firebase."""
     try:
-        rosters_ref = db.collection('user_rosters')
-        query = rosters_ref.where('user_id', '==', user_id)
-        docs = query.stream()
+        rosters = db.collection('user_rosters').where(
+            filter=FieldFilter('user_id', '==', user_id)
+        ).get()
         
-        for doc in docs:
-            doc.reference.delete()
-            
-        return True
+        for roster_doc in rosters:
+            db.collection('user_rosters').document(roster_doc.id).delete()
+        
+        return True  # Return success indicator
         
     except Exception as e:
         st.error(f"Error deleting roster: {str(e)}")
-        return False
+        return False  # Return failure indicator
 
 def get_all_user_rosters(user_id):
-    """Get all rosters for a user."""
+    """Get all rosters for a user (if you want to support multiple rosters in the future)."""
     try:
-        rosters_ref = db.collection('user_rosters')
-        query = rosters_ref.where('user_id', '==', user_id).order_by('updated_at', direction=firestore.Query.DESCENDING)
-        docs = query.stream()
+        rosters = db.collection('user_rosters').where(
+            filter=FieldFilter('user_id', '==', user_id)
+        ).order_by('updated_at', direction=firestore.Query.DESCENDING).get()
         
-        rosters_data = []
-        for doc in docs:
-            roster_data = doc.to_dict()
-            roster_data['id'] = doc.id
-            rosters_data.append({
-                'id': doc.id,
+        roster_list = []
+        for roster_doc in rosters:
+            roster_data = roster_doc.to_dict()
+            roster_list.append({
+                'id': roster_doc.id,
                 'roster_name': roster_data['roster_name'],
-                'created_at': roster_data.get('created_at'),
+                'created_at': roster_data['created_at'],
                 'updated_at': roster_data['updated_at']
             })
-            
-        return rosters_data
+        
+        return roster_list
         
     except Exception as e:
         st.error(f"Error loading roster list: {str(e)}")
@@ -457,10 +721,10 @@ def get_all_user_rosters(user_id):
 def roster_exists(user_id):
     """Check if user has any saved rosters."""
     try:
-        rosters_ref = db.collection('user_rosters')
-        query = rosters_ref.where('user_id', '==', user_id).limit(1)
-        docs = list(query.stream())
-        return len(docs) > 0
+        rosters = db.collection('user_rosters').where(
+            filter=FieldFilter('user_id', '==', user_id)
+        ).limit(1).get()
+        return bool(rosters)
     except Exception as e:
         st.error(f"Error checking roster existence: {str(e)}")
         return False
@@ -470,16 +734,15 @@ def roster_exists(user_id):
 # ============================================================================
 
 def get_all_users():
-    """Get all users from Firestore (for admin panel)."""
+    """Get all users from Firebase (for admin panel)."""
     try:
-        users_ref = db.collection('users').order_by('created_at', direction=firestore.Query.DESCENDING)
-        docs = users_ref.stream()
+        users = db.collection('users').order_by('created_at', direction=firestore.Query.DESCENDING).get()
         
-        users = []
-        for doc in docs:
-            user_data = doc.to_dict()
-            users.append((
-                doc.id,
+        user_list = []
+        for user_doc in users:
+            user_data = user_doc.to_dict()
+            user_list.append((
+                user_doc.id,
                 user_data['username'],
                 user_data.get('email'),
                 user_data['role'],
@@ -487,17 +750,19 @@ def get_all_users():
                 user_data.get('last_login'),
                 user_data['is_active']
             ))
-        return users
+        
+        return user_list
         
     except Exception as e:
         st.error(f"Error fetching users: {str(e)}")
         return []
 
 def toggle_user_status(user_id, is_active):
-    """Enable/disable a user in Firestore."""
+    """Enable/disable a user in Firebase."""
     try:
-        user_ref = db.collection('users').document(user_id)
-        user_ref.update({'is_active': is_active})
+        db.collection('users').document(user_id).update({
+            'is_active': is_active
+        })
         
     except Exception as e:
         st.error(f"Error toggling user status: {str(e)}")
@@ -506,71 +771,58 @@ def toggle_user_status(user_id, is_active):
 # DATABASE VIEWER FUNCTIONS (FIREBASE VERSION)
 # ============================================================================
 
-def get_table_info():
-    """Get information about all collections in Firestore."""
-    table_info = {}
+def get_collection_info():
+    """Get information about all collections in Firebase."""
+    collection_info = {}
     collections = ['users', 'user_rosters', 'game_sessions', 'product_keys']
     
     for collection_name in collections:
         try:
-            # Get document count (approximation)
-            collection_ref = db.collection(collection_name)
-            docs = list(collection_ref.limit(1000).stream())  # Limited count for performance
-            row_count = len(docs)
+            # Get document count
+            docs = db.collection(collection_name).get()
+            doc_count = len(docs)
             
-            # Get a sample document to understand structure
-            sample_doc = None
+            # Get sample document to understand structure
+            sample_fields = []
             if docs:
                 sample_doc = docs[0].to_dict()
+                sample_fields = list(sample_doc.keys())
             
-            # Create column info based on sample document
-            columns = []
-            if sample_doc:
-                for i, (key, value) in enumerate(sample_doc.items()):
-                    # Determine type based on value
-                    if isinstance(value, str):
-                        col_type = 'string'
-                    elif isinstance(value, int):
-                        col_type = 'integer'
-                    elif isinstance(value, bool):
-                        col_type = 'boolean'
-                    elif isinstance(value, datetime):
-                        col_type = 'timestamp'
-                    else:
-                        col_type = 'mixed'
-                    
-                    columns.append((i, key, col_type, False, None, key == 'id'))
-            
-            table_info[collection_name] = {
-                'columns': columns,
-                'row_count': row_count
+            collection_info[collection_name] = {
+                'doc_count': doc_count,
+                'sample_fields': sample_fields
             }
             
         except Exception as e:
             st.error(f"Error getting info for collection {collection_name}: {str(e)}")
             
-    return table_info
+    return collection_info
 
-def get_table_data(collection_name, limit=100):
-    """Get data from a specific Firestore collection."""
+def get_collection_data(collection_name, limit=100):
+    """Get data from a specific Firebase collection."""
     try:
-        collection_ref = db.collection(collection_name).limit(limit)
-        docs = collection_ref.stream()
+        docs = db.collection(collection_name).limit(limit).get()
         
         data = []
         columns = []
         
-        docs_list = list(docs)
-        if docs_list:
-            # Get columns from first document
-            first_doc = docs_list[0].to_dict()
-            columns = ['id'] + list(first_doc.keys())
+        if docs:
+            # Get all unique field names
+            all_fields = set()
+            doc_data = []
             
-            # Convert documents to rows
-            for doc in docs_list:
-                doc_data = doc.to_dict()
-                row = [doc.id] + [doc_data.get(col, None) for col in columns[1:]]
-                data.append(tuple(row))
+            for doc in docs:
+                doc_dict = doc.to_dict()
+                doc_dict['id'] = doc.id  # Add document ID
+                doc_data.append(doc_dict)
+                all_fields.update(doc_dict.keys())
+            
+            columns = sorted(list(all_fields))
+            
+            # Convert to list of tuples
+            for doc_dict in doc_data:
+                row = tuple(doc_dict.get(col, None) for col in columns)
+                data.append(row)
                 
         return data, columns
         
@@ -579,81 +831,182 @@ def get_table_data(collection_name, limit=100):
         return [], []
 
 def execute_custom_query(query):
-    """Execute a custom query in Firestore (limited functionality)."""
+    """Firebase doesn't support raw SQL queries like Supabase."""
     try:
-        st.warning("Custom queries are not supported with Firestore. Use the collection viewer instead.")
-        return False, "Custom queries not supported with Firestore", []
+        st.warning("Firebase Firestore doesn't support raw SQL queries. Use the collection viewer instead.")
+        return False, "SQL queries not supported with Firebase Firestore", []
         
     except Exception as e:
         return False, str(e), []
 
 # ============================================================================
-# GAME SESSION STORAGE (FIREBASE VERSION)
+# CREATE DEFAULT ADMIN FUNCTION (FIREBASE VERSION)
 # ============================================================================
 
-def save_game_session(user_id, session_name, game_data):
-    """Save a game session to Firestore."""
+def create_default_admin():
+    """Create default admin user if no admin exists - Firebase version."""
     try:
-        # Convert game data to JSON string
-        game_json = pickle.dumps(game_data)
-        game_b64 = base64.b64encode(game_json).decode()
+        # Check if any admin user exists
+        admin_users = db.collection('users').where(
+            filter=FieldFilter('role', '==', 'admin')
+        ).limit(1).get()
         
-        sessions_ref = db.collection('game_sessions')
-        sessions_ref.document().set({
-            'user_id': user_id,
-            'session_name': session_name,
-            'game_data': game_b64,
-            'created_at': datetime.now(),
-            'updated_at': datetime.now()
-        })
+        if not admin_users:  # No admin exists
+            st.info("🔧 No admin user found. Creating default admin...")
             
-        return True
-        
+            try:
+                # Create default admin
+                admin_doc = db.collection('users').document()
+                admin_doc.set({
+                    'username': 'admin',
+                    'password_hash': '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',  # admin123
+                    'email': 'admin@example.com',
+                    'role': 'admin',
+                    'created_at': datetime.now(),
+                    'is_active': True,
+                    'registered_with_key': 'MANUAL_ADMIN'
+                })
+                
+                # Create initial product key
+                key_doc = db.collection('product_keys').document()
+                key_doc.set({
+                    'key_code': 'DEMO-2024-KEYS-ABCD',
+                    'description': 'Initial demo key',
+                    'max_uses': 10,
+                    'current_uses': 0,
+                    'expires_at': datetime.now() + timedelta(days=365),
+                    'created_by': admin_doc.id,
+                    'is_active': True,
+                    'created_at': datetime.now()
+                })
+                
+                st.success("✅ Default admin created successfully!")
+                st.info("""
+                **Default Admin Credentials:**
+                - Username: `admin`
+                - Password: `admin123`
+                - Product Key: `DEMO-2024-KEYS-ABCD`
+                """)
+                
+                return True
+                
+            except Exception as e:
+                st.error(f"Failed to create default admin: {str(e)}")
+                return False
+        else:
+            # Admin exists
+            return True
+            
     except Exception as e:
-        st.error(f"Error saving game session: {str(e)}")
+        st.warning(f"⚠️ Could not check for admin user: {str(e)}")
         return False
 
-def load_game_session(session_id):
-    """Load a game session from Firestore."""
-    try:
-        session_ref = db.collection('game_sessions').document(session_id)
-        session_doc = session_ref.get()
-        
-        if session_doc.exists:
-            result = session_doc.to_dict()
-            game_b64 = result['game_data']
-            session_name = result['session_name']
-            game_data = pickle.loads(base64.b64decode(game_b64))
-            return game_data, session_name
-            
-        return None, None
-        
-    except Exception as e:
-        st.error(f"Error loading game session: {str(e)}")
-        return None, None
+# Create default admin
+try:
+    if db:
+        create_default_admin()
+    else:
+        st.warning("Cannot create default admin - database connection not available.")
+except Exception as e:
+    st.warning(f"Cannot create default admin: {str(e)}")
 
-def get_user_game_sessions(user_id):
-    """Get all game sessions for a user."""
-    try:
-        sessions_ref = db.collection('game_sessions')
-        query = sessions_ref.where('user_id', '==', user_id).order_by('updated_at', direction=firestore.Query.DESCENDING)
-        docs = query.stream()
+# ============================================================================
+# REST OF THE APPLICATION (UNCHANGED)
+# ============================================================================
+
+# ------------------------------------------------------------------
+# Roster Validation Function
+# ------------------------------------------------------------------
+def validate_roster(roster):
+    """
+    Validate the roster to ensure it meets game requirements.
+    
+    Args:
+        roster (list): List of player dictionaries with keys: name, jersey, position
         
-        sessions_data = []
-        for doc in docs:
-            session_data = doc.to_dict()
-            sessions_data.append({
-                'id': doc.id,
-                'session_name': session_data['session_name'],
-                'created_at': session_data.get('created_at'),
-                'updated_at': session_data['updated_at']
-            })
+    Returns:
+        tuple: (is_valid: bool, error_message: str)
+    """
+    try:
+        if not roster:
+            return False, "Roster cannot be empty"
+        
+        if len(roster) < 5:
+            return False, f"Need at least 5 players to start a game (currently have {len(roster)})"
+        
+        # Check for duplicate jersey numbers
+        jersey_numbers = [player.get('jersey') for player in roster]
+        if len(jersey_numbers) != len(set(jersey_numbers)):
+            return False, "Duplicate jersey numbers found - each player must have a unique number"
+        
+        # Check for duplicate player names
+        player_names = [player.get('name', '').strip().lower() for player in roster]
+        if len(player_names) != len(set(player_names)):
+            return False, "Duplicate player names found - each player must have a unique name"
+        
+        # Check that all players have required fields
+        for i, player in enumerate(roster):
+            if not isinstance(player, dict):
+                return False, f"Player {i+1} has invalid format"
             
-        return sessions_data
+            if not player.get('name', '').strip():
+                return False, f"Player {i+1} is missing a name"
+            
+            if 'jersey' not in player or player['jersey'] is None:
+                return False, f"Player '{player.get('name', 'Unknown')}' is missing a jersey number"
+            
+            if not isinstance(player['jersey'], int) or player['jersey'] < 0 or player['jersey'] > 99:
+                return False, f"Player '{player.get('name', 'Unknown')}' has invalid jersey number (must be 0-99)"
+            
+            if not player.get('position', '').strip():
+                return False, f"Player '{player.get('name', 'Unknown')}' is missing a position"
+            
+            # Validate position
+            valid_positions = ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F']
+            if player['position'] not in valid_positions:
+                return False, f"Player '{player.get('name', 'Unknown')}' has invalid position '{player['position']}'. Valid positions: {', '.join(valid_positions)}"
+        
+        # Check for reasonable roster size (not too many players)
+        if len(roster) > 20:
+            return False, f"Roster is too large ({len(roster)} players). Maximum recommended: 20 players"
+        
+        # All validations passed
+        return True, "Roster is valid"
         
     except Exception as e:
-        st.error(f"Error loading game sessions: {str(e)}")
-        return []
+        return False, f"Error validating roster: {str(e)}"
+
+# ------------------------------------------------------------------
+# Optional: Roster Statistics Function
+# ------------------------------------------------------------------
+def get_roster_stats(roster):
+    """
+    Get basic statistics about the roster composition.
+    
+    Args:
+        roster (list): List of player dictionaries
+        
+    Returns:
+        dict: Statistics about the roster
+    """
+    if not roster:
+        return {}
+    
+    # Count positions
+    position_counts = {}
+    for player in roster:
+        pos = player.get('position', 'Unknown')
+        position_counts[pos] = position_counts.get(pos, 0) + 1
+    
+    # Jersey number range
+    jersey_numbers = [p.get('jersey', 0) for p in roster]
+    
+    return {
+        'total_players': len(roster),
+        'position_breakdown': position_counts,
+        'jersey_range': f"{min(jersey_numbers)}-{max(jersey_numbers)}" if jersey_numbers else "N/A",
+        'average_jersey': sum(jersey_numbers) / len(jersey_numbers) if jersey_numbers else 0
+    }
 
 # ------------------------------------------------------------------
 # Initialize session state variables
@@ -670,6 +1023,7 @@ if "roster_set" not in st.session_state:
 if "current_quarter" not in st.session_state:
     st.session_state.current_quarter = "Q1"
 
+# Initialize quarter_length BEFORE using it in current_game_time
 if "quarter_length" not in st.session_state:
     st.session_state.quarter_length = 12
 
@@ -691,11 +1045,28 @@ if "score_history" not in st.session_state:
 if "quarter_lineup_set" not in st.session_state:
     st.session_state.quarter_lineup_set = False
 
+# Now initialize current_game_time using quarter_length
 if "current_game_time" not in st.session_state:
-    st.session_state.current_game_time = "12:00"
+    st.session_state.current_game_time = f"{st.session_state.quarter_length}:00"
 
 if "quarter_end_history" not in st.session_state:
     st.session_state.quarter_end_history = []  # optional: stores quarter-end snapshots
+
+if "player_stats" not in st.session_state:
+    st.session_state.player_stats = defaultdict(lambda: {
+        'points': 0,
+        'field_goals_made': 0,
+        'field_goals_attempted': 0,
+        'three_pointers_made': 0,
+        'three_pointers_attempted': 0,
+        'free_throws_made': 0,
+        'free_throws_attempted': 0,
+        'minutes_played': 0
+    })
+
+# Add this to your session state initialization elsewhere in your code
+if 'active_scoring_team' not in st.session_state:
+    st.session_state.active_scoring_team = 'home'
 
 # Authentication-related session state
 if "authenticated" not in st.session_state:
@@ -706,109 +1077,6 @@ if "user_info" not in st.session_state:
 
 if "show_admin_panel" not in st.session_state:
     st.session_state.show_admin_panel = False
-
-# ------------------------------------------------------------------
-# Initialize the database
-# ------------------------------------------------------------------
-init_database()
-
-# ------------------------------------------------------------------
-# Helper functions for roster validation
-# ------------------------------------------------------------------
-
-def validate_roster(roster):
-    """Validate roster has required players and unique jersey numbers."""
-    if len(roster) < 5:
-        return False, f"Need at least 5 players (currently have {len(roster)})"
-    
-    # Check for duplicate jersey numbers
-    jersey_numbers = [p['jersey'] for p in roster]
-    if len(jersey_numbers) != len(set(jersey_numbers)):
-        return False, "Duplicate jersey numbers found"
-    
-    # Check for duplicate names
-    names = [p['name'] for p in roster]
-    if len(names) != len(set(names)):
-        return False, "Duplicate player names found"
-    
-    return True, "Roster is valid"
-
-# ------------------------------------------------------------------
-# User Authentication Gate
-# ------------------------------------------------------------------
-# If user is not logged in, show login/register interface.
-
-if not st.session_state.authenticated:
-    st.title("🏀 Basketball Lineup Tracker Pro - Login")
-
-    tab1, tab2 = st.tabs(["Login", "Register"])
-
-    with tab1:
-        st.header("Login")
-        with st.form("login_form"):
-            username = st.text_input("Username")
-            password = st.text_input("Password", type="password")
-
-            col1, col2 = st.columns(2)
-
-            # Main login button
-            with col1:
-                if st.form_submit_button("Login", type="primary"):
-                    if username and password:
-                        success, result = authenticate_user(username, password)
-                        if success:
-                            st.session_state.authenticated = True
-                            st.session_state.user_info = result
-
-                            # Load roster if it exists
-                            roster_data, roster_name = load_user_roster(result['id'])
-                            if roster_data:
-                                st.session_state.roster = roster_data
-                                st.session_state.roster_set = True
-                                st.success(f"Welcome back, {username}! Your roster '{roster_name}' has been loaded.")
-                            else:
-                                st.success(f"Welcome, {username}!")
-
-                            st.rerun()
-                        else:
-                            st.error(result)
-                    else:
-                        st.error("Please enter both username and password")
-
-    with tab2:
-        st.header("Register New Account")
-        st.info("🔐 A valid product key is required to register. Contact your administrator for a product key.")
-        
-        with st.form("register_form"):
-            new_username = st.text_input("Choose Username")
-            new_email = st.text_input("Email (optional)")
-            new_password = st.text_input("Choose Password", type="password")
-            confirm_password = st.text_input("Confirm Password", type="password")
-            
-            # Product key input
-            product_key = st.text_input(
-                "Product Key", 
-                placeholder="XXXX-XXXX-XXXX-XXXX",
-                help="Enter the product key provided by your administrator",
-                max_chars=19
-            )
-
-            if st.form_submit_button("Register", type="primary"):
-                if new_username and new_password and product_key:
-                    if new_password == confirm_password:
-                        success, result = create_user(new_username, new_password, new_email, product_key=product_key)
-                        if success:
-                            st.success("Account created successfully! Please log in.")
-                            st.balloons()
-                        else:
-                            st.error(result)
-                    else:
-                        st.error("Passwords don't match")
-                else:
-                    st.error("Please enter username, password, and product key!")
-
-    # Important: Stop execution here if not authenticated
-    st.stop()
 
 # ------------------------------------------------------------------
 # Helper functions
@@ -823,8 +1091,17 @@ def reset_game():
     st.session_state.lineup_history = []
     st.session_state.score_history = []
     st.session_state.quarter_lineup_set = False
-    st.session_state.current_game_time = f"{st.session_state.quarter_length}:00"
     st.session_state.quarter_end_history = []
+    st.session_state.player_stats = defaultdict(lambda: {
+        'points': 0,
+        'field_goals_made': 0,
+        'field_goals_attempted': 0,
+        'three_pointers_made': 0,
+        'three_pointers_attempted': 0,
+        'free_throws_made': 0,
+        'free_throws_attempted': 0,
+        'minutes_played': 0
+    })
 
 # Add points to team score and log the event
 def add_score(team, points):
@@ -841,6 +1118,90 @@ def add_score(team, points):
         st.session_state.home_score += points
     else:
         st.session_state.away_score += points
+
+def add_score_with_player(team, points, scorer_player=None, shot_type='field_goal', made=True, attempted=True):
+    """Add points to team score and attribute to specific player with shot tracking."""
+    score_event = {
+        'team': team,
+        'points': points,
+        'scorer': scorer_player,
+        'shot_type': shot_type,  # 'field_goal', 'three_pointer', 'free_throw'
+        'made': made,
+        'attempted': attempted,
+        'quarter': st.session_state.current_quarter,
+        'lineup': st.session_state.current_lineup.copy(),
+        'game_time': st.session_state.current_game_time,
+        'timestamp': datetime.now()
+    }
+    st.session_state.score_history.append(score_event)
+
+    # Update team score
+    if team == "home":
+        st.session_state.home_score += points
+    else:
+        st.session_state.away_score += points
+    
+    # Update individual player stats if scorer is specified
+    if scorer_player and made:
+        st.session_state.player_stats[scorer_player]['points'] += points
+        
+        if shot_type == 'field_goal':
+            st.session_state.player_stats[scorer_player]['field_goals_made'] += 1
+            if attempted:
+                st.session_state.player_stats[scorer_player]['field_goals_attempted'] += 1
+        elif shot_type == 'three_pointer':
+            st.session_state.player_stats[scorer_player]['three_pointers_made'] += 1
+            st.session_state.player_stats[scorer_player]['field_goals_made'] += 1  # 3PT also counts as FG
+            if attempted:
+                st.session_state.player_stats[scorer_player]['three_pointers_attempted'] += 1
+                st.session_state.player_stats[scorer_player]['field_goals_attempted'] += 1
+        elif shot_type == 'free_throw':
+            st.session_state.player_stats[scorer_player]['free_throws_made'] += 1
+            if attempted:
+                st.session_state.player_stats[scorer_player]['free_throws_attempted'] += 1
+    
+    # Track missed shots
+    elif scorer_player and not made and attempted:
+        if shot_type == 'field_goal':
+            st.session_state.player_stats[scorer_player]['field_goals_attempted'] += 1
+        elif shot_type == 'three_pointer':
+            st.session_state.player_stats[scorer_player]['three_pointers_attempted'] += 1
+            st.session_state.player_stats[scorer_player]['field_goals_attempted'] += 1
+        elif shot_type == 'free_throw':
+            st.session_state.player_stats[scorer_player]['free_throws_attempted'] += 1
+
+def calculate_player_shooting_stats():
+    """Calculate shooting percentages for all players."""
+    shooting_stats = {}
+    
+    for player, stats in st.session_state.player_stats.items():
+        shooting_stats[player] = {
+            'points': stats['points'],
+            'fg_percentage': (stats['field_goals_made'] / stats['field_goals_attempted'] * 100) if stats['field_goals_attempted'] > 0 else 0,
+            'three_pt_percentage': (stats['three_pointers_made'] / stats['three_pointers_attempted'] * 100) if stats['three_pointers_attempted'] > 0 else 0,
+            'ft_percentage': (stats['free_throws_made'] / stats['free_throws_attempted'] * 100) if stats['free_throws_attempted'] > 0 else 0,
+            'fg_made': stats['field_goals_made'],
+            'fg_attempted': stats['field_goals_attempted'],
+            'three_pt_made': stats['three_pointers_made'],
+            'three_pt_attempted': stats['three_pointers_attempted'],
+            'ft_made': stats['free_throws_made'],
+            'ft_attempted': stats['free_throws_attempted']
+        }
+    
+    return shooting_stats
+
+def get_top_scorers(limit=5):
+    """Get top scoring players."""
+    if not st.session_state.player_stats:
+        return []
+    
+    sorted_players = sorted(
+        st.session_state.player_stats.items(),
+        key=lambda x: x[1]['points'],
+        reverse=True
+    )
+    
+    return sorted_players[:limit]
 
 # Validate that game time input is in MM:SS format and within bounds
 def validate_game_time(time_str, quarter_length):
@@ -898,7 +1259,6 @@ def update_lineup(new_lineup, game_time):
     except Exception as e:
         return False, f"Error updating lineup: {str(e)}"
 
-
 # ------------------------------------------------------------------
 # NEW: Capture end-of-quarter snapshot in lineup history at 0:00
 # ------------------------------------------------------------------
@@ -924,7 +1284,6 @@ def log_quarter_lineup_snapshot():
         'is_quarter_end': True
     }
     st.session_state.lineup_history.append(lineup_event)
-
 
 # ------------------------------------------------------------------
 # UPDATED: End quarter routine (logs 0:00 snapshot & advances period)
@@ -960,7 +1319,6 @@ def end_quarter():
 # ------------------------------------------------------------------
 # Quarter Settings Update
 # ------------------------------------------------------------------
-
 
 def update_quarter_settings(new_quarter, new_length):
     """Update quarter settings and adjust game clock appropriately."""
@@ -1276,6 +1634,83 @@ Generated by Basketball Lineup Tracker Pro
 # Main title
 # ------------------------------------------------------------------
 st.title("🏀 Basketball Lineup Tracker Pro")
+
+# ------------------------------------------------------------------
+# User Authentication Gate
+# ------------------------------------------------------------------
+# If user is not logged in, show login/register interface.
+
+if not st.session_state.authenticated:
+    st.title("🏀 Basketball Lineup Tracker Pro - Login")
+
+    tab1, tab2 = st.tabs(["Login", "Register"])
+
+    with tab1:
+        st.header("Login")
+        with st.form("login_form"):
+            username = st.text_input("Username")
+            password = st.text_input("Password", type="password")
+
+            col1, col2 = st.columns(2)
+
+            # Main login button
+            with col1:
+                if st.form_submit_button("Login", type="primary"):
+                    if username and password:
+                        success, result = authenticate_user(username, password)
+                        if success:
+                            st.session_state.authenticated = True
+                            st.session_state.user_info = result
+
+                            # Load roster if it exists
+                            roster_data, roster_name = load_user_roster(result['id'])
+                            if roster_data:
+                                st.session_state.roster = roster_data
+                                st.session_state.roster_set = True
+                                st.success(f"Welcome back, {username}! Your roster '{roster_name}' has been loaded.")
+                            else:
+                                st.success(f"Welcome, {username}!")
+
+                            st.rerun()
+                        else:
+                            st.error(result)
+                    else:
+                        st.error("Please enter both username and password")
+
+    with tab2:
+        st.header("Register New Account")
+        st.info("🔐 A valid product key is required to register. Contact your administrator for a product key.")
+        
+        with st.form("register_form"):
+            new_username = st.text_input("Choose Username")
+            new_email = st.text_input("Email (optional)")
+            new_password = st.text_input("Choose Password", type="password")
+            confirm_password = st.text_input("Confirm Password", type="password")
+            
+            # Product key input
+            product_key = st.text_input(
+                "Product Key", 
+                placeholder="XXXX-XXXX-XXXX-XXXX",
+                help="Enter the product key provided by your administrator",
+                max_chars=19
+            )
+
+            if st.form_submit_button("Register", type="primary"):
+                if new_username and new_password and product_key:
+                    if new_password == confirm_password:
+                        success, result = create_user(new_username, new_password, new_email, product_key=product_key)
+                        if success:
+                            st.success("Account created successfully! Please log in.")
+                            st.balloons()
+                        else:
+                            st.error(result)
+                    else:
+                        st.error("Passwords don't match")
+                else:
+                    st.error("Please enter username, password, and product key!")
+
+    # Important: Stop execution here if not authenticated
+    st.stop()
 
 # ------------------------------------------------------------------
 # Roster Setup Gate (REPLACE THE EXISTING ROSTER SETUP SECTION)
@@ -1836,8 +2271,8 @@ if st.session_state.get('show_admin_panel', False) and st.session_state.user_inf
                     'Username': user[1], 
                     'Email': user[2] or 'N/A',
                     'Role': user[3],
-                    'Created': user[4].strftime('%Y-%m-%d') if isinstance(user[4], datetime) else str(user[4])[:10] if user[4] else 'Unknown',
-                    'Last Login': user[5].strftime('%Y-%m-%d') if isinstance(user[5], datetime) and user[5] else 'Never',
+                    'Created': user[4],
+                    'Last Login': user[5] or 'Never',
                     'Active': '✅' if user[6] else '❌'
                 })
             
@@ -1920,13 +2355,15 @@ if st.session_state.get('show_admin_panel', False) and st.session_state.user_inf
                 expiry_str = "Never"
                 if key.get('expires_at'):
                     try:
-                        expiry_date = key['expires_at']
-                        if isinstance(expiry_date, datetime):
-                            expiry_str = expiry_date.strftime('%Y-%m-%d %H:%M')
-                            if datetime.now() > expiry_date:
-                                expiry_str += " (EXPIRED)"
+                        if isinstance(key['expires_at'], datetime):
+                            expiry_date = key['expires_at']
                         else:
-                            expiry_str = "Invalid Date"
+                            # Handle string timestamps
+                            expiry_date = datetime.fromisoformat(str(key['expires_at']).replace('Z', '+00:00'))
+                        
+                        expiry_str = expiry_date.strftime('%Y-%m-%d %H:%M')
+                        if datetime.now() > expiry_date:
+                            expiry_str += " (EXPIRED)"
                     except:
                         expiry_str = "Invalid Date"
                 
@@ -1935,6 +2372,28 @@ if st.session_state.get('show_admin_panel', False) and st.session_state.user_inf
                 if key.get('current_uses', 0) >= key.get('max_uses', 1):
                     status = "🟡 Used Up"
                 
+                # Handle created_at timestamp
+                created_str = "Unknown"
+                if key.get('created_at'):
+                    try:
+                        if isinstance(key['created_at'], datetime):
+                            created_str = key['created_at'].strftime('%Y-%m-%d')
+                        else:
+                            created_str = str(key['created_at'])[:10]
+                    except:
+                        created_str = "Unknown"
+                
+                # Handle last_used_at timestamp
+                last_used_str = "Never"
+                if key.get('last_used_at'):
+                    try:
+                        if isinstance(key['last_used_at'], datetime):
+                            last_used_str = key['last_used_at'].strftime('%Y-%m-%d')
+                        else:
+                            last_used_str = str(key['last_used_at'])[:10] if str(key['last_used_at']) != 'Never' else 'Never'
+                    except:
+                        last_used_str = "Never"
+                
                 key_data.append({
                     'ID': key['id'],
                     'Key Code': key['key_code'],
@@ -1942,8 +2401,8 @@ if st.session_state.get('show_admin_panel', False) and st.session_state.user_inf
                     'Uses': f"{key.get('current_uses', 0)}/{key.get('max_uses', 1)}",
                     'Status': status,
                     'Expires': expiry_str,
-                    'Created': key['created_at'].strftime('%Y-%m-%d') if isinstance(key.get('created_at'), datetime) else str(key.get('created_at', 'Unknown'))[:10] if key.get('created_at') else 'Unknown',
-                    'Last Used': key.get('last_used_at').strftime('%Y-%m-%d') if isinstance(key.get('last_used_at'), datetime) else 'Never'
+                    'Created': created_str,
+                    'Last Used': last_used_str
                 })
             
             keys_df = pd.DataFrame(key_data)
@@ -1953,19 +2412,6 @@ if st.session_state.get('show_admin_panel', False) and st.session_state.user_inf
             st.write("**Product Key Actions**")
             
             action_col1, action_col2, action_col3 = st.columns(3)
-            
-            with action_col1:
-                key_to_toggle = st.selectbox(
-                    "Select key to toggle status:",
-                    [f"{k['key_code']} (ID: {k['id']})" for k in keys]
-                )
-                if st.button("🔄 Toggle Status"):
-                    key_id = key_to_toggle.split("ID: ")[1].rstrip(")")
-                    current_key = next(k for k in keys if k['id'] == key_id)
-                    new_status = not current_key.get('is_active', True)
-                    toggle_product_key_status(key_id, new_status)
-                    st.success("Key status updated!")
-                    st.rerun()
             
             with action_col2:
                 key_to_delete = st.selectbox(
@@ -2014,47 +2460,41 @@ if st.session_state.get('show_admin_panel', False) and st.session_state.user_inf
     with admin_tab3:
         st.subheader("Database Viewer")
         
-        # Get table information
+        # Get collection information
         try:
-            table_info = get_table_info()
+            collection_info = get_collection_info()
             
-            if table_info:
-                # Table selector
-                table_names = list(table_info.keys())
-                selected_table = st.selectbox("Select Collection to View:", table_names)
+            if collection_info:
+                # Collection selector
+                collection_names = list(collection_info.keys())
+                selected_collection = st.selectbox("Select Collection to View:", collection_names)
                 
-                if selected_table:
-                    # Show table info
-                    info = table_info[selected_table]
+                if selected_collection:
+                    # Show collection info
+                    info = collection_info[selected_collection]
                     
                     col1, col2 = st.columns(2)
                     with col1:
-                        st.metric("Total Documents", info.get('row_count', 0))
+                        st.metric("Total Documents", info.get('doc_count', 0))
                     with col2:
-                        st.metric("Total Fields", len(info.get('columns', [])))
+                        st.metric("Sample Fields", len(info.get('sample_fields', [])))
                     
-                    # Show column information
-                    st.write("**Collection Schema:**")
-                    if info.get('columns'):
-                        schema_data = []
-                        for col in info['columns']:
-                            schema_data.append({
-                                'Field': col[1],  # field name
-                                'Type': col[2],   # data type
-                                'Is ID': 'Yes' if col[5] else 'No'
-                            })
-                        
-                        schema_df = pd.DataFrame(schema_data)
-                        st.dataframe(schema_df, use_container_width=True, hide_index=True)
+                    # Show sample fields
+                    if info.get('sample_fields'):
+                        st.write("**Sample Document Fields:**")
+                        field_cols = st.columns(min(4, len(info['sample_fields'])))
+                        for i, field in enumerate(info['sample_fields'][:12]):  # Show max 12 fields
+                            with field_cols[i % 4]:
+                                st.write(f"• {field}")
                     
-                    # Show table data
+                    # Show collection data
                     st.write("**Collection Data:**")
                     
                     # Limit selector
                     limit = st.selectbox("Documents to display:", [10, 25, 50, 100], index=1)
                     
                     # Get and display data
-                    data, columns = get_table_data(selected_table, limit)
+                    data, columns = get_collection_data(selected_collection, limit)
                     
                     if data and columns:
                         # Convert to DataFrame for better display
@@ -2063,7 +2503,7 @@ if st.session_state.get('show_admin_panel', False) and st.session_state.user_inf
                             row_dict = {}
                             for i, col_name in enumerate(columns):
                                 value = row[i] if i < len(row) else None
-                                # Convert datetime objects to strings for display
+                                # Handle datetime objects for display
                                 if isinstance(value, datetime):
                                     value = value.strftime('%Y-%m-%d %H:%M:%S')
                                 row_dict[col_name] = value
@@ -2073,9 +2513,9 @@ if st.session_state.get('show_admin_panel', False) and st.session_state.user_inf
                             display_df = pd.DataFrame(display_data)
                             st.dataframe(display_df, use_container_width=True, hide_index=True)
                         else:
-                            st.info(f"No data found in collection '{selected_table}'")
+                            st.info(f"No data found in collection '{selected_collection}'")
                     else:
-                        st.info(f"No data found in collection '{selected_table}'")
+                        st.info(f"No data found in collection '{selected_collection}'")
                         
             else:
                 st.error("Could not retrieve collection information")
@@ -2085,8 +2525,15 @@ if st.session_state.get('show_admin_panel', False) and st.session_state.user_inf
             
         # Custom query section (with warning)
         st.divider()
-        st.write("**Custom Queries (Not Supported)**")
-        st.warning("⚠️ Custom queries are not supported with Firestore. Use the collection viewer above instead.")
+        st.write("**Custom Queries**")
+        st.warning("⚠️ Firebase Firestore doesn't support raw SQL queries like traditional databases.")
+        st.info("""
+        **What you can do instead:**
+        • Use the collection viewer above to browse data
+        • Firebase queries are done through the SDK using filters and ordering
+        • Complex queries can be built using compound queries and array queries
+        • For advanced analytics, consider exporting data to BigQuery
+        """)
 
     with admin_tab4:
         st.subheader("System Information")
@@ -2101,7 +2548,8 @@ if st.session_state.get('show_admin_panel', False) and st.session_state.user_inf
             "Current User": st.session_state.user_info['username'],
             "User Role": st.session_state.user_info['role'],
             "Session State Variables": len(st.session_state.keys()),
-            "Current Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "Current Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "Firebase Initialized": "✅ Yes" if firebase_admin._apps else "❌ No"
         }
         
         for key, value in app_info.items():
@@ -2114,24 +2562,35 @@ if st.session_state.get('show_admin_panel', False) and st.session_state.user_inf
         
         if st.button("Test Database Connection"):
             try:
-                # Simple test query
-                test_ref = db.collection('test').document('connection_test')
-                test_ref.set({'status': 'connected', 'timestamp': datetime.now()})
-                test_ref.delete()  # Clean up test document
-                st.success("✅ Database connection successful!")
-                st.write(f"Project ID: {firebase_config.get('project_id', 'Unknown')}")
+                # Simple test by trying to read from users collection
+                test_docs = db.collection('users').limit(1).get()
+                st.success("✅ Firebase connection successful!")
+                st.write(f"Successfully connected to Firebase project")
                 
             except Exception as e:
-                st.error(f"❌ Database connection failed: {str(e)}")
+                st.error(f"❌ Firebase connection failed: {str(e)}")
         
         st.divider()
         
         # Environment variables (safe display)
         st.write("**Environment Check**")
         
+        # Get Firebase project info if available
+        try:
+            project_id = "Unknown"
+            if firebase_admin._apps:
+                app = firebase_admin.get_app()
+                if hasattr(app, 'project_id'):
+                    project_id = app.project_id
+                elif hasattr(app, '_options') and hasattr(app._options, 'project_id'):
+                    project_id = app._options.project_id
+        except:
+            project_id = "Unknown"
+        
         env_checks = {
-            "Firebase Project ID": "✅ Set" if firebase_config.get('project_id') else "❌ Missing",
-            "Firebase Credentials": "✅ Set" if firebase_config.get('private_key') else "❌ Missing",
+            "Firebase Credentials": "✅ Set" if load_firebase_credentials() else "❌ Missing",
+            "Firebase Project ID": project_id,
+            "Firebase Admin SDK": "✅ Available" if firebase_admin else "❌ Missing",
             "Streamlit Version": st.__version__,
         }
         
@@ -2181,7 +2640,6 @@ tab1, tab2, tab3 = st.tabs(["🏀 Live Game", "📊 Analytics", "📝 Event Log"
 # ------------------------------------------------------------------
 with tab1:
     st.header("Live Game Management")
-
     # Current game status
     status_col1, status_col2, status_col3, status_col4, status_col5 = st.columns([1, 1, 1, 1, 1])
     with status_col1:
@@ -2200,67 +2658,251 @@ with tab1:
                 st.rerun()
             else:
                 st.error("Cannot advance quarter further")
-
     st.divider()
-    
-    # Score management
-    st.subheader("Score Tracking")
 
-    # Check if lineup is set for current quarter
-    if not st.session_state.quarter_lineup_set:
-        st.warning("⚠️ Please set a starting lineup for this quarter before scoring points.")
-    else:
-        score_col1, score_col2 = st.columns(2)
+    # Enhanced Score management with faster player attribution
+    def render_enhanced_scoring_section():
+        """Render the enhanced scoring section with fast player attribution."""
 
-        with score_col1:
-            st.write("**Home Team**")
-            home_cols = st.columns(4)
-            with home_cols[0]:
-                if st.button("Home +1"):
-                    add_score("home", 1)
-                    st.rerun()
-            with home_cols[1]:
-                if st.button("Home +2"):
-                    add_score("home", 2)
-                    st.rerun()
-            with home_cols[2]:
-                if st.button("Home +3"):
-                    add_score("home", 3)
-                    st.rerun()
-            with home_cols[3]:
-                if st.button("Home FT"):
-                    add_score("home", 1)
-                    st.rerun()
+        st.subheader("Score Tracking")
 
-        with score_col2:
-            st.write("**Away Team**")
-            away_cols = st.columns(4)
-            with away_cols[0]:
-                if st.button("Away +1"):
-                    add_score("away", 1)
-                    st.rerun()
-            with away_cols[1]:
-                if st.button("Away +2"):
-                    add_score("away", 2)
-                    st.rerun()
-            with away_cols[2]:
-                if st.button("Away +3"):
-                    add_score("away", 3)
-                    st.rerun()
-            with away_cols[3]:
-                if st.button("Away FT"):
-                    add_score("away", 1)
-                    st.rerun()
+        # Check if lineup is set for current quarter
+        if not st.session_state.quarter_lineup_set:
+            st.warning("⚠️ Please set a starting lineup for this quarter before tracking home team player stats.")
+            return
 
-        # Undo last score
-        if st.session_state.score_history and st.button("↩️ Undo Last Score"):
-            last_score = st.session_state.score_history.pop()
+        # Get current players for dropdown (home team only)
+        current_players = st.session_state.current_lineup if st.session_state.quarter_lineup_set else []
+
+        # Side-by-side team scoring (eliminates need to select home/away)
+        home_col, away_col = st.columns(2)
+        
+        with home_col:
+            st.markdown("### 🏠 **HOME TEAM**")
+            
+            # Player selection for home team
+            if st.session_state.quarter_lineup_set:
+                player_options = ["Quick Score (No Player)"] + current_players
+                home_scorer = st.selectbox(
+                    "Player:",
+                    player_options,
+                    help="Select player for detailed stats, or use 'Quick Score' for team-only tracking",
+                    key="home_scorer_select"
+                )
+            else:
+                home_scorer = "Quick Score (No Player)"
+
+            # Home team scoring buttons
+            st.write("**Score Entry**")
+            
+            # Free Throws
+            home_ft_make, home_ft_miss = st.columns(2)
+            with home_ft_make:
+                if st.button("✅ FT", key="home_ft_make", use_container_width=True, type="primary"):
+                    handle_score_entry("home", 1, home_scorer, "free_throw", True)
+            with home_ft_miss:
+                if st.button("❌ FT", key="home_ft_miss", use_container_width=True):
+                    handle_score_entry("home", 0, home_scorer, "free_throw", False)
+
+            # 2-Point Field Goals
+            home_2pt_make, home_2pt_miss = st.columns(2)
+            with home_2pt_make:
+                if st.button("✅ 2PT", key="home_2pt_make", use_container_width=True, type="primary"):
+                    handle_score_entry("home", 2, home_scorer, "field_goal", True)
+            with home_2pt_miss:
+                if st.button("❌ 2PT", key="home_2pt_miss", use_container_width=True):
+                    handle_score_entry("home", 0, home_scorer, "field_goal", False)
+
+            # 3-Point Field Goals
+            home_3pt_make, home_3pt_miss = st.columns(2)
+            with home_3pt_make:
+                if st.button("✅ 3PT", key="home_3pt_make", use_container_width=True, type="primary"):
+                    handle_score_entry("home", 3, home_scorer, "three_pointer", True)
+            with home_3pt_miss:
+                if st.button("❌ 3PT", key="home_3pt_miss", use_container_width=True):
+                    handle_score_entry("home", 0, home_scorer, "three_pointer", False)
+
+        with away_col:
+            st.markdown("### 🛣️ **AWAY TEAM**")
+            st.info("📊 Away team scoring recorded as team totals only")
+            
+            # Away team scoring buttons
+            st.write("**Score Entry**")
+            
+            # Free Throws
+            away_ft_make, away_ft_miss = st.columns(2)
+            with away_ft_make:
+                if st.button("✅ FT", key="away_ft_make", use_container_width=True, type="primary"):
+                    handle_score_entry("away", 1, "Quick Score (No Player)", "free_throw", True)
+            with away_ft_miss:
+                if st.button("❌ FT", key="away_ft_miss", use_container_width=True):
+                    handle_score_entry("away", 0, "Quick Score (No Player)", "free_throw", False)
+
+            # 2-Point Field Goals
+            away_2pt_make, away_2pt_miss = st.columns(2)
+            with away_2pt_make:
+                if st.button("✅ 2PT", key="away_2pt_make", use_container_width=True, type="primary"):
+                    handle_score_entry("away", 2, "Quick Score (No Player)", "field_goal", True)
+            with away_2pt_miss:
+                if st.button("❌ 2PT", key="away_2pt_miss", use_container_width=True):
+                    handle_score_entry("away", 0, "Quick Score (No Player)", "field_goal", False)
+
+            # 3-Point Field Goals
+            away_3pt_make, away_3pt_miss = st.columns(2)
+            with away_3pt_make:
+                if st.button("✅ 3PT", key="away_3pt_make", use_container_width=True, type="primary"):
+                    handle_score_entry("away", 3, "Quick Score (No Player)", "three_pointer", True)
+            with away_3pt_miss:
+                if st.button("❌ 3PT", key="away_3pt_miss", use_container_width=True):
+                    handle_score_entry("away", 0, "Quick Score (No Player)", "three_pointer", False)
+
+        # Quick stats display
+        if st.session_state.player_stats:
+            st.write("**Live Scoring Leaders:**")
+            top_scorers = get_top_scorers(3)
+
+            if top_scorers:
+                score_cols = st.columns(len(top_scorers))
+                for i, (player, stats) in enumerate(top_scorers):
+                    with score_cols[i]:
+                        st.metric(
+                            f"{player.split('(')[0].strip()}",
+                            f"{stats['points']} pts",
+                            help=f"FG: {stats['field_goals_made']}/{stats['field_goals_attempted']}"
+                        )
+
+        # Enhanced undo last score
+        if st.session_state.score_history:
+            last_score = st.session_state.score_history[-1]
+            undo_text = f"↩️ Undo: {last_score['team'].title()} "
+
+            # Show shot type and result
+            shot_type = last_score.get('shot_type', 'unknown')
+            made = last_score.get('made', True)
+            points = last_score.get('points', 0)
+
+            if shot_type == 'free_throw':
+                undo_text += f"FT {'Make' if made else 'Miss'}"
+            elif shot_type == 'field_goal':
+                undo_text += f"2PT {'Make' if made else 'Miss'}"
+            elif shot_type == 'three_pointer':
+                undo_text += f"3PT {'Make' if made else 'Miss'}"
+            else:
+                undo_text += f"+{points}"
+
+            if last_score.get('scorer') and last_score.get('scorer') != "Quick Score (No Player)":
+                undo_text += f" by {last_score['scorer'].split('(')[0].strip()}"
+
+            if st.button(undo_text):
+                undo_last_score()
+
+    def handle_score_entry(team, points, scorer, shot_type, made):
+        """Handle score entry with improved logic - player stats only for home team."""
+        
+        # Only track player stats for home team with actual player selected
+        if team == "home" and scorer != "Quick Score (No Player)":
+            # Use add_score_with_player which handles both team score AND player stats
+            add_score_with_player(
+                team=team,
+                points=points,
+                scorer_player=scorer,
+                shot_type=shot_type,
+                made=made,
+                attempted=True
+            )
+            
+            # Success message with player info
+            result_text = "Made" if made else "Missed"
+            shot_text = {
+                "free_throw": "FT",
+                "field_goal": "2PT", 
+                "three_pointer": "3PT"
+            }.get(shot_type, "Shot")
+            
+            if made:
+                st.success(f"✅ {shot_text} Make by {scorer.split('(')[0].strip()} (+{points})")
+            else:
+                st.info(f"📊 {shot_text} Miss by {scorer.split('(')[0].strip()}")
+        else:
+            # Quick score mode (always used for away team, optional for home team)
+            if points > 0:
+                add_score(team, points)
+            
+            # Add to history for tracking purposes
+            st.session_state.score_history.append({
+                'team': team,
+                'points': points,
+                'shot_type': shot_type,
+                'made': made,
+                'scorer': scorer if team == "home" else None,
+                'quarter': st.session_state.current_quarter,
+                'lineup': st.session_state.current_lineup.copy() if st.session_state.current_lineup else [],
+                'game_time': st.session_state.current_game_time,
+                'timestamp': datetime.now()
+            })
+            
+            team_name = "HOME" if team == "home" else "AWAY"
+            shot_text = {
+                "free_throw": "FT",
+                "field_goal": "2PT", 
+                "three_pointer": "3PT"
+            }.get(shot_type, "Shot")
+            
+            if made:
+                st.success(f"✅ {team_name} {shot_text} Make (+{points})")
+            else:
+                st.info(f"📊 {team_name} {shot_text} Miss")
+        
+        st.rerun()
+
+    def undo_last_score():
+        """Improved undo functionality."""
+        if not st.session_state.score_history:
+            return
+            
+        last_score = st.session_state.score_history[-1]
+        
+        # Remove from team score if points were added
+        if last_score['points'] > 0:
             if last_score['team'] == "home":
                 st.session_state.home_score -= last_score['points']
             else:
                 st.session_state.away_score -= last_score['points']
-            st.success("Last score undone!")
-            st.rerun()
+        
+        # Remove from player stats if applicable (only for home team)
+        scorer = last_score.get('scorer')
+        if (last_score['team'] == "home" and scorer and scorer != "Quick Score (No Player)" 
+            and scorer in st.session_state.player_stats):
+            player_stats = st.session_state.player_stats[scorer]
+            
+            # Remove points if made
+            if last_score.get('made', True):
+                player_stats['points'] -= last_score['points']
+            
+            # Remove attempt and make stats
+            shot_type = last_score.get('shot_type', 'field_goal')
+            if shot_type == 'field_goal':
+                player_stats['field_goals_attempted'] -= 1
+                if last_score.get('made', True):
+                    player_stats['field_goals_made'] -= 1
+            elif shot_type == 'three_pointer':
+                player_stats['three_pointers_attempted'] -= 1
+                player_stats['field_goals_attempted'] -= 1
+                if last_score.get('made', True):
+                    player_stats['three_pointers_made'] -= 1
+                    player_stats['field_goals_made'] -= 1
+            elif shot_type == 'free_throw':
+                player_stats['free_throws_attempted'] -= 1
+                if last_score.get('made', True):
+                    player_stats['free_throws_made'] -= 1
+        
+        # Remove from history
+        st.session_state.score_history.pop()
+        st.success("Last entry undone!")
+        st.rerun()
+
+    # Call the enhanced scoring section
+    render_enhanced_scoring_section()
 
     # Lineup management section
     st.subheader("Lineup Management")
