@@ -22,6 +22,23 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 
+# Add these helper functions after your imports
+def make_timezone_aware(dt):
+    """Convert a naive datetime to timezone-aware UTC datetime."""
+    if dt is None:
+        return None
+    
+    # If already timezone-aware, return as-is
+    if dt.tzinfo is not None and dt.utcoffset() is not None:
+        return dt
+    
+    # If naive, assume it's UTC and make it timezone-aware
+    return dt.replace(tzinfo=timezone.utc)
+
+def get_current_utc_time():
+    """Get current UTC time as timezone-aware datetime."""
+    return datetime.now(timezone.utc)
+
 
 # ------------------------------------------------------------------
 # Page configuration
@@ -213,7 +230,11 @@ def create_product_key(created_by_user_id, description="", max_uses=1, expires_d
     """Create a new product key in Firebase."""
     try:
         key = generate_product_key()
-        expires_at = datetime.now() + timedelta(days=expires_days) if expires_days else None
+        
+        # Use timezone-aware datetime for expiry
+        expires_at = None
+        if expires_days:
+            expires_at = get_current_utc_time() + timedelta(days=expires_days)
         
         doc_ref = db.collection('product_keys').document()
         doc_ref.set({
@@ -224,7 +245,7 @@ def create_product_key(created_by_user_id, description="", max_uses=1, expires_d
             'expires_at': expires_at,
             'created_by': created_by_user_id,
             'is_active': True,
-            'created_at': datetime.now()
+            'created_at': get_current_utc_time()
         })
         
         return True, key
@@ -249,13 +270,26 @@ def validate_product_key(key_code):
         key_data = key_doc.to_dict()
         key_data['id'] = key_doc.id  # Add document ID
         
-        # Check if expired
-        if key_data['expires_at']:
-            if datetime.now() > key_data['expires_at']:
+        # Check if expired - FIXED DATETIME COMPARISON
+        if key_data.get('expires_at'):
+            expires_at = key_data['expires_at']
+            
+            # Convert Firebase timestamp to timezone-aware datetime if needed
+            if hasattr(expires_at, 'timestamp'):
+                # Firebase Timestamp object
+                expires_at = datetime.fromtimestamp(expires_at.timestamp(), tz=timezone.utc)
+            elif isinstance(expires_at, datetime):
+                # Regular datetime - make timezone-aware if needed
+                expires_at = make_timezone_aware(expires_at)
+            
+            # Compare with current UTC time
+            current_time = get_current_utc_time()
+            
+            if current_time > expires_at:
                 return False, "Product key has expired"
         
         # Check if uses exceeded
-        if key_data['current_uses'] >= key_data['max_uses']:
+        if key_data.get('current_uses', 0) >= key_data.get('max_uses', 1):
             return False, "Product key has reached maximum uses"
         
         return True, key_data
@@ -276,7 +310,7 @@ def use_product_key(key_id, used_by_user_id):
             # Update usage count
             key_ref.update({
                 'current_uses': current_uses + 1,
-                'last_used_at': datetime.now(),
+                'last_used_at': get_current_utc_time(),
                 'last_used_by': used_by_user_id
             })
             
@@ -355,7 +389,7 @@ def create_user(username, password, email=None, role='user', product_key=None):
             'password_hash': password_hash,
             'email': email,
             'role': role,
-            'created_at': datetime.now(),
+            'created_at': get_current_utc_time(),
             'is_active': True,
             'registered_with_key': product_key
         })
@@ -388,7 +422,7 @@ def authenticate_user(username, password):
             if user_data['is_active'] and verify_password(password, user_data['password_hash']):
                 # Update last login
                 db.collection('users').document(user_doc.id).update({
-                    'last_login': datetime.now()
+                    'last_login': get_current_utc_time()
                 })
                 
                 return True, {
@@ -432,8 +466,8 @@ def save_user_roster(user_id, roster_data, roster_name='My Team'):
                 'user_id': user_id,
                 'roster_name': roster_name,
                 'roster_data': roster_b64,
-                'created_at': datetime.now(),
-                'updated_at': datetime.now()
+                'created_at': get_current_utc_time(),
+                'updated_at': get_current_utc_time()
             })
             
         return True  # Return success indicator
@@ -646,7 +680,7 @@ def create_default_admin():
                     'password_hash': '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',  # admin123
                     'email': 'admin@example.com',
                     'role': 'admin',
-                    'created_at': datetime.now(),
+                    'created_at': get_current_utc_time(),
                     'is_active': True,
                     'registered_with_key': 'MANUAL_ADMIN'
                 })
@@ -658,10 +692,10 @@ def create_default_admin():
                     'description': 'Initial demo key',
                     'max_uses': 10,
                     'current_uses': 0,
-                    'expires_at': datetime.now() + timedelta(days=365),
+                    'expires_at': get_current_utc_time() + timedelta(days=365),
                     'created_by': admin_doc.id,
                     'is_active': True,
-                    'created_at': datetime.now()
+                    'created_at': get_current_utc_time()
                 })
                 
                 st.success("✅ Default admin created successfully!")
@@ -2139,14 +2173,23 @@ if st.session_state.get('show_admin_panel', False) and st.session_state.user_inf
                 expiry_str = "Never"
                 if key.get('expires_at'):
                     try:
-                        if isinstance(key['expires_at'], datetime):
-                            expiry_date = key['expires_at']
+                        expires_at = key['expires_at']
+                        
+                        # Handle Firebase timestamp objects
+                        if hasattr(expires_at, 'timestamp'):
+                            # Firebase Timestamp object
+                            expiry_date = datetime.fromtimestamp(expires_at.timestamp(), tz=timezone.utc)
+                        elif isinstance(expires_at, datetime):
+                            # Make timezone-aware if needed
+                            expiry_date = make_timezone_aware(expires_at)
                         else:
                             # Handle string timestamps
-                            expiry_date = datetime.fromisoformat(str(key['expires_at']).replace('Z', '+00:00'))
+                            expiry_date = datetime.fromisoformat(str(expires_at).replace('Z', '+00:00'))
                         
                         expiry_str = expiry_date.strftime('%Y-%m-%d %H:%M')
-                        if datetime.now() > expiry_date:
+                        
+                        # Compare with timezone-aware current time
+                        if get_current_utc_time() > expiry_date:
                             expiry_str += " (EXPIRED)"
                     except:
                         expiry_str = "Invalid Date"
@@ -2160,10 +2203,14 @@ if st.session_state.get('show_admin_panel', False) and st.session_state.user_inf
                 created_str = "Unknown"
                 if key.get('created_at'):
                     try:
-                        if isinstance(key['created_at'], datetime):
-                            created_str = key['created_at'].strftime('%Y-%m-%d')
+                        created_at = key['created_at']
+                        if hasattr(created_at, 'timestamp'):
+                            # Firebase Timestamp object
+                            created_str = datetime.fromtimestamp(created_at.timestamp(), tz=timezone.utc).strftime('%Y-%m-%d')
+                        elif isinstance(created_at, datetime):
+                            created_str = created_at.strftime('%Y-%m-%d')
                         else:
-                            created_str = str(key['created_at'])[:10]
+                            created_str = str(created_at)[:10]
                     except:
                         created_str = "Unknown"
                 
@@ -2171,10 +2218,14 @@ if st.session_state.get('show_admin_panel', False) and st.session_state.user_inf
                 last_used_str = "Never"
                 if key.get('last_used_at'):
                     try:
-                        if isinstance(key['last_used_at'], datetime):
-                            last_used_str = key['last_used_at'].strftime('%Y-%m-%d')
+                        last_used_at = key['last_used_at']
+                        if hasattr(last_used_at, 'timestamp'):
+                            # Firebase Timestamp object
+                            last_used_str = datetime.fromtimestamp(last_used_at.timestamp(), tz=timezone.utc).strftime('%Y-%m-%d')
+                        elif isinstance(last_used_at, datetime):
+                            last_used_str = last_used_at.strftime('%Y-%m-%d')
                         else:
-                            last_used_str = str(key['last_used_at'])[:10] if str(key['last_used_at']) != 'Never' else 'Never'
+                            last_used_str = str(last_used_at)[:10] if str(last_used_at) != 'Never' else 'Never'
                     except:
                         last_used_str = "Never"
                 
