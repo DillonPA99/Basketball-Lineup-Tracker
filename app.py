@@ -3534,7 +3534,7 @@ with tab2:
         # Shooting Statistics
         st.subheader("Shooting Statistics")
         
-        # Calculate team shooting stats from score history
+        # Initialize team shooting stats
         home_shooting_stats = {
             'free_throws_made': 0,
             'free_throws_attempted': 0,
@@ -3544,7 +3544,7 @@ with tab2:
             'three_pointers_attempted': 0,
             'total_points': 0
         }
-        
+
         away_shooting_stats = {
             'free_throws_made': 0,
             'free_throws_attempted': 0,
@@ -3554,34 +3554,56 @@ with tab2:
             'three_pointers_attempted': 0,
             'total_points': 0
         }
-        
-        # Process score history for team stats
+
+        # DEBUG: Show score history for troubleshooting
+        if st.checkbox("Debug: Show Score History", value=False):
+            st.write("**Score History Debug Info:**")
+            for i, event in enumerate(st.session_state.score_history):
+                st.write(f"Event {i+1}: Team={event.get('team')}, Points={event.get('points')}, Shot Type={event.get('shot_type')}, Made={event.get('made')}")
+
+        # Process score history for team stats with improved logic
         for score_event in st.session_state.score_history:
-            team = score_event['team']
+            team = score_event.get('team')
             shot_type = score_event.get('shot_type', 'field_goal')
             made = score_event.get('made', True)
             attempted = score_event.get('attempted', True)
             points = score_event.get('points', 0)
             
-            stats = home_shooting_stats if team == 'home' else away_shooting_stats
+            # Only process if we have a valid team
+            if not team or team not in ['home', 'away']:
+                continue
+            
+            # Select the correct stats dictionary
+            if team == 'home':
+                stats = home_shooting_stats
+            elif team == 'away':
+                stats = away_shooting_stats
+            else:
+                continue  # Skip invalid teams
+            
+            # Add points to team total
             stats['total_points'] += points
             
+            # Only process shots that were actually attempted
             if attempted:
                 if shot_type == 'free_throw':
                     stats['free_throws_attempted'] += 1
                     if made:
                         stats['free_throws_made'] += 1
+                        
                 elif shot_type == 'field_goal':
                     stats['field_goals_attempted'] += 1
                     if made:
                         stats['field_goals_made'] += 1
+                        
                 elif shot_type == 'three_pointer':
+                    # 3PT shots count as both 3PT and FG
                     stats['three_pointers_attempted'] += 1
-                    stats['field_goals_attempted'] += 1  # 3PT counts as FG
+                    stats['field_goals_attempted'] += 1
                     if made:
                         stats['three_pointers_made'] += 1
                         stats['field_goals_made'] += 1
-        
+
         # Team Shooting Comparison
         st.write("**Team Shooting Comparison**")
         
@@ -3625,7 +3647,11 @@ with tab2:
             )
             
             st.metric("Total Points", home_shooting_stats['total_points'])
-        
+            
+            # Debug info for home team
+            if st.checkbox("Debug: Home Team Stats", value=False):
+                st.json(home_shooting_stats)
+
         with team_col2:
             st.markdown("### Away Team")
             
@@ -3664,6 +3690,10 @@ with tab2:
             )
             
             st.metric("Total Points", away_shooting_stats['total_points'])
+            
+            # Debug info for away team
+            if st.checkbox("Debug: Away Team Stats", value=False):
+                st.json(away_shooting_stats)
         
         # Individual Home Team Player Statistics (now includes turnovers)
         if st.session_state.player_stats or st.session_state.player_turnovers:
