@@ -570,6 +570,8 @@ def save_game_session(user_id, session_name, game_data):
             'score_history': pickle.dumps(game_data['score_history']),
             'quarter_end_history': pickle.dumps(game_data['quarter_end_history']),
             'player_stats': pickle.dumps(dict(game_data['player_stats'])),
+            'turnover_history': pickle.dumps(game_data.get('turnover_history', [])),
+            'player_turnovers': pickle.dumps(dict(game_data.get('player_turnovers', {}))),
             'created_at': get_current_utc_time(),
             'updated_at': get_current_utc_time(),
             'is_completed': False  # Track if game is finished
@@ -597,23 +599,38 @@ def load_game_session(session_id):
         if doc.exists:
             session_data = doc.to_dict()
             
-            # Decode pickled data
-            for field in ['lineup_history', 'score_history', 'quarter_end_history', 'player_stats']:
-                if field in session_data:
-                    decoded_data = pickle.loads(base64.b64decode(session_data[field]))
-                    if field == 'player_stats':
-                        session_data[field] = defaultdict(lambda: {
-                            'points': 0,
-                            'field_goals_made': 0,
-                            'field_goals_attempted': 0,
-                            'three_pointers_made': 0,
-                            'three_pointers_attempted': 0,
-                            'free_throws_made': 0,
-                            'free_throws_attempted': 0,
-                            'minutes_played': 0
-                        }, decoded_data)
-                    else:
-                        session_data[field] = decoded_data
+            # Decode pickled data - ADD turnover fields to this list
+            for field in ['lineup_history', 'score_history', 'quarter_end_history', 'player_stats', 'turnover_history', 'player_turnovers']:
+                if field in session_data and session_data[field]:
+                    try:
+                        decoded_data = pickle.loads(base64.b64decode(session_data[field]))
+                        if field == 'player_stats':
+                            session_data[field] = defaultdict(lambda: {
+                                'points': 0,
+                                'field_goals_made': 0,
+                                'field_goals_attempted': 0,
+                                'three_pointers_made': 0,
+                                'three_pointers_attempted': 0,
+                                'free_throws_made': 0,
+                                'free_throws_attempted': 0,
+                                'minutes_played': 0
+                            }, decoded_data)
+                        elif field == 'player_turnovers':  # ADD THIS BLOCK
+                            session_data[field] = defaultdict(int, decoded_data)
+                        else:
+                            session_data[field] = decoded_data
+                    except:
+                        # If decoding fails, initialize with defaults
+                        if field == 'turnover_history':
+                            session_data[field] = []
+                        elif field == 'player_turnovers':
+                            session_data[field] = defaultdict(int)
+                else:
+                    # Initialize missing fields with defaults
+                    if field == 'turnover_history':
+                        session_data[field] = []
+                    elif field == 'player_turnovers':
+                        session_data[field] = defaultdict(int)
             
             return session_data
         else:
@@ -1059,6 +1076,13 @@ if "game_session_name" not in st.session_state:
 # Add this with your other session state initializations
 if "last_auto_save" not in st.session_state:
     st.session_state.last_auto_save = datetime.now()
+    
+if "turnover_history" not in st.session_state:
+    st.session_state.turnover_history = []
+
+if "player_turnovers" not in st.session_state:
+    st.session_state.player_turnovers = defaultdict(int)
+
 
 # ------------------------------------------------------------------
 # Helper functions
@@ -1074,6 +1098,8 @@ def reset_game():
     st.session_state.score_history = []
     st.session_state.quarter_lineup_set = False
     st.session_state.quarter_end_history = []
+    st.session_state.turnover_history = []
+    st.session_state.player_turnovers = defaultdict(int)
     st.session_state.player_stats = defaultdict(lambda: {
         'points': 0,
         'field_goals_made': 0,
@@ -1104,6 +1130,8 @@ def check_auto_save():
             'score_history': st.session_state.score_history,
             'quarter_end_history': st.session_state.quarter_end_history,
             'player_stats': st.session_state.player_stats
+            'turnover_history': st.session_state.turnover_history,
+            'player_turnovers': st.session_state.player_turnovers
         }
         
         if update_game_session(st.session_state.current_game_session_id, game_data):
@@ -1269,6 +1297,49 @@ def update_lineup(new_lineup, game_time):
 
     except Exception as e:
         return False, f"Error updating lineup: {str(e)}"
+
+def add_turnover(team, player=None):
+    """Add a turnover to the game log."""
+    turnover_event = {
+        'team': team,
+        'player': player,
+        'quarter': st.session_state.current_quarter,
+        'lineup': st.session_state.current_lineup.copy() if st.session_state.current_lineup else [],
+        'game_time': st.session_state.current_game_time,
+        'timestamp': datetime.now()
+    }
+    
+    st.session_state.turnover_history.append(turnover_event)
+    
+    # Update individual player stats for home team only
+    if team == "home" and player and player != "Team Turnover":
+        st.session_state.player_turnovers[player] += 1
+    
+    check_auto_save()
+
+def undo_last_turnover():
+    """Undo the last turnover entry."""
+    if not st.session_state.turnover_history:
+        return False
+        
+    last_turnover = st.session_state.turnover_history[-1]
+    
+    # Remove from player stats if applicable
+    if (last_turnover['team'] == "home" and last_turnover['player'] and 
+        last_turnover['player'] != "Team Turnover"):
+        player = last_turnover['player']
+        if st.session_state.player_turnovers[player] > 0:
+            st.session_state.player_turnovers[player] -= 1
+    
+    st.session_state.turnover_history.pop()
+    return True
+
+def get_team_turnovers():
+    """Get turnover count for each team."""
+    home_turnovers = sum(1 for to in st.session_state.turnover_history if to['team'] == 'home')
+    away_turnovers = sum(1 for to in st.session_state.turnover_history if to['team'] == 'away')
+    return home_turnovers, away_turnovers
+
 
 # ------------------------------------------------------------------
 # NEW: Capture end-of-quarter snapshot in lineup history at 0:00
@@ -2252,6 +2323,8 @@ with st.sidebar:
                                     'score_history': st.session_state.score_history,
                                     'quarter_end_history': st.session_state.quarter_end_history,
                                     'player_stats': st.session_state.player_stats
+                                    'turnover_history': st.session_state.turnover_history,
+                                    'player_turnovers': st.session_state.player_turnovers
                                 }
                                 update_game_session(st.session_state.current_game_session_id, current_game_data)
                             
@@ -2272,8 +2345,8 @@ with st.sidebar:
                                 st.session_state.score_history = loaded_data['score_history']
                                 st.session_state.quarter_end_history = loaded_data['quarter_end_history']
                                 st.session_state.player_stats = loaded_data['player_stats']
-                                
-                                # Set current session
+                                st.session_state.turnover_history = loaded_data.get('turnover_history', [])
+                                st.session_state.player_turnovers = loaded_data.get('player_turnovers', defaultdict(int))     
                                 st.session_state.current_game_session_id = session['id']
                                 st.session_state.game_session_name = session['session_name']
                                 
@@ -2989,6 +3062,58 @@ with tab1:
             if st.button(undo_text):
                 undo_last_score()
 
+        st.write("**Turnover Tracking**")
+        
+        turnover_col1, turnover_col2 = st.columns(2)
+        
+        with turnover_col1:
+            st.markdown("### 🏠 **HOME TURNOVERS**")
+            # Home team turnover player selection
+            if st.session_state.quarter_lineup_set:
+                home_turnover_player = st.selectbox(
+                    "Player:",
+                    ["Team Turnover"] + st.session_state.current_lineup,
+                    key="home_to_player"
+                )
+            else:
+                home_turnover_player = "Team Turnover"
+            
+            if st.button("📝 HOME Turnover", key="home_turnover", use_container_width=True):
+                player_to_record = None if home_turnover_player == "Team Turnover" else home_turnover_player
+                add_turnover("home", player_to_record)
+                player_text = f" by {home_turnover_player.split('(')[0].strip()}" if home_turnover_player != "Team Turnover" else ""
+                st.success(f"HOME turnover recorded{player_text}")
+                st.rerun()
+        
+        with turnover_col2:
+            st.markdown("### 🛣️ **AWAY TURNOVERS**")
+            st.info("📊 Away team turnovers recorded as team totals only")
+            # Away team turnover (team only)
+            if st.button("📝 AWAY Turnover", key="away_turnover", use_container_width=True):
+                add_turnover("away", None)
+                st.success("AWAY turnover recorded")
+                st.rerun()
+        
+        # Display current turnover count
+        home_tos, away_tos = get_team_turnovers()
+        if home_tos > 0 or away_tos > 0:
+            to_count_col1, to_count_col2 = st.columns(2)
+            with to_count_col1:
+                st.metric("HOME Turnovers", home_tos)
+            with to_count_col2:
+                st.metric("AWAY Turnovers", away_tos)
+
+        # Undo last turnover
+        if st.session_state.turnover_history:
+            last_turnover = st.session_state.turnover_history[-1]
+            player_text = f" by {last_turnover['player'].split('(')[0].strip()}" if last_turnover.get('player') else ""
+            undo_text = f"↩️ Undo: {last_turnover['team'].upper()} turnover{player_text}"
+            
+            if st.button(undo_text):
+                if undo_last_turnover():
+                    st.success("Last turnover undone!")
+                    st.rerun()      
+
     def handle_score_entry(team, points, scorer, shot_type, made):
         """Handle score entry with improved logic - player stats only for home team."""
         
@@ -3415,13 +3540,41 @@ with tab2:
             
             st.metric("Total Points", away_shooting_stats['total_points'])
         
-        # Individual Home Team Player Shooting Stats
-        if st.session_state.player_stats:
-            st.write("**Home Team Individual Shooting Statistics**")
+        # Individual Home Team Player Statistics (now includes turnovers)
+        if st.session_state.player_stats or st.session_state.player_turnovers:
+            st.write("**Home Team Individual Player Statistics**")
             
-            player_shooting_data = []
+            # Get all players who have any stats (shooting or turnovers)
+            all_stat_players = set()
+            
+            # Add players with shooting stats
             for player, stats in st.session_state.player_stats.items():
                 if any(stats[key] > 0 for key in ['points', 'field_goals_attempted', 'free_throws_attempted']):
+                    all_stat_players.add(player)
+            
+            # Add players with turnovers
+            for player, turnover_count in st.session_state.player_turnovers.items():
+                if turnover_count > 0:
+                    all_stat_players.add(player)
+            
+            if all_stat_players:
+                player_shooting_data = []
+                for player in all_stat_players:
+                    # Get shooting stats (default to 0 if player not in dict)
+                    stats = st.session_state.player_stats.get(player, {
+                        'points': 0,
+                        'field_goals_made': 0,
+                        'field_goals_attempted': 0,
+                        'three_pointers_made': 0,
+                        'three_pointers_attempted': 0,
+                        'free_throws_made': 0,
+                        'free_throws_attempted': 0,
+                        'minutes_played': 0
+                    })
+                    
+                    # Get turnover count
+                    turnovers = st.session_state.player_turnovers.get(player, 0)
+                    
                     # Calculate 2PT stats (FG - 3PT)
                     two_pt_made = stats['field_goals_made'] - stats['three_pointers_made']
                     two_pt_attempted = stats['field_goals_attempted'] - stats['three_pointers_attempted']
@@ -3440,85 +3593,85 @@ with tab2:
                         '3PT': f"{stats['three_pointers_made']}/{stats['three_pointers_attempted']}" if stats['three_pointers_attempted'] > 0 else "0/0",
                         '3PT%': f"{stats['three_pointers_made']/stats['three_pointers_attempted']*100:.1f}%" if stats['three_pointers_attempted'] > 0 else "0.0%",
                         'FG': f"{stats['field_goals_made']}/{stats['field_goals_attempted']}" if stats['field_goals_attempted'] > 0 else "0/0",
-                        'FG%': f"{stats['field_goals_made']/stats['field_goals_attempted']*100:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%"
-                        'eFG%': f"{efg_pct:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%"
-
+                        'FG%': f"{stats['field_goals_made']/stats['field_goals_attempted']*100:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%",
+                        'eFG%': f"{efg_pct:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%",
+                        'Turnovers': turnovers  # ADD THIS COLUMN
                     })
-            
-            if player_shooting_data:
-                player_shooting_df = pd.DataFrame(player_shooting_data)
-                player_shooting_df = player_shooting_df.sort_values('Points', ascending=False)
                 
-                st.dataframe(
-                    player_shooting_df,
-                    use_container_width=True,
-                    hide_index=True
-                )
-                
-                # Shooting Percentage Charts
-                st.write("**Shooting Percentage Comparison**")
-                
-                chart_col1, chart_col2 = st.columns(2)
-                
-                with chart_col1:
-                    # Field Goal Percentage Chart
-                    fg_chart_data = []
-                    for _, row in player_shooting_df.iterrows():
-                        if '/' in row['FG'] and row['FG'] != '0/0':
-                            made, attempted = map(int, row['FG'].split('/'))
-                            if attempted > 0:
-                                fg_chart_data.append({
-                                    'Player': row['Player'],
-                                    'FG%': made/attempted*100,
-                                    'Attempts': attempted
-                                })
+                if player_shooting_data:
+                    player_shooting_df = pd.DataFrame(player_shooting_data)
+                    player_shooting_df = player_shooting_df.sort_values('Points', ascending=False)
                     
-                    if fg_chart_data:
-                        fg_chart_df = pd.DataFrame(fg_chart_data)
-                        fig_fg = px.bar(
-                            fg_chart_df,
-                            x='Player',
-                            y='FG%',
-                            title='Field Goal Percentage by Player',
-                            text='FG%',
-                            color='Attempts',
-                            color_continuous_scale='viridis'
-                        )
-                        fig_fg.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
-                        fig_fg.update_layout(yaxis_title='Field Goal %', yaxis_range=[0, 100])
-                        st.plotly_chart(fig_fg, use_container_width=True)
-                
-                with chart_col2:
-                    # 3-Point Percentage Chart
-                    three_pt_chart_data = []
-                    for _, row in player_shooting_df.iterrows():
-                        if '/' in row['3PT'] and row['3PT'] != '0/0':
-                            made, attempted = map(int, row['3PT'].split('/'))
-                            if attempted > 0:
-                                three_pt_chart_data.append({
-                                    'Player': row['Player'],
-                                    '3PT%': made/attempted*100,
-                                    'Attempts': attempted
-                                })
+                    st.dataframe(
+                        player_shooting_df,
+                        use_container_width=True,
+                        hide_index=True
+                    )
                     
-                    if three_pt_chart_data:
-                        three_pt_chart_df = pd.DataFrame(three_pt_chart_data)
-                        fig_3pt = px.bar(
-                            three_pt_chart_df,
-                            x='Player',
-                            y='3PT%',
-                            title='3-Point Percentage by Player',
-                            text='3PT%',
-                            color='Attempts',
-                            color_continuous_scale='plasma'
-                        )
-                        fig_3pt.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
-                        fig_3pt.update_layout(yaxis_title='3-Point %', yaxis_range=[0, 100])
-                        st.plotly_chart(fig_3pt, use_container_width=True)
+                    # Shooting Percentage Charts (keep existing charts unchanged)
+                    st.write("**Shooting Percentage Comparison**")
+                    
+                    chart_col1, chart_col2 = st.columns(2)
+                    
+                    with chart_col1:
+                        # Field Goal Percentage Chart
+                        fg_chart_data = []
+                        for _, row in player_shooting_df.iterrows():
+                            if '/' in row['FG'] and row['FG'] != '0/0':
+                                made, attempted = map(int, row['FG'].split('/'))
+                                if attempted > 0:
+                                    fg_chart_data.append({
+                                        'Player': row['Player'],
+                                        'FG%': made/attempted*100,
+                                        'Attempts': attempted
+                                    })
+                        
+                        if fg_chart_data:
+                            fg_chart_df = pd.DataFrame(fg_chart_data)
+                            fig_fg = px.bar(
+                                fg_chart_df,
+                                x='Player',
+                                y='FG%',
+                                title='Field Goal Percentage by Player',
+                                text='FG%',
+                                color='Attempts',
+                                color_continuous_scale='viridis'
+                            )
+                            fig_fg.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+                            fig_fg.update_layout(yaxis_title='Field Goal %', yaxis_range=[0, 100])
+                            st.plotly_chart(fig_fg, use_container_width=True)
+                    
+                    with chart_col2:
+                        # 3-Point Percentage Chart
+                        three_pt_chart_data = []
+                        for _, row in player_shooting_df.iterrows():
+                            if '/' in row['3PT'] and row['3PT'] != '0/0':
+                                made, attempted = map(int, row['3PT'].split('/'))
+                                if attempted > 0:
+                                    three_pt_chart_data.append({
+                                        'Player': row['Player'],
+                                        '3PT%': made/attempted*100,
+                                        'Attempts': attempted
+                                    })
+                        
+                        if three_pt_chart_data:
+                            three_pt_chart_df = pd.DataFrame(three_pt_chart_data)
+                            fig_3pt = px.bar(
+                                three_pt_chart_df,
+                                x='Player',
+                                y='3PT%',
+                                title='3-Point Percentage by Player',
+                                text='3PT%',
+                                color='Attempts',
+                                color_continuous_scale='plasma'
+                            )
+                            fig_3pt.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+                            fig_3pt.update_layout(yaxis_title='3-Point %', yaxis_range=[0, 100])
+                            st.plotly_chart(fig_3pt, use_container_width=True)
+                else:
+                    st.info("No individual player statistics available yet.")
             else:
-                st.info("No individual player shooting data available yet.")
-        else:
-            st.info("No individual player statistics available yet.")
+                st.info("No individual player statistics available yet.")
         
         # Plus/Minus Analytics
         st.subheader("Plus/Minus Analytics")
