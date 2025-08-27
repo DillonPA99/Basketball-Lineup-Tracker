@@ -3280,7 +3280,241 @@ with tab2:
                     hide_index=True
                 )
 
-# Plus/Minus Analytics
+
+        # Shooting Statistics
+        st.subheader("Shooting Statistics")
+        
+        # Calculate team shooting stats from score history
+        home_shooting_stats = {
+            'free_throws_made': 0,
+            'free_throws_attempted': 0,
+            'field_goals_made': 0,
+            'field_goals_attempted': 0,
+            'three_pointers_made': 0,
+            'three_pointers_attempted': 0,
+            'total_points': 0
+        }
+        
+        away_shooting_stats = {
+            'free_throws_made': 0,
+            'free_throws_attempted': 0,
+            'field_goals_made': 0,
+            'field_goals_attempted': 0,
+            'three_pointers_made': 0,
+            'three_pointers_attempted': 0,
+            'total_points': 0
+        }
+        
+        # Process score history for team stats
+        for score_event in st.session_state.score_history:
+            team = score_event['team']
+            shot_type = score_event.get('shot_type', 'field_goal')
+            made = score_event.get('made', True)
+            attempted = score_event.get('attempted', True)
+            points = score_event.get('points', 0)
+            
+            stats = home_shooting_stats if team == 'home' else away_shooting_stats
+            stats['total_points'] += points
+            
+            if attempted:
+                if shot_type == 'free_throw':
+                    stats['free_throws_attempted'] += 1
+                    if made:
+                        stats['free_throws_made'] += 1
+                elif shot_type == 'field_goal':
+                    stats['field_goals_attempted'] += 1
+                    if made:
+                        stats['field_goals_made'] += 1
+                elif shot_type == 'three_pointer':
+                    stats['three_pointers_attempted'] += 1
+                    stats['field_goals_attempted'] += 1  # 3PT counts as FG
+                    if made:
+                        stats['three_pointers_made'] += 1
+                        stats['field_goals_made'] += 1
+        
+        # Team Shooting Comparison
+        st.write("**Team Shooting Comparison**")
+        
+        team_col1, team_col2 = st.columns(2)
+        
+        with team_col1:
+            st.markdown("### Home Team")
+            
+            # Free Throws
+            ft_pct = (home_shooting_stats['free_throws_made'] / home_shooting_stats['free_throws_attempted'] * 100) if home_shooting_stats['free_throws_attempted'] > 0 else 0
+            st.metric(
+                "Free Throws", 
+                f"{home_shooting_stats['free_throws_made']}/{home_shooting_stats['free_throws_attempted']}", 
+                f"{ft_pct:.1f}%"
+            )
+            
+            # 2-Point Field Goals (FG - 3PT)
+            two_pt_made = home_shooting_stats['field_goals_made'] - home_shooting_stats['three_pointers_made']
+            two_pt_attempted = home_shooting_stats['field_goals_attempted'] - home_shooting_stats['three_pointers_attempted']
+            two_pt_pct = (two_pt_made / two_pt_attempted * 100) if two_pt_attempted > 0 else 0
+            st.metric(
+                "2-Point FG", 
+                f"{two_pt_made}/{two_pt_attempted}", 
+                f"{two_pt_pct:.1f}%"
+            )
+            
+            # 3-Point Field Goals
+            three_pt_pct = (home_shooting_stats['three_pointers_made'] / home_shooting_stats['three_pointers_attempted'] * 100) if home_shooting_stats['three_pointers_attempted'] > 0 else 0
+            st.metric(
+                "3-Point FG", 
+                f"{home_shooting_stats['three_pointers_made']}/{home_shooting_stats['three_pointers_attempted']}", 
+                f"{three_pt_pct:.1f}%"
+            )
+            
+            # Total Field Goals
+            fg_pct = (home_shooting_stats['field_goals_made'] / home_shooting_stats['field_goals_attempted'] * 100) if home_shooting_stats['field_goals_attempted'] > 0 else 0
+            st.metric(
+                "Total FG", 
+                f"{home_shooting_stats['field_goals_made']}/{home_shooting_stats['field_goals_attempted']}", 
+                f"{fg_pct:.1f}%"
+            )
+            
+            st.metric("Total Points", home_shooting_stats['total_points'])
+        
+        with team_col2:
+            st.markdown("### Away Team")
+            
+            # Free Throws
+            away_ft_pct = (away_shooting_stats['free_throws_made'] / away_shooting_stats['free_throws_attempted'] * 100) if away_shooting_stats['free_throws_attempted'] > 0 else 0
+            st.metric(
+                "Free Throws", 
+                f"{away_shooting_stats['free_throws_made']}/{away_shooting_stats['free_throws_attempted']}", 
+                f"{away_ft_pct:.1f}%"
+            )
+            
+            # 2-Point Field Goals
+            away_two_pt_made = away_shooting_stats['field_goals_made'] - away_shooting_stats['three_pointers_made']
+            away_two_pt_attempted = away_shooting_stats['field_goals_attempted'] - away_shooting_stats['three_pointers_attempted']
+            away_two_pt_pct = (away_two_pt_made / away_two_pt_attempted * 100) if away_two_pt_attempted > 0 else 0
+            st.metric(
+                "2-Point FG", 
+                f"{away_two_pt_made}/{away_two_pt_attempted}", 
+                f"{away_two_pt_pct:.1f}%"
+            )
+            
+            # 3-Point Field Goals
+            away_three_pt_pct = (away_shooting_stats['three_pointers_made'] / away_shooting_stats['three_pointers_attempted'] * 100) if away_shooting_stats['three_pointers_attempted'] > 0 else 0
+            st.metric(
+                "3-Point FG", 
+                f"{away_shooting_stats['three_pointers_made']}/{away_shooting_stats['three_pointers_attempted']}", 
+                f"{away_three_pt_pct:.1f}%"
+            )
+            
+            # Total Field Goals
+            away_fg_pct = (away_shooting_stats['field_goals_made'] / away_shooting_stats['field_goals_attempted'] * 100) if away_shooting_stats['field_goals_attempted'] > 0 else 0
+            st.metric(
+                "Total FG", 
+                f"{away_shooting_stats['field_goals_made']}/{away_shooting_stats['field_goals_attempted']}", 
+                f"{away_fg_pct:.1f}%"
+            )
+            
+            st.metric("Total Points", away_shooting_stats['total_points'])
+        
+        # Individual Home Team Player Shooting Stats
+        if st.session_state.player_stats:
+            st.write("**Home Team Individual Shooting Statistics**")
+            
+            player_shooting_data = []
+            for player, stats in st.session_state.player_stats.items():
+                if any(stats[key] > 0 for key in ['points', 'field_goals_attempted', 'free_throws_attempted']):
+                    # Calculate 2PT stats (FG - 3PT)
+                    two_pt_made = stats['field_goals_made'] - stats['three_pointers_made']
+                    two_pt_attempted = stats['field_goals_attempted'] - stats['three_pointers_attempted']
+                    
+                    player_shooting_data.append({
+                        'Player': player.split('(')[0].strip(),
+                        'Points': stats['points'],
+                        'FT': f"{stats['free_throws_made']}/{stats['free_throws_attempted']}" if stats['free_throws_attempted'] > 0 else "0/0",
+                        'FT%': f"{stats['free_throws_made']/stats['free_throws_attempted']*100:.1f}%" if stats['free_throws_attempted'] > 0 else "0.0%",
+                        '2PT': f"{two_pt_made}/{two_pt_attempted}" if two_pt_attempted > 0 else "0/0",
+                        '2PT%': f"{two_pt_made/two_pt_attempted*100:.1f}%" if two_pt_attempted > 0 else "0.0%",
+                        '3PT': f"{stats['three_pointers_made']}/{stats['three_pointers_attempted']}" if stats['three_pointers_attempted'] > 0 else "0/0",
+                        '3PT%': f"{stats['three_pointers_made']/stats['three_pointers_attempted']*100:.1f}%" if stats['three_pointers_attempted'] > 0 else "0.0%",
+                        'FG': f"{stats['field_goals_made']}/{stats['field_goals_attempted']}" if stats['field_goals_attempted'] > 0 else "0/0",
+                        'FG%': f"{stats['field_goals_made']/stats['field_goals_attempted']*100:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%"
+                    })
+            
+            if player_shooting_data:
+                player_shooting_df = pd.DataFrame(player_shooting_data)
+                player_shooting_df = player_shooting_df.sort_values('Points', ascending=False)
+                
+                st.dataframe(
+                    player_shooting_df,
+                    use_container_width=True,
+                    hide_index=True
+                )
+                
+                # Shooting Percentage Charts
+                st.write("**Shooting Percentage Comparison**")
+                
+                chart_col1, chart_col2 = st.columns(2)
+                
+                with chart_col1:
+                    # Field Goal Percentage Chart
+                    fg_chart_data = []
+                    for _, row in player_shooting_df.iterrows():
+                        if '/' in row['FG'] and row['FG'] != '0/0':
+                            made, attempted = map(int, row['FG'].split('/'))
+                            if attempted > 0:
+                                fg_chart_data.append({
+                                    'Player': row['Player'],
+                                    'FG%': made/attempted*100,
+                                    'Attempts': attempted
+                                })
+                    
+                    if fg_chart_data:
+                        fg_chart_df = pd.DataFrame(fg_chart_data)
+                        fig_fg = px.bar(
+                            fg_chart_df,
+                            x='Player',
+                            y='FG%',
+                            title='Field Goal Percentage by Player',
+                            text='FG%',
+                            color='Attempts',
+                            color_continuous_scale='viridis'
+                        )
+                        fig_fg.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+                        fig_fg.update_layout(yaxis_title='Field Goal %', yaxis_range=[0, 100])
+                        st.plotly_chart(fig_fg, use_container_width=True)
+                
+                with chart_col2:
+                    # 3-Point Percentage Chart
+                    three_pt_chart_data = []
+                    for _, row in player_shooting_df.iterrows():
+                        if '/' in row['3PT'] and row['3PT'] != '0/0':
+                            made, attempted = map(int, row['3PT'].split('/'))
+                            if attempted > 0:
+                                three_pt_chart_data.append({
+                                    'Player': row['Player'],
+                                    '3PT%': made/attempted*100,
+                                    'Attempts': attempted
+                                })
+                    
+                    if three_pt_chart_data:
+                        three_pt_chart_df = pd.DataFrame(three_pt_chart_data)
+                        fig_3pt = px.bar(
+                            three_pt_chart_df,
+                            x='Player',
+                            y='3PT%',
+                            title='3-Point Percentage by Player',
+                            text='3PT%',
+                            color='Attempts',
+                            color_continuous_scale='plasma'
+                        )
+                        fig_3pt.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+                        fig_3pt.update_layout(yaxis_title='3-Point %', yaxis_range=[0, 100])
+                        st.plotly_chart(fig_3pt, use_container_width=True)
+            else:
+                st.info("No individual player shooting data available yet.")
+        else:
+            st.info("No individual player statistics available yet.")
+        
+        # Plus/Minus Analytics
         st.subheader("Plus/Minus Analytics")
         
         # Individual Player Plus/Minus
