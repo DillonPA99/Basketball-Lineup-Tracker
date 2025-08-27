@@ -1262,10 +1262,10 @@ def update_lineup(new_lineup, game_time):
         st.session_state.quarter_lineup_set = True
         st.session_state.current_game_time = game_time
 
-        return True, "Lineup updated successfully"
+        # Add this before the return
+        check_auto_save()
 
-    # Add this before the return
-    check_auto_save()
+        return True, "Lineup updated successfully"
 
     except Exception as e:
         return False, f"Error updating lineup: {str(e)}"
@@ -1324,10 +1324,11 @@ def end_quarter():
         st.session_state.quarter_lineup_set = False
         st.session_state.current_lineup = []  # clear so user must set new 5
         st.session_state.current_game_time = f"{st.session_state.quarter_length}:00"
-        return True
 
         # Add this before the return
         check_auto_save()
+        
+        return True
         
     return False
 
