@@ -548,6 +548,160 @@ def roster_exists(user_id):
         return False
 
 # ============================================================================
+# GAME SESSION STORAGE (FIREBASE VERSION)
+# ============================================================================
+
+def save_game_session(user_id, session_name, game_data):
+    """Save current game session to Firebase."""
+    try:
+        # Prepare game data for storage
+        game_session = {
+            'user_id': user_id,
+            'session_name': session_name,
+            'roster': game_data['roster'],
+            'current_quarter': game_data['current_quarter'],
+            'quarter_length': game_data['quarter_length'],
+            'home_score': game_data['home_score'],
+            'away_score': game_data['away_score'],
+            'current_lineup': game_data['current_lineup'],
+            'quarter_lineup_set': game_data['quarter_lineup_set'],
+            'current_game_time': game_data['current_game_time'],
+            'lineup_history': pickle.dumps(game_data['lineup_history']),
+            'score_history': pickle.dumps(game_data['score_history']),
+            'quarter_end_history': pickle.dumps(game_data['quarter_end_history']),
+            'player_stats': pickle.dumps(dict(game_data['player_stats'])),
+            'created_at': get_current_utc_time(),
+            'updated_at': get_current_utc_time(),
+            'is_completed': False  # Track if game is finished
+        }
+        
+        # Convert pickled data to base64 for storage
+        for field in ['lineup_history', 'score_history', 'quarter_end_history', 'player_stats']:
+            game_session[field] = base64.b64encode(game_session[field]).decode()
+        
+        # Save to Firebase
+        doc_ref = db.collection('game_sessions').document()
+        doc_ref.set(game_session)
+        
+        return True, doc_ref.id
+        
+    except Exception as e:
+        st.error(f"Error saving game session: {str(e)}")
+        return False, None
+
+def load_game_session(session_id):
+    """Load a specific game session from Firebase."""
+    try:
+        doc = db.collection('game_sessions').document(session_id).get()
+        
+        if doc.exists:
+            session_data = doc.to_dict()
+            
+            # Decode pickled data
+            for field in ['lineup_history', 'score_history', 'quarter_end_history', 'player_stats']:
+                if field in session_data:
+                    decoded_data = pickle.loads(base64.b64decode(session_data[field]))
+                    if field == 'player_stats':
+                        session_data[field] = defaultdict(lambda: {
+                            'points': 0,
+                            'field_goals_made': 0,
+                            'field_goals_attempted': 0,
+                            'three_pointers_made': 0,
+                            'three_pointers_attempted': 0,
+                            'free_throws_made': 0,
+                            'free_throws_attempted': 0,
+                            'minutes_played': 0
+                        }, decoded_data)
+                    else:
+                        session_data[field] = decoded_data
+            
+            return session_data
+        else:
+            return None
+            
+    except Exception as e:
+        st.error(f"Error loading game session: {str(e)}")
+        return None
+
+def get_user_game_sessions(user_id, include_completed=True):
+    """Get all game sessions for a user."""
+    try:
+        query = db.collection('game_sessions').where(
+            filter=FieldFilter('user_id', '==', user_id)
+        )
+        
+        if not include_completed:
+            query = query.where(filter=FieldFilter('is_completed', '==', False))
+            
+        docs = query.order_by('updated_at', direction=firestore.Query.DESCENDING).get()
+        
+        sessions = []
+        for doc in docs:
+            session_data = doc.to_dict()
+            sessions.append({
+                'id': doc.id,
+                'session_name': session_data.get('session_name', 'Unnamed Game'),
+                'created_at': session_data.get('created_at'),
+                'updated_at': session_data.get('updated_at'),
+                'current_quarter': session_data.get('current_quarter', 'Q1'),
+                'home_score': session_data.get('home_score', 0),
+                'away_score': session_data.get('away_score', 0),
+                'is_completed': session_data.get('is_completed', False)
+            })
+        
+        return sessions
+        
+    except Exception as e:
+        st.error(f"Error fetching game sessions: {str(e)}")
+        return []
+
+def delete_game_session(session_id):
+    """Delete a game session."""
+    try:
+        db.collection('game_sessions').document(session_id).delete()
+        return True
+    except Exception as e:
+        st.error(f"Error deleting game session: {str(e)}")
+        return False
+
+def update_game_session(session_id, game_data):
+    """Update an existing game session."""
+    try:
+        # Prepare update data
+        update_data = {
+            'current_quarter': game_data['current_quarter'],
+            'home_score': game_data['home_score'],
+            'away_score': game_data['away_score'],
+            'current_lineup': game_data['current_lineup'],
+            'quarter_lineup_set': game_data['quarter_lineup_set'],
+            'current_game_time': game_data['current_game_time'],
+            'lineup_history': base64.b64encode(pickle.dumps(game_data['lineup_history'])).decode(),
+            'score_history': base64.b64encode(pickle.dumps(game_data['score_history'])).decode(),
+            'quarter_end_history': base64.b64encode(pickle.dumps(game_data['quarter_end_history'])).decode(),
+            'player_stats': base64.b64encode(pickle.dumps(dict(game_data['player_stats']))).decode(),
+            'updated_at': get_current_utc_time()
+        }
+        
+        db.collection('game_sessions').document(session_id).update(update_data)
+        return True
+        
+    except Exception as e:
+        st.error(f"Error updating game session: {str(e)}")
+        return False
+
+def mark_game_completed(session_id):
+    """Mark a game session as completed."""
+    try:
+        db.collection('game_sessions').document(session_id).update({
+            'is_completed': True,
+            'completed_at': get_current_utc_time()
+        })
+        return True
+    except Exception as e:
+        st.error(f"Error marking game as completed: {str(e)}")
+        return False
+
+# ============================================================================
 # ADMIN FUNCTIONS (FIREBASE VERSION)
 # ============================================================================
 
@@ -896,6 +1050,16 @@ if "user_info" not in st.session_state:
 if "show_admin_panel" not in st.session_state:
     st.session_state.show_admin_panel = False
 
+if "current_game_session_id" not in st.session_state:
+    st.session_state.current_game_session_id = None
+
+if "game_session_name" not in st.session_state:
+    st.session_state.game_session_name = None
+
+# Add this with your other session state initializations
+if "last_auto_save" not in st.session_state:
+    st.session_state.last_auto_save = datetime.now()
+
 # ------------------------------------------------------------------
 # Helper functions
 # ------------------------------------------------------------------
@@ -920,6 +1084,32 @@ def reset_game():
         'free_throws_attempted': 0,
         'minutes_played': 0
     })
+
+# Auto-save functionality
+def check_auto_save():
+    """Check if auto-save should trigger."""
+    if (st.session_state.current_game_session_id and 
+        datetime.now() - st.session_state.last_auto_save > timedelta(minutes=5)):
+        
+        game_data = {
+            'roster': st.session_state.roster,
+            'current_quarter': st.session_state.current_quarter,
+            'quarter_length': st.session_state.quarter_length,
+            'home_score': st.session_state.home_score,
+            'away_score': st.session_state.away_score,
+            'current_lineup': st.session_state.current_lineup,
+            'quarter_lineup_set': st.session_state.quarter_lineup_set,
+            'current_game_time': st.session_state.current_game_time,
+            'lineup_history': st.session_state.lineup_history,
+            'score_history': st.session_state.score_history,
+            'quarter_end_history': st.session_state.quarter_end_history,
+            'player_stats': st.session_state.player_stats
+        }
+        
+        if update_game_session(st.session_state.current_game_session_id, game_data):
+            st.session_state.last_auto_save = datetime.now()
+            # Optional: Show a subtle notification
+            # st.success("Game auto-saved!")
 
 # Add points to team score and log the event
 def add_score(team, points):
@@ -1074,6 +1264,9 @@ def update_lineup(new_lineup, game_time):
 
         return True, "Lineup updated successfully"
 
+    # Add this before the return
+    check_auto_save()
+
     except Exception as e:
         return False, f"Error updating lineup: {str(e)}"
 
@@ -1132,6 +1325,10 @@ def end_quarter():
         st.session_state.current_lineup = []  # clear so user must set new 5
         st.session_state.current_game_time = f"{st.session_state.quarter_length}:00"
         return True
+
+        # Add this before the return
+        check_auto_save()
+        
     return False
 
 # ------------------------------------------------------------------
@@ -1206,6 +1403,29 @@ def calculate_individual_plus_minus():
             player_stats[player]['plus_minus'] += score_change
     
     return dict(player_stats)
+
+def check_auto_save():
+    """Check if auto-save should trigger."""
+    if (st.session_state.current_game_session_id and 
+        datetime.now() - st.session_state.last_auto_save > timedelta(minutes=5)):
+        
+        game_data = {
+            'roster': st.session_state.roster,
+            'current_quarter': st.session_state.current_quarter,
+            'quarter_length': st.session_state.quarter_length,
+            'home_score': st.session_state.home_score,
+            'away_score': st.session_state.away_score,
+            'current_lineup': st.session_state.current_lineup,
+            'quarter_lineup_set': st.session_state.quarter_lineup_set,
+            'current_game_time': st.session_state.current_game_time,
+            'lineup_history': st.session_state.lineup_history,
+            'score_history': st.session_state.score_history,
+            'quarter_end_history': st.session_state.quarter_end_history,
+            'player_stats': st.session_state.player_stats
+        }
+        
+        if update_game_session(st.session_state.current_game_session_id, game_data):
+            st.session_state.last_auto_save = datetime.now()
 
 # ------------------------------------------------------------------
 # Lineup Plus-Minus Calculation
@@ -1867,9 +2087,13 @@ if not st.session_state.roster_set:
                     
             except Exception as e:
                 st.error(f"Error loading saved roster: {e}")
-
+                
     # Stop here if roster not set
     st.stop()
+
+    # Check for auto-save (add this right after roster setup, before the tabs)
+if st.session_state.roster_set:
+    check_auto_save()
 
 # ------------------------------------------------------------------
 # Sidebar: Game Controls (only when roster is set)
@@ -1930,6 +2154,144 @@ with st.sidebar:
         if st.session_state.roster:
             for player in sorted(st.session_state.roster, key=lambda x: x["jersey"]):
                 st.write(f"#{player['jersey']} {player['name']} ({player['position']})")
+
+    st.divider()
+
+    # Game Session Management
+    st.subheader("💾 Game Sessions")
+
+    # Show current session info
+    if st.session_state.current_game_session_id:
+        st.success(f"📂 Current: {st.session_state.game_session_name}")
+        
+        session_col1, session_col2 = st.columns(2)
+        
+        with session_col1:
+            if st.button("💾 Save Progress", help="Update saved game with current progress"):
+                game_data = {
+                    'roster': st.session_state.roster,
+                    'current_quarter': st.session_state.current_quarter,
+                    'quarter_length': st.session_state.quarter_length,
+                    'home_score': st.session_state.home_score,
+                    'away_score': st.session_state.away_score,
+                    'current_lineup': st.session_state.current_lineup,
+                    'quarter_lineup_set': st.session_state.quarter_lineup_set,
+                    'current_game_time': st.session_state.current_game_time,
+                    'lineup_history': st.session_state.lineup_history,
+                    'score_history': st.session_state.score_history,
+                    'quarter_end_history': st.session_state.quarter_end_history,
+                    'player_stats': st.session_state.player_stats
+                }
+                
+                if update_game_session(st.session_state.current_game_session_id, game_data):
+                    st.success("Game progress saved!")
+                else:
+                    st.error("Failed to save game progress")
+        
+        with session_col2:
+            if st.button("🏁 Mark Complete", help="Mark this game as finished"):
+                if mark_game_completed(st.session_state.current_game_session_id):
+                    st.success("Game marked as completed!")
+                    st.session_state.current_game_session_id = None
+                    st.session_state.game_session_name = None
+                    st.rerun()
+    else:
+        st.info("No active game session")
+
+    # Save current game as new session
+    if st.button("💾 Save Current Game", type="primary"):
+        # Check if there's meaningful game data
+        has_game_data = (
+            st.session_state.home_score > 0 or 
+            st.session_state.away_score > 0 or 
+            len(st.session_state.lineup_history) > 0 or
+            st.session_state.quarter_lineup_set
+        )
+        
+        if not has_game_data:
+            st.warning("No meaningful game data to save. Start tracking your game first!")
+        else:
+            # Show save dialog in main area
+            st.session_state.show_save_dialog = True
+            st.rerun()
+
+    # Load saved games
+    if st.button("📂 Load Saved Game"):
+        st.session_state.show_load_dialog = True
+        st.rerun()
+
+    # View all saved games
+    with st.expander("📋 My Saved Games"):
+        try:
+            saved_sessions = get_user_game_sessions(st.session_state.user_info['id'], include_completed=False)
+            
+            if saved_sessions:
+                for session in saved_sessions[:5]:  # Show last 5
+                    col1, col2, col3 = st.columns([3, 1, 1])
+                    
+                    with col1:
+                        status_emoji = "🏁" if session['is_completed'] else "🎮"
+                        st.write(f"{status_emoji} **{session['session_name']}**")
+                        st.caption(f"{session['current_quarter']} | {session['home_score']}-{session['away_score']}")
+                    
+                    with col2:
+                        if st.button("📂", key=f"load_{session['id']}", help="Load this game"):
+                            if st.session_state.current_game_session_id:
+                                # Save current game first
+                                current_game_data = {
+                                    'roster': st.session_state.roster,
+                                    'current_quarter': st.session_state.current_quarter,
+                                    'quarter_length': st.session_state.quarter_length,
+                                    'home_score': st.session_state.home_score,
+                                    'away_score': st.session_state.away_score,
+                                    'current_lineup': st.session_state.current_lineup,
+                                    'quarter_lineup_set': st.session_state.quarter_lineup_set,
+                                    'current_game_time': st.session_state.current_game_time,
+                                    'lineup_history': st.session_state.lineup_history,
+                                    'score_history': st.session_state.score_history,
+                                    'quarter_end_history': st.session_state.quarter_end_history,
+                                    'player_stats': st.session_state.player_stats
+                                }
+                                update_game_session(st.session_state.current_game_session_id, current_game_data)
+                            
+                            # Load selected game
+                            loaded_data = load_game_session(session['id'])
+                            if loaded_data:
+                                # Update session state with loaded data
+                                st.session_state.roster = loaded_data['roster']
+                                st.session_state.roster_set = True
+                                st.session_state.current_quarter = loaded_data['current_quarter']
+                                st.session_state.quarter_length = loaded_data['quarter_length']
+                                st.session_state.home_score = loaded_data['home_score']
+                                st.session_state.away_score = loaded_data['away_score']
+                                st.session_state.current_lineup = loaded_data['current_lineup']
+                                st.session_state.quarter_lineup_set = loaded_data['quarter_lineup_set']
+                                st.session_state.current_game_time = loaded_data['current_game_time']
+                                st.session_state.lineup_history = loaded_data['lineup_history']
+                                st.session_state.score_history = loaded_data['score_history']
+                                st.session_state.quarter_end_history = loaded_data['quarter_end_history']
+                                st.session_state.player_stats = loaded_data['player_stats']
+                                
+                                # Set current session
+                                st.session_state.current_game_session_id = session['id']
+                                st.session_state.game_session_name = session['session_name']
+                                
+                                st.success(f"Loaded game: {session['session_name']}")
+                                st.rerun()
+                    
+                    with col3:
+                        if st.button("🗑️", key=f"delete_{session['id']}", help="Delete this game"):
+                            if delete_game_session(session['id']):
+                                st.success("Game deleted!")
+                                st.rerun()
+                
+                if len(saved_sessions) > 5:
+                    st.caption(f"Showing 5 of {len(saved_sessions)} saved games")
+            else:
+                st.info("No saved games found")
+                
+        except Exception as e:
+            st.error(f"Error loading saved games: {str(e)}")
 
     st.divider()
 
@@ -2684,6 +3046,9 @@ with tab1:
                 st.info(f"📊 {team_name} {shot_text} Miss")
         
         st.rerun()
+        
+        # Add this line at the end
+        check_auto_save()
 
     def undo_last_score():
         """Improved undo functionality."""
@@ -3055,6 +3420,11 @@ with tab3:
             st.write(f"**Description:** {event['description']}")
             st.write(f"**Details:** {event['details']}")
             st.divider()
+
+# Before the footer section
+# Auto-save check
+check_auto_save()
+
 # ------------------------------------------------------------------
 # Footer
 # ------------------------------------------------------------------
