@@ -1129,7 +1129,7 @@ def check_auto_save():
             'lineup_history': st.session_state.lineup_history,
             'score_history': st.session_state.score_history,
             'quarter_end_history': st.session_state.quarter_end_history,
-            'player_stats': st.session_state.player_stats
+            'player_stats': st.session_state.player_stats,
             'turnover_history': st.session_state.turnover_history,
             'player_turnovers': st.session_state.player_turnovers
         }
@@ -2322,7 +2322,7 @@ with st.sidebar:
                                     'lineup_history': st.session_state.lineup_history,
                                     'score_history': st.session_state.score_history,
                                     'quarter_end_history': st.session_state.quarter_end_history,
-                                    'player_stats': st.session_state.player_stats
+                                    'player_stats': st.session_state.player_stats,
                                     'turnover_history': st.session_state.turnover_history,
                                     'player_turnovers': st.session_state.player_turnovers
                                 }
