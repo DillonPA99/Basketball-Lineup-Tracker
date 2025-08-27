@@ -3425,6 +3425,10 @@ with tab2:
                     # Calculate 2PT stats (FG - 3PT)
                     two_pt_made = stats['field_goals_made'] - stats['three_pointers_made']
                     two_pt_attempted = stats['field_goals_attempted'] - stats['three_pointers_attempted']
+
+                    efg_pct = 0
+                    if stats['field_goals_attempted'] > 0:
+                        efg_pct = ((stats['field_goals_made'] + 0.5 * stats['three_pointers_made']) / stats['field_goals_attempted']) * 100
                     
                     player_shooting_data.append({
                         'Player': player.split('(')[0].strip(),
@@ -3437,6 +3441,8 @@ with tab2:
                         '3PT%': f"{stats['three_pointers_made']/stats['three_pointers_attempted']*100:.1f}%" if stats['three_pointers_attempted'] > 0 else "0.0%",
                         'FG': f"{stats['field_goals_made']}/{stats['field_goals_attempted']}" if stats['field_goals_attempted'] > 0 else "0/0",
                         'FG%': f"{stats['field_goals_made']/stats['field_goals_attempted']*100:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%"
+                        'eFG%': f"{efg_pct:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%"
+
                     })
             
             if player_shooting_data:
