@@ -3296,9 +3296,6 @@ def handle_score_entry(team, points, scorer, shot_type, made):
     
     # Add this line at the end
     check_auto_save()
-        
-        # Add this line at the end
-        check_auto_save()
 
     def undo_last_score():
         """Improved undo functionality."""
