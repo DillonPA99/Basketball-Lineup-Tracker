@@ -3239,64 +3239,63 @@ with tab1:
                     st.success("Last turnover undone!")
                     st.rerun()      
 
-    def handle_score_entry(team, points, scorer, shot_type, made):
-        """Handle score entry with improved logic - player stats only for home team."""
+def handle_score_entry(team, points, scorer, shot_type, made):
+    """Handle score entry with improved logic - player stats only for home team."""
+    
+    # Only track player stats for home team with actual player selected
+    if team == "home" and scorer != "Quick Score (No Player)":
+        # Use add_score_with_player which handles both team score AND player stats
+        add_score_with_player(
+            team=team,
+            points=points,
+            scorer_player=scorer,
+            shot_type=shot_type,
+            made=made,
+            attempted=True
+        )
         
-        # Only track player stats for home team with actual player selected
-        if team == "home" and scorer != "Quick Score (No Player)":
-            # Use add_score_with_player which handles both team score AND player stats
-            add_score_with_player(
-                team=team,
-                points=points,
-                scorer_player=scorer,
-                shot_type=shot_type,
-                made=made,
-                attempted=True
-            )
-            
-            # Success message with player info
-            result_text = "Made" if made else "Missed"
-            shot_text = {
-                "free_throw": "FT",
-                "field_goal": "2PT", 
-                "three_pointer": "3PT"
-            }.get(shot_type, "Shot")
-            
-            if made:
-                st.success(f"✅ {shot_text} Make by {scorer.split('(')[0].strip()} (+{points})")
-            else:
-                st.info(f"📊 {shot_text} Miss by {scorer.split('(')[0].strip()}")
+        # Success message with player info
+        result_text = "Made" if made else "Missed"
+        shot_text = {
+            "free_throw": "FT",
+            "field_goal": "2PT", 
+            "three_pointer": "3PT"
+        }.get(shot_type, "Shot")
+        
+        if made:
+            st.success(f"✅ {shot_text} Make by {scorer.split('(')[0].strip()} (+{points})")
         else:
-            # Quick score mode (always used for away team, optional for home team)
-            if points > 0:
-                add_score(team, points)
-            
-            # Add to history for tracking purposes
-            st.session_state.score_history.append({
-                'team': team,
-                'points': points,
-                'shot_type': shot_type,
-                'made': made,
-                'scorer': scorer if team == "home" else None,
-                'quarter': st.session_state.current_quarter,
-                'lineup': st.session_state.current_lineup.copy() if st.session_state.current_lineup else [],
-                'game_time': st.session_state.current_game_time,
-                'timestamp': datetime.now()
-            })
-            
-            team_name = "HOME" if team == "home" else "AWAY"
-            shot_text = {
-                "free_throw": "FT",
-                "field_goal": "2PT", 
-                "three_pointer": "3PT"
-            }.get(shot_type, "Shot")
-            
-            if made:
-                st.success(f"✅ {team_name} {shot_text} Make (+{points})")
-            else:
-                st.info(f"📊 {team_name} {shot_text} Miss")
+            st.info(f"📊 {shot_text} Miss by {scorer.split('(')[0].strip()}")
+    else:
+        # Quick score mode (always used for away team, optional for home team)
+        if points > 0:
+            add_score(team, points)
         
-        st.rerun()
+        add_score_with_player(
+            team=team,
+            points=points,
+            scorer_player=None,  # No player tracking for away team
+            shot_type=shot_type,
+            made=made,
+            attempted=True
+        )
+        
+        team_name = "HOME" if team == "home" else "AWAY"
+        shot_text = {
+            "free_throw": "FT",
+            "field_goal": "2PT", 
+            "three_pointer": "3PT"
+        }.get(shot_type, "Shot")
+        
+        if made:
+            st.success(f"✅ {team_name} {shot_text} Make (+{points})")
+        else:
+            st.info(f"📊 {team_name} {shot_text} Miss")
+    
+    st.rerun()
+    
+    # Add this line at the end
+    check_auto_save()
         
         # Add this line at the end
         check_auto_save()
