@@ -2926,7 +2926,7 @@ with st.sidebar:
             }
         
             if update_game_session(st.session_state.current_game_session_id, current_game_data):
-            st.success("Game progress saved!")
+                st.success("Game progress saved!")
     
         # Clear session
         for key in list(st.session_state.keys()):
