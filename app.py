@@ -2549,66 +2549,66 @@ with st.sidebar:
             default_name = generate_default_game_name()
 
             with st.form("save_game_form"):
-            st.write("**Save Current Game**")
+                st.write("**Save Current Game**")
             
-            # Pre-fill with smart default
-            save_name = st.text_input(
-                "Game Name:",
-                value=default_name,
-                placeholder="Enter a name for this game",
-                max_chars=50
-            )
+                # Pre-fill with smart default
+                save_name = st.text_input(
+                    "Game Name:",
+                    value=default_name,
+                    placeholder="Enter a name for this game",
+                    max_chars=50
+                )
 
-            # Show game details
-            st.write(f"**Teams:** {st.session_state.home_team_name} vs {st.session_state.away_team_name}")
-            st.write(f"**Score:** {st.session_state.home_score}-{st.session_state.away_score}")
-            st.write(f"**Quarter:** {st.session_state.current_quarter}")
+                # Show game details
+                st.write(f"**Teams:** {st.session_state.home_team_name} vs {st.session_state.away_team_name}")
+                st.write(f"**Score:** {st.session_state.home_score}-{st.session_state.away_score}")
+                st.write(f"**Quarter:** {st.session_state.current_quarter}")
             
-            save_col1, save_col2 = st.columns(2)
+                save_col1, save_col2 = st.columns(2)
             
-            with save_col1:
-                if st.form_submit_button("💾 Save Game", type="primary"):
-                    if not save_name.strip():
-                        st.error("Please enter a game name!")
-                    else:
-                        # Prepare game data
-                        game_data = {
-                            'roster': st.session_state.roster,
-                            'home_team_name': st.session_state.home_team_name,
-                            'away_team_name': st.session_state.away_team_name,
-                            'custom_game_name': st.session_state.custom_game_name,
-                            'current_quarter': st.session_state.current_quarter,
-                            'quarter_length': st.session_state.quarter_length,
-                            'home_score': st.session_state.home_score,
-                            'away_score': st.session_state.away_score,
-                            'current_lineup': st.session_state.current_lineup,
-                            'quarter_lineup_set': st.session_state.quarter_lineup_set,
-                            'current_game_time': st.session_state.current_game_time,
-                            'lineup_history': st.session_state.lineup_history,
-                            'score_history': st.session_state.score_history,
-                            'quarter_end_history': st.session_state.quarter_end_history,
-                            'player_stats': st.session_state.player_stats,
-                            'turnover_history': st.session_state.turnover_history,
-                            'player_turnovers': st.session_state.player_turnovers
-                        }
-                        
-                        success, session_id = save_game_session(
-                            st.session_state.user_info['id'],
-                            save_name.strip(),
-                            game_data
-                        )
-                        
-                        if success:
-                            st.session_state.current_game_session_id = session_id
-                            st.session_state.game_session_name = save_name.strip()
-                            st.success(f"Game saved as: {save_name.strip()}")
-                            st.rerun()
+                with save_col1:
+                    if st.form_submit_button("💾 Save Game", type="primary"):
+                        if not save_name.strip():
+                            st.error("Please enter a game name!")
                         else:
-                            st.error("Failed to save game. Please try again.")
+                            # Prepare game data
+                            game_data = {
+                                'roster': st.session_state.roster,
+                                'home_team_name': st.session_state.home_team_name,
+                                'away_team_name': st.session_state.away_team_name,
+                                'custom_game_name': st.session_state.custom_game_name,
+                                'current_quarter': st.session_state.current_quarter,
+                                'quarter_length': st.session_state.quarter_length,
+                                'home_score': st.session_state.home_score,
+                                'away_score': st.session_state.away_score,
+                                'current_lineup': st.session_state.current_lineup,
+                                'quarter_lineup_set': st.session_state.quarter_lineup_set,
+                                'current_game_time': st.session_state.current_game_time,
+                                'lineup_history': st.session_state.lineup_history,
+                                'score_history': st.session_state.score_history,
+                                'quarter_end_history': st.session_state.quarter_end_history,
+                                'player_stats': st.session_state.player_stats,
+                                'turnover_history': st.session_state.turnover_history,
+                                'player_turnovers': st.session_state.player_turnovers
+                            }
+                        
+                            success, session_id = save_game_session(
+                                st.session_state.user_info['id'],
+                                save_name.strip(),
+                                game_data
+                            )
+                        
+                            if success:
+                                st.session_state.current_game_session_id = session_id
+                                st.session_state.game_session_name = save_name.strip()
+                                st.success(f"Game saved as: {save_name.strip()}")
+                                st.rerun()
+                            else:
+                                st.error("Failed to save game. Please try again.")
             
-            with save_col2:
-                if st.form_submit_button("❌ Cancel"):
-                    st.rerun()
+                with save_col2:
+                    if st.form_submit_button("❌ Cancel"):
+                        st.rerun()
 
 
     # Load saved games
