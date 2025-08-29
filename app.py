@@ -2497,13 +2497,13 @@ with st.sidebar:
     roster_col1, roster_col2 = st.columns(2)
     
     with roster_col1:
-    if st.button("🔄 Change Roster"):
-        # Check if there's meaningful game data to save
-        has_game_data = (
-            st.session_state.home_score > 0 or 
-            st.session_state.away_score > 0 or 
-            len(st.session_state.lineup_history) > 0 or
-            st.session_state.quarter_lineup_set
+        if st.button("🔄 Change Roster"):
+            # Check if there's meaningful game data to save
+            has_game_data = (
+                st.session_state.home_score > 0 or 
+                st.session_state.away_score > 0 or 
+                len(st.session_state.lineup_history) > 0 or
+                st.session_state.quarter_lineup_set
         )
         
         if has_game_data and st.session_state.current_game_session_id:
