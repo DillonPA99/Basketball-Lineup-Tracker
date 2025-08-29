@@ -1837,33 +1837,7 @@ Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
 FINAL SCORE: {st.session_state.home_team_name} {st.session_state.home_score} - {st.session_state.away_score} {st.session_state.away_team_name}
 
-• Total Points Scored: {total_points}
-• Lineup Changes Made: {lineup_changes}
-• Scoring Plays: {len(st.session_state.score_history)}
-• Quarters Completed: {len(st.session_state.quarter_end_history)}
-
 """
-
-    # Add Quarter End Records if they exist
-    if st.session_state.quarter_end_history:
-        email_body += "QUARTER END RECORDS\n===================\n"
-        for quarter_end in st.session_state.quarter_end_history:
-            email_body += f"Quarter: {quarter_end.get('quarter', 'Unknown')}\n"
-            email_body += f"Final Score: {quarter_end.get('final_score', '0-0')}\n"
-            email_body += f"Game Time: {quarter_end.get('game_time', 'Unknown')}\n"
-            email_body += f"Final Lineup: {' | '.join(quarter_end.get('final_lineup', []))}\n\n"
-
-    # Add Lineup History
-    if st.session_state.lineup_history:
-        email_body += "LINEUP HISTORY\n==============\n"
-        for i, lineup_event in enumerate(st.session_state.lineup_history):
-            label = f"{lineup_event.get('quarter','?')} End" if lineup_event.get("is_quarter_end") else str(i + 1)
-            email_body += f"Lineup #{label} | {lineup_event.get('quarter', 'Unknown')} | "
-            email_body += f"{lineup_event.get('game_time', 'Unknown')} | "
-            email_body += f"Score: {lineup_event.get('home_score', 0)}-{lineup_event.get('away_score', 0)} | "
-            email_body += f"Players: {' | '.join(lineup_event.get('new_lineup', []))}\n"
-        email_body += "\n"
-
     # Calculate and add shooting statistics
     email_body += "SHOOTING STATISTICS\n===================\n"
     
@@ -3627,58 +3601,6 @@ with tab2:
         with col4:
             st.metric("Quarters Completed", len(st.session_state.quarter_end_history))
 
-        # Quarter end history (legacy / optional)
-        if st.session_state.quarter_end_history:
-            st.subheader("Quarter End Records")
-
-            quarter_end_data = []
-            for quarter_end in st.session_state.quarter_end_history:
-                quarter_end_data.append({
-                    "Quarter": quarter_end.get("quarter", "Unknown"),
-                    "Final Score": quarter_end.get("final_score", "0-0"),
-                    "Game Time": quarter_end.get("game_time", "Unknown"),
-                    "Final Lineup": " | ".join(quarter_end.get("final_lineup", [])),
-                    "Timestamp": quarter_end.get("timestamp", "").strftime("%H:%M:%S") if quarter_end.get("timestamp") else "Unknown"
-                })
-
-            if quarter_end_data:
-                quarter_end_df = pd.DataFrame(quarter_end_data)
-                st.dataframe(
-                    quarter_end_df,
-                    use_container_width=True,
-                    hide_index=True
-                )
-
-            # Optional cleanup button
-            if st.button("🗑️ Clear Quarter End Records"):
-                st.session_state.quarter_end_history.clear()
-                st.rerun()
-
-        # Lineup history (now also shows end-of-quarter snapshots)
-        if st.session_state.lineup_history:
-            st.subheader("Lineup History (includes End-of-Quarter 0:00 snapshots)")
-
-            lineup_data = []
-            for i, lineup_event in enumerate(st.session_state.lineup_history):
-                label = f"{lineup_event.get('quarter','?')} End" if lineup_event.get("is_quarter_end") else i + 1
-                lineup_data.append({
-                    "Lineup #": label,
-                    "Quarter": lineup_event.get("quarter", "Unknown"),
-                    "Game Time": lineup_event.get("game_time", "Unknown"),
-                    "Score": f"{lineup_event.get('home_score', 0)}-{lineup_event.get('away_score', 0)}",
-                    "Lineup": " | ".join(lineup_event.get("new_lineup", [])),
-                    "Time Logged": lineup_event.get("timestamp", "").strftime("%H:%M:%S") if lineup_event.get("timestamp") else "Unknown"
-                })
-
-            if lineup_data:
-                lineup_df = pd.DataFrame(lineup_data)
-                st.dataframe(
-                    lineup_df,
-                    use_container_width=True,
-                    hide_index=True
-                )
-
-
         # Shooting Statistics
         st.subheader("Shooting Statistics")
         
@@ -4065,6 +3987,57 @@ with tab2:
                         st.write(f"_{lineup_df.iloc[-1]['Lineup']}_")
         else:
             st.info("No lineup plus/minus data available yet.")
+
+            # Quarter end history (legacy / optional)
+        if st.session_state.quarter_end_history:
+            st.subheader("Quarter End Records")
+
+            quarter_end_data = []
+            for quarter_end in st.session_state.quarter_end_history:
+                quarter_end_data.append({
+                    "Quarter": quarter_end.get("quarter", "Unknown"),
+                    "Final Score": quarter_end.get("final_score", "0-0"),
+                    "Game Time": quarter_end.get("game_time", "Unknown"),
+                    "Final Lineup": " | ".join(quarter_end.get("final_lineup", [])),
+                    "Timestamp": quarter_end.get("timestamp", "").strftime("%H:%M:%S") if quarter_end.get("timestamp") else "Unknown"
+                })
+
+            if quarter_end_data:
+                quarter_end_df = pd.DataFrame(quarter_end_data)
+                st.dataframe(
+                    quarter_end_df,
+                    use_container_width=True,
+                    hide_index=True
+                )
+
+            # Optional cleanup button
+            if st.button("🗑️ Clear Quarter End Records"):
+                st.session_state.quarter_end_history.clear()
+                st.rerun()
+
+        # Lineup history (now also shows end-of-quarter snapshots)
+        if st.session_state.lineup_history:
+            st.subheader("Lineup History (includes End-of-Quarter 0:00 snapshots)")
+
+            lineup_data = []
+            for i, lineup_event in enumerate(st.session_state.lineup_history):
+                label = f"{lineup_event.get('quarter','?')} End" if lineup_event.get("is_quarter_end") else i + 1
+                lineup_data.append({
+                    "Lineup #": label,
+                    "Quarter": lineup_event.get("quarter", "Unknown"),
+                    "Game Time": lineup_event.get("game_time", "Unknown"),
+                    "Score": f"{lineup_event.get('home_score', 0)}-{lineup_event.get('away_score', 0)}",
+                    "Lineup": " | ".join(lineup_event.get("new_lineup", [])),
+                    "Time Logged": lineup_event.get("timestamp", "").strftime("%H:%M:%S") if lineup_event.get("timestamp") else "Unknown"
+                })
+
+            if lineup_data:
+                lineup_df = pd.DataFrame(lineup_data)
+                st.dataframe(
+                    lineup_df,
+                    use_container_width=True,
+                    hide_index=True
+                )
 
 # ------------------------------------------------------------------
 # Tab 3: Event Log
