@@ -88,7 +88,7 @@ def load_firebase_credentials():
     return None
 
 @st.cache_resource
-@st.cache_resource
+
 def init_firebase():
     """Initialize Firebase with robust error handling and caching."""
     
@@ -696,6 +696,8 @@ def update_game_session(session_id, game_data):
             'score_history': base64.b64encode(pickle.dumps(game_data['score_history'])).decode(),
             'quarter_end_history': base64.b64encode(pickle.dumps(game_data['quarter_end_history'])).decode(),
             'player_stats': base64.b64encode(pickle.dumps(dict(game_data['player_stats']))).decode(),
+            'turnover_history': base64.b64encode(pickle.dumps(game_data.get('turnover_history', []))).decode(),
+            'player_turnovers': base64.b64encode(pickle.dumps(dict(game_data.get('player_turnovers', {})))).decode(),
             'updated_at': get_current_utc_time()
         }
         
@@ -1577,29 +1579,6 @@ def calculate_individual_plus_minus():
             player_stats[player]['plus_minus'] += score_change
     
     return dict(player_stats)
-
-def check_auto_save():
-    """Check if auto-save should trigger."""
-    if (st.session_state.current_game_session_id and 
-        datetime.now() - st.session_state.last_auto_save > timedelta(minutes=5)):
-        
-        game_data = {
-            'roster': st.session_state.roster,
-            'current_quarter': st.session_state.current_quarter,
-            'quarter_length': st.session_state.quarter_length,
-            'home_score': st.session_state.home_score,
-            'away_score': st.session_state.away_score,
-            'current_lineup': st.session_state.current_lineup,
-            'quarter_lineup_set': st.session_state.quarter_lineup_set,
-            'current_game_time': st.session_state.current_game_time,
-            'lineup_history': st.session_state.lineup_history,
-            'score_history': st.session_state.score_history,
-            'quarter_end_history': st.session_state.quarter_end_history,
-            'player_stats': st.session_state.player_stats
-        }
-        
-        if update_game_session(st.session_state.current_game_session_id, game_data):
-            st.session_state.last_auto_save = datetime.now()
 
 # ------------------------------------------------------------------
 # Lineup Plus-Minus Calculation
