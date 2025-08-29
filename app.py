@@ -552,9 +552,9 @@ def roster_exists(user_id):
 # ============================================================================
 
 def save_game_session(user_id, session_name, game_data):
-    """Save current game session to Firebase."""
+    """Save current game session to Firebase - FIXED VERSION."""
     try:
-        # Prepare game data for storage
+        # Prepare game data for storage with proper serialization
         game_session = {
             'user_id': user_id,
             'session_name': session_name,
@@ -569,24 +569,57 @@ def save_game_session(user_id, session_name, game_data):
             'current_lineup': game_data['current_lineup'],
             'quarter_lineup_set': game_data['quarter_lineup_set'],
             'current_game_time': game_data['current_game_time'],
-            'lineup_history': pickle.dumps(game_data['lineup_history']),
-            'score_history': pickle.dumps(game_data['score_history']),
-            'quarter_end_history': pickle.dumps(game_data['quarter_end_history']),
-            'player_stats': pickle.dumps(dict(game_data['player_stats'])),
-            'turnover_history': pickle.dumps(game_data.get('turnover_history', [])),
-            'player_turnovers': pickle.dumps(dict(game_data.get('player_turnovers', {}))),
-             'last_activity': get_current_utc_time(),
+            'last_activity': get_current_utc_time(),
             'total_events': len(game_data.get('lineup_history', [])) + len(game_data.get('score_history', [])),
             'game_phase': 'In Progress' if game_data['current_quarter'] != 'Q4' else 'Final Quarter',
             'created_at': get_current_utc_time(),
             'updated_at': get_current_utc_time(),
-            'is_completed': False  # Track if game is finished
+            'is_completed': False
         }
         
-        # Convert pickled data to base64 for storage
-        for field in ['lineup_history', 'score_history', 'quarter_end_history', 'player_stats', 'turnover_history', 'player_turnovers']:
-            if isinstance(game_session[field], bytes):
-                game_session[field] = base64.b64encode(game_session[field]).decode()
+        # Serialize complex data structures properly
+        try:
+            game_session['lineup_history'] = base64.b64encode(pickle.dumps(game_data['lineup_history'])).decode('utf-8')
+        except Exception as e:
+            st.error(f"Error serializing lineup_history: {e}")
+            game_session['lineup_history'] = base64.b64encode(pickle.dumps([])).decode('utf-8')
+        
+        try:
+            game_session['score_history'] = base64.b64encode(pickle.dumps(game_data['score_history'])).decode('utf-8')
+        except Exception as e:
+            st.error(f"Error serializing score_history: {e}")
+            game_session['score_history'] = base64.b64encode(pickle.dumps([])).decode('utf-8')
+        
+        try:
+            game_session['quarter_end_history'] = base64.b64encode(pickle.dumps(game_data['quarter_end_history'])).decode('utf-8')
+        except Exception as e:
+            st.error(f"Error serializing quarter_end_history: {e}")
+            game_session['quarter_end_history'] = base64.b64encode(pickle.dumps([])).decode('utf-8')
+        
+        try:
+            # Convert defaultdict to regular dict before serializing
+            player_stats_dict = {}
+            for player, stats in game_data['player_stats'].items():
+                player_stats_dict[player] = dict(stats)  # Convert to regular dict
+            game_session['player_stats'] = base64.b64encode(pickle.dumps(player_stats_dict)).decode('utf-8')
+        except Exception as e:
+            st.error(f"Error serializing player_stats: {e}")
+            game_session['player_stats'] = base64.b64encode(pickle.dumps({})).decode('utf-8')
+        
+        try:
+            # Convert defaultdict to regular dict for turnovers
+            turnover_history = game_data.get('turnover_history', [])
+            game_session['turnover_history'] = base64.b64encode(pickle.dumps(turnover_history)).decode('utf-8')
+        except Exception as e:
+            st.error(f"Error serializing turnover_history: {e}")
+            game_session['turnover_history'] = base64.b64encode(pickle.dumps([])).decode('utf-8')
+        
+        try:
+            player_turnovers_dict = dict(game_data.get('player_turnovers', {}))
+            game_session['player_turnovers'] = base64.b64encode(pickle.dumps(player_turnovers_dict)).decode('utf-8')
+        except Exception as e:
+            st.error(f"Error serializing player_turnovers: {e}")
+            game_session['player_turnovers'] = base64.b64encode(pickle.dumps({})).decode('utf-8')
         
         # Save to Firebase
         doc_ref = db.collection('game_sessions').document()
@@ -596,59 +629,98 @@ def save_game_session(user_id, session_name, game_data):
         
     except Exception as e:
         st.error(f"Error saving game session: {str(e)}")
+        import traceback
+        st.error(f"Detailed error: {traceback.format_exc()}")
         return False, None
 
+
 def load_game_session(session_id):
-    """Load a specific game session from Firebase."""
+    """Load a specific game session from Firebase - FIXED VERSION."""
     try:
         doc = db.collection('game_sessions').document(session_id).get()
         
-        if doc.exists:
-            session_data = doc.to_dict()
-            
-            # Decode pickled data - ADD turnover fields to this list
-            for field in ['lineup_history', 'score_history', 'quarter_end_history', 'player_stats', 'turnover_history', 'player_turnovers']:
-                if field in session_data and session_data[field]:
-                    try:
-                        decoded_data = pickle.loads(base64.b64decode(session_data[field]))
-                        if field == 'player_stats':
-                            session_data[field] = defaultdict(lambda: {
-                                'points': 0,
-                                'field_goals_made': 0,
-                                'field_goals_attempted': 0,
-                                'three_pointers_made': 0,
-                                'three_pointers_attempted': 0,
-                                'free_throws_made': 0,
-                                'free_throws_attempted': 0,
-                                'minutes_played': 0
-                            }, decoded_data)
-                        elif field == 'player_turnovers':  # ADD THIS BLOCK
-                            session_data[field] = defaultdict(int, decoded_data)
-                        else:
-                            session_data[field] = decoded_data
-                    except:
-                        # If decoding fails, initialize with defaults
-                        if field == 'turnover_history':
-                            session_data[field] = []
-                        elif field == 'player_turnovers':
-                            session_data[field] = defaultdict(int)
-                else:
-                    # Initialize missing fields with defaults
+        if not doc.exists:
+            st.error("Game session not found")
+            return None
+        
+        session_data = doc.to_dict()
+        
+        # Decode pickled data with proper error handling
+        fields_to_decode = ['lineup_history', 'score_history', 'quarter_end_history', 'player_stats', 'turnover_history', 'player_turnovers']
+        
+        for field in fields_to_decode:
+            if field in session_data and session_data[field]:
+                try:
+                    decoded_data = pickle.loads(base64.b64decode(session_data[field]))
+                    
+                    if field == 'player_stats':
+                        # Convert back to defaultdict with proper defaults
+                        session_data[field] = defaultdict(lambda: {
+                            'points': 0,
+                            'field_goals_made': 0,
+                            'field_goals_attempted': 0,
+                            'three_pointers_made': 0,
+                            'three_pointers_attempted': 0,
+                            'free_throws_made': 0,
+                            'free_throws_attempted': 0,
+                            'minutes_played': 0
+                        }, decoded_data)
+                    elif field == 'player_turnovers':
+                        # Convert back to defaultdict(int)
+                        session_data[field] = defaultdict(int, decoded_data)
+                    else:
+                        session_data[field] = decoded_data
+                        
+                except Exception as e:
+                    st.warning(f"Error decoding {field}, using defaults: {e}")
+                    # Set defaults based on field type
                     if field == 'turnover_history':
                         session_data[field] = []
                     elif field == 'player_turnovers':
                         session_data[field] = defaultdict(int)
-            
-            return session_data
-        else:
-            return None
-            
+                    elif field == 'player_stats':
+                        session_data[field] = defaultdict(lambda: {
+                            'points': 0,
+                            'field_goals_made': 0,
+                            'field_goals_attempted': 0,
+                            'three_pointers_made': 0,
+                            'three_pointers_attempted': 0,
+                            'free_throws_made': 0,
+                            'free_throws_attempted': 0,
+                            'minutes_played': 0
+                        })
+                    else:
+                        session_data[field] = []
+            else:
+                # Initialize missing fields with defaults
+                if field == 'turnover_history':
+                    session_data[field] = []
+                elif field == 'player_turnovers':
+                    session_data[field] = defaultdict(int)
+                elif field == 'player_stats':
+                    session_data[field] = defaultdict(lambda: {
+                        'points': 0,
+                        'field_goals_made': 0,
+                        'field_goals_attempted': 0,
+                        'three_pointers_made': 0,
+                        'three_pointers_attempted': 0,
+                        'free_throws_made': 0,
+                        'free_throws_attempted': 0,
+                        'minutes_played': 0
+                    })
+                else:
+                    session_data[field] = []
+        
+        return session_data
+        
     except Exception as e:
         st.error(f"Error loading game session: {str(e)}")
+        import traceback
+        st.error(f"Detailed error: {traceback.format_exc()}")
         return None
 
 def get_user_game_sessions(user_id, include_completed=True):
-    """Get all game sessions for a user."""
+    """Get all game sessions for a user - FIXED VERSION."""
     try:
         query = db.collection('game_sessions').where(
             filter=FieldFilter('user_id', '==', user_id)
@@ -661,23 +733,35 @@ def get_user_game_sessions(user_id, include_completed=True):
         
         sessions = []
         for doc in docs:
-            session_data = doc.to_dict()
-            sessions.append({
-                'id': doc.id,
-                'session_name': session_data.get('session_name', 'Unnamed Game'),
-                'created_at': session_data.get('created_at'),
-                'updated_at': session_data.get('updated_at'),
-                'current_quarter': session_data.get('current_quarter', 'Q1'),
-                'home_score': session_data.get('home_score', 0),
-                'away_score': session_data.get('away_score', 0),
-                'is_completed': session_data.get('is_completed', False)
-            })
+            try:
+                session_data = doc.to_dict()
+                
+                # Create a safe session summary (avoid loading complex data)
+                session_summary = {
+                    'id': doc.id,
+                    'session_name': session_data.get('session_name', 'Unnamed Game'),
+                    'created_at': session_data.get('created_at'),
+                    'updated_at': session_data.get('updated_at'),
+                    'current_quarter': session_data.get('current_quarter', 'Q1'),
+                    'home_score': session_data.get('home_score', 0),
+                    'away_score': session_data.get('away_score', 0),
+                    'home_team_name': session_data.get('home_team_name', 'HOME'),
+                    'away_team_name': session_data.get('away_team_name', 'AWAY'),
+                    'is_completed': session_data.get('is_completed', False)
+                }
+                
+                sessions.append(session_summary)
+                
+            except Exception as e:
+                st.warning(f"Error processing session {doc.id}: {e}")
+                continue
         
         return sessions
         
     except Exception as e:
         st.error(f"Error fetching game sessions: {str(e)}")
         return []
+
 
 def delete_game_session(session_id):
     """Delete a game session."""
@@ -689,9 +773,9 @@ def delete_game_session(session_id):
         return False
 
 def update_game_session(session_id, game_data):
-    """Update an existing game session."""
+    """Update an existing game session - FIXED VERSION."""
     try:
-        # Prepare update data
+        # Prepare update data with same serialization as save_game_session
         update_data = {
             'home_team_name': game_data.get('home_team_name', 'HOME'),
             'away_team_name': game_data.get('away_team_name', 'AWAY'),
@@ -702,23 +786,41 @@ def update_game_session(session_id, game_data):
             'current_lineup': game_data['current_lineup'],
             'quarter_lineup_set': game_data['quarter_lineup_set'],
             'current_game_time': game_data['current_game_time'],
-            'lineup_history': base64.b64encode(pickle.dumps(game_data['lineup_history'])).decode(),
-            'score_history': base64.b64encode(pickle.dumps(game_data['score_history'])).decode(),
-            'quarter_end_history': base64.b64encode(pickle.dumps(game_data['quarter_end_history'])).decode(),
-            'player_stats': base64.b64encode(pickle.dumps(dict(game_data['player_stats']))).decode(),
-            'turnover_history': base64.b64encode(pickle.dumps(game_data.get('turnover_history', []))).decode(),
-            'player_turnovers': base64.b64encode(pickle.dumps(dict(game_data.get('player_turnovers', {})))).decode(),
             'last_activity': get_current_utc_time(),
             'total_events': len(game_data.get('lineup_history', [])) + len(game_data.get('score_history', [])),
             'game_phase': 'In Progress' if game_data['current_quarter'] != 'Q4' else 'Final Quarter',
             'updated_at': get_current_utc_time()
         }
         
+        # Serialize complex data with error handling
+        try:
+            update_data['lineup_history'] = base64.b64encode(pickle.dumps(game_data['lineup_history'])).decode('utf-8')
+            update_data['score_history'] = base64.b64encode(pickle.dumps(game_data['score_history'])).decode('utf-8')
+            update_data['quarter_end_history'] = base64.b64encode(pickle.dumps(game_data['quarter_end_history'])).decode('utf-8')
+            
+            # Convert defaultdicts to regular dicts
+            player_stats_dict = {}
+            for player, stats in game_data['player_stats'].items():
+                player_stats_dict[player] = dict(stats)
+            update_data['player_stats'] = base64.b64encode(pickle.dumps(player_stats_dict)).decode('utf-8')
+            
+            update_data['turnover_history'] = base64.b64encode(pickle.dumps(game_data.get('turnover_history', []))).decode('utf-8')
+            
+            player_turnovers_dict = dict(game_data.get('player_turnovers', {}))
+            update_data['player_turnovers'] = base64.b64encode(pickle.dumps(player_turnovers_dict)).decode('utf-8')
+            
+        except Exception as e:
+            st.error(f"Error serializing data for update: {e}")
+            return False
+        
+        # Update the document
         db.collection('game_sessions').document(session_id).update(update_data)
         return True
         
     except Exception as e:
         st.error(f"Error updating game session: {str(e)}")
+        import traceback
+        st.error(f"Detailed error: {traceback.format_exc()}")
         return False
 
 def mark_game_completed(session_id):
@@ -732,6 +834,43 @@ def mark_game_completed(session_id):
     except Exception as e:
         st.error(f"Error marking game as completed: {str(e)}")
         return False
+
+def debug_game_save(game_data):
+    """Debug function to check what data we're trying to save"""
+    st.write("**Debug: Game data being saved:**")
+    
+    for key, value in game_data.items():
+        if key in ['lineup_history', 'score_history', 'quarter_end_history', 'player_stats', 'turnover_history', 'player_turnovers']:
+            try:
+                if hasattr(value, '__len__'):
+                    st.write(f"- {key}: {len(value)} items (type: {type(value)})")
+                else:
+                    st.write(f"- {key}: {value} (type: {type(value)})")
+            except:
+                st.write(f"- {key}: Error checking length (type: {type(value)})")
+        else:
+            st.write(f"- {key}: {value}")
+    
+    # Test serialization
+    st.write("**Testing serialization:**")
+    for key in ['lineup_history', 'score_history', 'quarter_end_history', 'player_stats', 'turnover_history', 'player_turnovers']:
+        try:
+            if key == 'player_stats':
+                # Convert defaultdict to dict
+                test_data = {}
+                for player, stats in game_data[key].items():
+                    test_data[player] = dict(stats)
+                pickle.dumps(test_data)
+                st.success(f"✅ {key}: Serialization OK")
+            elif key == 'player_turnovers':
+                test_data = dict(game_data.get(key, {}))
+                pickle.dumps(test_data)
+                st.success(f"✅ {key}: Serialization OK")
+            else:
+                pickle.dumps(game_data.get(key, []))
+                st.success(f"✅ {key}: Serialization OK")
+        except Exception as e:
+            st.error(f"❌ {key}: Serialization failed - {e}")
 
 # ============================================================================
 # ADMIN FUNCTIONS (FIREBASE VERSION)
