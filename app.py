@@ -551,6 +551,54 @@ def roster_exists(user_id):
 # GAME SESSION STORAGE (FIREBASE VERSION)
 # ============================================================================
 
+def ensure_active_game_session():
+    """Ensure there's an active game session, creating one if needed."""
+    if not st.session_state.current_game_session_id:
+        # Check if we have meaningful game data
+        has_game_data = (
+            st.session_state.home_score > 0 or 
+            st.session_state.away_score > 0 or 
+            len(st.session_state.lineup_history) > 0 or
+            st.session_state.quarter_lineup_set
+        )
+        
+        if has_game_data:
+            # Auto-create session with default name
+            default_name = generate_default_game_name()
+            
+            game_data = {
+                'roster': st.session_state.roster,
+                'home_team_name': st.session_state.home_team_name,
+                'away_team_name': st.session_state.away_team_name,
+                'custom_game_name': st.session_state.custom_game_name,
+                'current_quarter': st.session_state.current_quarter,
+                'quarter_length': st.session_state.quarter_length,
+                'home_score': st.session_state.home_score,
+                'away_score': st.session_state.away_score,
+                'current_lineup': st.session_state.current_lineup,
+                'quarter_lineup_set': st.session_state.quarter_lineup_set,
+                'current_game_time': st.session_state.current_game_time,
+                'lineup_history': st.session_state.lineup_history,
+                'score_history': st.session_state.score_history,
+                'quarter_end_history': st.session_state.quarter_end_history,
+                'player_stats': st.session_state.player_stats,
+                'turnover_history': st.session_state.turnover_history,
+                'player_turnovers': st.session_state.player_turnovers
+            }
+            
+            success, session_id = save_game_session(
+                st.session_state.user_info['id'],
+                default_name,
+                game_data
+            )
+            
+            if success:
+                st.session_state.current_game_session_id = session_id
+                st.session_state.game_session_name = default_name
+                return True
+    
+    return st.session_state.current_game_session_id is not None
+
 def save_game_session(user_id, session_name, game_data):
     """Save current game session to Firebase - FIXED VERSION."""
     try:
@@ -1344,6 +1392,10 @@ def reset_game(save_current=True):
 # Auto-save functionality
 def check_auto_save():
     """Check if auto-save should trigger."""
+    # Ensure we have an active session first
+    if not ensure_active_game_session():
+        return  # No active session and couldn't create one
+        
     if (st.session_state.current_game_session_id and 
         datetime.now() - st.session_state.last_auto_save > timedelta(minutes=5)):
         
@@ -1505,6 +1557,9 @@ def update_lineup(new_lineup, game_time):
         if not is_valid_time:
             return False, time_message
 
+        # Ensure we have an active session BEFORE making game state changes
+        ensure_active_game_session()
+
         lineup_event = {
             'quarter': st.session_state.current_quarter,
             'game_time': game_time,
@@ -1530,6 +1585,9 @@ def update_lineup(new_lineup, game_time):
 
 def handle_score_entry(team, points, scorer, shot_type, made):
     """Handle score entry with improved logic - player stats only for home team."""
+
+    # Ensure we have an active session
+    ensure_active_game_session()
     
     # Only track player stats for home team with actual player selected
     if team == "home" and scorer != "Quick Score (No Player)":
@@ -2702,6 +2760,9 @@ with st.sidebar:
 
     # Game Session Management
     st.subheader("💾 Game Sessions")
+
+    # Ensure we have a session if game is active
+    ensure_active_game_session()
 
     # Show current session info with save status
     if st.session_state.current_game_session_id:
