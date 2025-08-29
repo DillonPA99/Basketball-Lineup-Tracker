@@ -558,6 +558,9 @@ def save_game_session(user_id, session_name, game_data):
         game_session = {
             'user_id': user_id,
             'session_name': session_name,
+            'home_team_name': game_data.get('home_team_name', 'HOME'),
+            'away_team_name': game_data.get('away_team_name', 'AWAY'),
+            'custom_game_name': game_data.get('custom_game_name', ''),
             'roster': game_data['roster'],
             'current_quarter': game_data['current_quarter'],
             'quarter_length': game_data['quarter_length'],
@@ -578,8 +581,9 @@ def save_game_session(user_id, session_name, game_data):
         }
         
         # Convert pickled data to base64 for storage
-        for field in ['lineup_history', 'score_history', 'quarter_end_history', 'player_stats']:
-            game_session[field] = base64.b64encode(game_session[field]).decode()
+        for field in ['lineup_history', 'score_history', 'quarter_end_history', 'player_stats', 'turnover_history', 'player_turnovers']:
+            if isinstance(game_session[field], bytes):
+                game_session[field] = base64.b64encode(game_session[field]).decode()
         
         # Save to Firebase
         doc_ref = db.collection('game_sessions').document()
@@ -686,6 +690,9 @@ def update_game_session(session_id, game_data):
     try:
         # Prepare update data
         update_data = {
+            'home_team_name': game_data.get('home_team_name', 'HOME'),
+            'away_team_name': game_data.get('away_team_name', 'AWAY'),
+            'custom_game_name': game_data.get('custom_game_name', ''),
             'current_quarter': game_data['current_quarter'],
             'home_score': game_data['home_score'],
             'away_score': game_data['away_score'],
@@ -1011,6 +1018,9 @@ if "roster" not in st.session_state:
 if "roster_set" not in st.session_state:
     st.session_state.roster_set = False
 
+if "custom_game_name" not in st.session_state:
+    st.session_state.custom_game_name = ""
+
 if "current_quarter" not in st.session_state:
     st.session_state.current_quarter = "Q1"
 
@@ -1089,6 +1099,31 @@ if "player_turnovers" not in st.session_state:
 # ------------------------------------------------------------------
 # Helper functions
 # ------------------------------------------------------------------
+
+def generate_default_game_name():
+    """Generate a smart default game name based on current setup."""
+    home = st.session_state.get('home_team_name', 'HOME')
+    away = st.session_state.get('away_team_name', 'AWAY')
+    current_date = datetime.now().strftime('%m/%d')
+    
+    # If custom name exists, use it
+    if st.session_state.get('custom_game_name'):
+        return st.session_state.custom_game_name
+    
+    # If both team names are set and not defaults
+    if home != "HOME" and away != "AWAY":
+        return f"{home} vs {away}"
+    
+    # If only away team is set
+    elif away != "AWAY":
+        return f"vs {away}"
+    
+    # If only home team is set
+    elif home != "HOME":
+        return f"{home} Game"
+    
+    # Default fallback
+    return f"Game {current_date}"
 
 # Reset the game to default values
 def reset_game():
@@ -1769,11 +1804,15 @@ def generate_game_report_excel():
 def create_analytics_email_content():
     """Generate email content with complete analytics data from the Analytics tab."""
     
-    # Basic game stats
-    total_points = st.session_state.home_score + st.session_state.away_score
-    lineup_changes = len([lh for lh in st.session_state.lineup_history if not lh.get('is_quarter_end')])
+    game_title = ""
+    if st.session_state.custom_game_name:
+        game_title = st.session_state.custom_game_name
+    elif st.session_state.home_team_name != "HOME" or st.session_state.away_team_name != "AWAY":
+        game_title = f"{st.session_state.home_team_name} vs {st.session_state.away_team_name}"
+    else:
+        game_title = "Basketball Game"
     
-    email_subject = f"Basketball Game Analytics Report - {datetime.now().strftime('%Y-%m-%d')}"
+    email_subject = f"{game_title} - Analytics Report ({datetime.now().strftime('%Y-%m-%d')})"
     
     # Start building the email body
     email_body = f"""Basketball Game Analytics Report
@@ -1783,12 +1822,16 @@ Game Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
 GAME SUMMARY
 ============
+Game: {game_title}
+Teams: {st.session_state.home_team_name} vs {st.session_state.away_team_name}
+Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+FINAL SCORE: {st.session_state.home_team_name} {st.session_state.home_score} - {st.session_state.away_score} {st.session_state.away_team_name}
+
 • Total Points Scored: {total_points}
 • Lineup Changes Made: {lineup_changes}
 • Scoring Plays: {len(st.session_state.score_history)}
 • Quarters Completed: {len(st.session_state.quarter_end_history)}
-
-FINAL SCORE: Home {st.session_state.home_score} - {st.session_state.away_score} Away
 
 """
 
@@ -2502,9 +2545,71 @@ with st.sidebar:
         if not has_game_data:
             st.warning("No meaningful game data to save. Start tracking your game first!")
         else:
-            # Show save dialog in main area
-            st.session_state.show_save_dialog = True
-            st.rerun()
+            # Generate smart default name
+            default_name = generate_default_game_name()
+
+            with st.form("save_game_form"):
+            st.write("**Save Current Game**")
+            
+            # Pre-fill with smart default
+            save_name = st.text_input(
+                "Game Name:",
+                value=default_name,
+                placeholder="Enter a name for this game",
+                max_chars=50
+            )
+
+            # Show game details
+            st.write(f"**Teams:** {st.session_state.home_team_name} vs {st.session_state.away_team_name}")
+            st.write(f"**Score:** {st.session_state.home_score}-{st.session_state.away_score}")
+            st.write(f"**Quarter:** {st.session_state.current_quarter}")
+            
+            save_col1, save_col2 = st.columns(2)
+            
+            with save_col1:
+                if st.form_submit_button("💾 Save Game", type="primary"):
+                    if not save_name.strip():
+                        st.error("Please enter a game name!")
+                    else:
+                        # Prepare game data
+                        game_data = {
+                            'roster': st.session_state.roster,
+                            'home_team_name': st.session_state.home_team_name,
+                            'away_team_name': st.session_state.away_team_name,
+                            'custom_game_name': st.session_state.custom_game_name,
+                            'current_quarter': st.session_state.current_quarter,
+                            'quarter_length': st.session_state.quarter_length,
+                            'home_score': st.session_state.home_score,
+                            'away_score': st.session_state.away_score,
+                            'current_lineup': st.session_state.current_lineup,
+                            'quarter_lineup_set': st.session_state.quarter_lineup_set,
+                            'current_game_time': st.session_state.current_game_time,
+                            'lineup_history': st.session_state.lineup_history,
+                            'score_history': st.session_state.score_history,
+                            'quarter_end_history': st.session_state.quarter_end_history,
+                            'player_stats': st.session_state.player_stats,
+                            'turnover_history': st.session_state.turnover_history,
+                            'player_turnovers': st.session_state.player_turnovers
+                        }
+                        
+                        success, session_id = save_game_session(
+                            st.session_state.user_info['id'],
+                            save_name.strip(),
+                            game_data
+                        )
+                        
+                        if success:
+                            st.session_state.current_game_session_id = session_id
+                            st.session_state.game_session_name = save_name.strip()
+                            st.success(f"Game saved as: {save_name.strip()}")
+                            st.rerun()
+                        else:
+                            st.error("Failed to save game. Please try again.")
+            
+            with save_col2:
+                if st.form_submit_button("❌ Cancel"):
+                    st.rerun()
+
 
     # Load saved games
     if st.button("📂 Load Saved Game"):
@@ -2518,19 +2623,26 @@ with st.sidebar:
             
             if saved_sessions:
                 for session in saved_sessions[:5]:  # Show last 5
-                    col1, col2, col3 = st.columns([3, 1, 1])
+                    # Create a more informative display
+                    status_emoji = "🏁" if session['is_completed'] else "🎮"
+
+                    # Use matchup if available, otherwise fall back to session name
+                    display_name = session.get('matchup', session['session_name'])
+                
+                    st.write(f"{status_emoji} **{session['session_name']}**")
+                    st.caption(f"{display_name} | {session['current_quarter']} | {session['home_score']}-{session['away_score']}")
+                
+                    load_col, delete_col = st.columns(2)
                     
-                    with col1:
-                        status_emoji = "🏁" if session['is_completed'] else "🎮"
-                        st.write(f"{status_emoji} **{session['session_name']}**")
-                        st.caption(f"{session['current_quarter']} | {session['home_score']}-{session['away_score']}")
-                    
-                    with col2:
+                    with load_col:
                         if st.button("📂", key=f"load_{session['id']}", help="Load this game"):
                             if st.session_state.current_game_session_id:
                                 # Save current game first
                                 current_game_data = {
                                     'roster': st.session_state.roster,
+                                    'home_team_name': st.session_state.home_team_name,
+                                    'away_team_name': st.session_state.away_team_name,
+                                    'custom_game_name': st.session_state.custom_game_name,
                                     'current_quarter': st.session_state.current_quarter,
                                     'quarter_length': st.session_state.quarter_length,
                                     'home_score': st.session_state.home_score,
@@ -2553,6 +2665,9 @@ with st.sidebar:
                                 # Update session state with loaded data
                                 st.session_state.roster = loaded_data['roster']
                                 st.session_state.roster_set = True
+                                st.session_state.home_team_name = loaded_data.get('home_team_name', 'HOME')
+                                st.session_state.away_team_name = loaded_data.get('away_team_name', 'AWAY')
+                                st.session_state.custom_game_name = loaded_data.get('custom_game_name', '')                              
                                 st.session_state.current_quarter = loaded_data['current_quarter']
                                 st.session_state.quarter_length = loaded_data['quarter_length']
                                 st.session_state.home_score = loaded_data['home_score']
@@ -2568,11 +2683,10 @@ with st.sidebar:
                                 st.session_state.player_turnovers = loaded_data.get('player_turnovers', defaultdict(int))     
                                 st.session_state.current_game_session_id = session['id']
                                 st.session_state.game_session_name = session['session_name']
-                                
                                 st.success(f"Loaded game: {session['session_name']}")
                                 st.rerun()
                     
-                    with col3:
+                    with delete_col:
                         if st.button("🗑️", key=f"delete_{session['id']}", help="Delete this game"):
                             if delete_game_session(session['id']):
                                 st.success("Game deleted!")
@@ -3101,6 +3215,54 @@ if st.session_state.get('show_admin_panel', False) and st.session_state.user_inf
     # Important: Add this to prevent the main app from showing when admin panel is open
     st.stop()
 
+st.subheader("Game Setup")
+
+setup_col1, setup_col2, setup_col3, setup_col4 = st.columns([2, 2, 2, 1])
+
+with setup_col1:
+    home_name = st.text_input(
+        "Home Team Name",
+        value=st.session_state.home_team_name,
+        placeholder="Enter home team name",
+        max_chars=20
+    )
+    
+with setup_col2:
+    away_name = st.text_input(
+        "Away Team Name", 
+        value=st.session_state.away_team_name,
+        placeholder="Enter opponent name",
+        max_chars=20
+    )
+
+with setup_col3:
+    game_name = st.text_input(
+        "Game Name (optional)",
+        value=st.session_state.custom_game_name,
+        placeholder="e.g., 'Championship Game', 'vs Lakers'",
+        max_chars=30,
+        help="Custom name to identify this game in your saved games list"
+    )
+
+with setup_col4:
+    if st.button("Update Setup", type="primary"):
+        st.session_state.home_team_name = home_name or "HOME"
+        st.session_state.away_team_name = away_name or "AWAY"
+        st.session_state.custom_game_name = game_name
+        st.success("Game setup updated!")
+        st.rerun()
+
+# Display current game info
+game_display_text = ""
+if st.session_state.custom_game_name:
+    game_display_text = f"🏀 **{st.session_state.custom_game_name}** - "
+game_display_text += f"**{st.session_state.home_team_name}** vs **{st.session_state.away_team_name}**"
+
+if st.session_state.home_team_name != "HOME" or st.session_state.away_team_name != "AWAY" or st.session_state.custom_game_name:
+    st.info(game_display_text)
+
+st.divider()
+
 # ------------------------------------------------------------------
 # Main content area: Tabs
 # ------------------------------------------------------------------
@@ -3430,6 +3592,15 @@ with tab1:
 # ------------------------------------------------------------------
 with tab2:
     st.header("Game Analytics")
+
+    # Show game identification
+    game_id_text = ""
+    if st.session_state.custom_game_name:
+        game_id_text = f"📊 **{st.session_state.custom_game_name}** - "
+    game_id_text += f"**{st.session_state.home_team_name}** vs **{st.session_state.away_team_name}**"
+
+    if st.session_state.home_team_name != "HOME" or st.session_state.away_team_name != "AWAY" or st.session_state.custom_game_name:
+        st.info(game_id_text)
 
     if not st.session_state.lineup_history and not st.session_state.quarter_end_history:
         st.info("No game data available yet. Start tracking lineups to see analytics!")
