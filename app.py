@@ -1018,6 +1018,12 @@ if "roster" not in st.session_state:
 if "roster_set" not in st.session_state:
     st.session_state.roster_set = False
 
+if "home_team_name" not in st.session_state:
+    st.session_state.home_team_name = "HOME"
+
+if "away_team_name" not in st.session_state:
+    st.session_state.away_team_name = "AWAY"
+
 if "custom_game_name" not in st.session_state:
     st.session_state.custom_game_name = ""
 
