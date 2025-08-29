@@ -2883,12 +2883,6 @@ with st.sidebar:
                     if st.form_submit_button("❌ Cancel"):
                         st.rerun()
 
-
-    # Load saved games
-    if st.button("📂 Load Saved Game"):
-        st.session_state.show_load_dialog = True
-        st.rerun()
-
     # View all saved games
     with st.expander("📋 My Saved Games"):
         try:
