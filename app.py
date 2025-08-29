@@ -1819,6 +1819,9 @@ def create_analytics_email_content():
         game_title = "Basketball Game"
     
     email_subject = f"{game_title} - Analytics Report ({datetime.now().strftime('%Y-%m-%d')})"
+
+    total_points = st.session_state.home_score + st.session_state.away_score
+    lineup_changes = len([lh for lh in st.session_state.lineup_history if not lh.get('is_quarter_end')])
     
     # Start building the email body
     email_body = f"""Basketball Game Analytics Report
