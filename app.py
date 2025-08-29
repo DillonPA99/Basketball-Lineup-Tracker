@@ -575,6 +575,9 @@ def save_game_session(user_id, session_name, game_data):
             'player_stats': pickle.dumps(dict(game_data['player_stats'])),
             'turnover_history': pickle.dumps(game_data.get('turnover_history', [])),
             'player_turnovers': pickle.dumps(dict(game_data.get('player_turnovers', {}))),
+             'last_activity': get_current_utc_time(),
+            'total_events': len(game_data.get('lineup_history', [])) + len(game_data.get('score_history', [])),
+            'game_phase': 'In Progress' if game_data['current_quarter'] != 'Q4' else 'Final Quarter',
             'created_at': get_current_utc_time(),
             'updated_at': get_current_utc_time(),
             'is_completed': False  # Track if game is finished
@@ -705,6 +708,9 @@ def update_game_session(session_id, game_data):
             'player_stats': base64.b64encode(pickle.dumps(dict(game_data['player_stats']))).decode(),
             'turnover_history': base64.b64encode(pickle.dumps(game_data.get('turnover_history', []))).decode(),
             'player_turnovers': base64.b64encode(pickle.dumps(dict(game_data.get('player_turnovers', {})))).decode(),
+            'last_activity': get_current_utc_time(),
+            'total_events': len(game_data.get('lineup_history', [])) + len(game_data.get('score_history', [])),
+            'game_phase': 'In Progress' if game_data['current_quarter'] != 'Q4' else 'Final Quarter',
             'updated_at': get_current_utc_time()
         }
         
@@ -1131,8 +1137,45 @@ def generate_default_game_name():
     # Default fallback
     return f"Game {current_date}"
 
-# Reset the game to default values
-def reset_game():
+def reset_game(save_current=True):
+    """Reset the game to default values, optionally saving current progress first."""
+    
+    # Save current game progress if requested and there's meaningful data
+    if (save_current and 
+        st.session_state.current_game_session_id and 
+        (st.session_state.home_score > 0 or 
+         st.session_state.away_score > 0 or 
+         len(st.session_state.lineup_history) > 0 or
+         st.session_state.quarter_lineup_set)):
+        
+        # Prepare current game data
+        current_game_data = {
+            'roster': st.session_state.roster,
+            'home_team_name': st.session_state.home_team_name,
+            'away_team_name': st.session_state.away_team_name,
+            'custom_game_name': st.session_state.custom_game_name,
+            'current_quarter': st.session_state.current_quarter,
+            'quarter_length': st.session_state.quarter_length,
+            'home_score': st.session_state.home_score,
+            'away_score': st.session_state.away_score,
+            'current_lineup': st.session_state.current_lineup,
+            'quarter_lineup_set': st.session_state.quarter_lineup_set,
+            'current_game_time': st.session_state.current_game_time,
+            'lineup_history': st.session_state.lineup_history,
+            'score_history': st.session_state.score_history,
+            'quarter_end_history': st.session_state.quarter_end_history,
+            'player_stats': st.session_state.player_stats,
+            'turnover_history': st.session_state.turnover_history,
+            'player_turnovers': st.session_state.player_turnovers
+        }
+        
+        # Update the saved game
+        if update_game_session(st.session_state.current_game_session_id, current_game_data):
+            st.success("Previous game progress auto-saved!")
+        else:
+            st.warning("Could not auto-save previous game progress")
+    
+    # Now reset game state
     st.session_state.current_quarter = "Q1"
     st.session_state.home_score = 0
     st.session_state.away_score = 0
@@ -1153,6 +1196,11 @@ def reset_game():
         'free_throws_attempted': 0,
         'minutes_played': 0
     })
+    
+    # Clear current session (user will need to save new game manually)
+    st.session_state.current_game_session_id = None
+    st.session_state.game_session_name = None
+
 
 # Auto-save functionality
 def check_auto_save():
@@ -2447,12 +2495,49 @@ with st.sidebar:
     st.info(f"📋 {len(st.session_state.roster)} players")
 
     roster_col1, roster_col2 = st.columns(2)
+    
     with roster_col1:
-        if st.button("🔄 Change Roster"):
-            st.session_state.roster_set = False
-            st.session_state.roster = []
-            reset_game()
-            st.rerun()
+    if st.button("🔄 Change Roster"):
+        # Check if there's meaningful game data to save
+        has_game_data = (
+            st.session_state.home_score > 0 or 
+            st.session_state.away_score > 0 or 
+            len(st.session_state.lineup_history) > 0 or
+            st.session_state.quarter_lineup_set
+        )
+        
+        if has_game_data and st.session_state.current_game_session_id:
+            # Auto-save current game progress before changing roster
+            current_game_data = {
+                'roster': st.session_state.roster,
+                'home_team_name': st.session_state.home_team_name,
+                'away_team_name': st.session_state.away_team_name,
+                'custom_game_name': st.session_state.custom_game_name,
+                'current_quarter': st.session_state.current_quarter,
+                'quarter_length': st.session_state.quarter_length,
+                'home_score': st.session_state.home_score,
+                'away_score': st.session_state.away_score,
+                'current_lineup': st.session_state.current_lineup,
+                'quarter_lineup_set': st.session_state.quarter_lineup_set,
+                'current_game_time': st.session_state.current_game_time,
+                'lineup_history': st.session_state.lineup_history,
+                'score_history': st.session_state.score_history,
+                'quarter_end_history': st.session_state.quarter_end_history,
+                'player_stats': st.session_state.player_stats,
+                'turnover_history': st.session_state.turnover_history,
+                'player_turnovers': st.session_state.player_turnovers
+            }
+            
+            if update_game_session(st.session_state.current_game_session_id, current_game_data):
+                st.success("Current game progress auto-saved!")
+            else:
+                st.warning("Could not auto-save current game progress")
+        
+        # Reset roster and game state
+        st.session_state.roster_set = False
+        st.session_state.roster = []
+        reset_game(save_current=False)
+        st.rerun()
 
     with roster_col2:
         if st.button("💾 Save Roster"):
@@ -2477,9 +2562,12 @@ with st.sidebar:
     # Game Session Management
     st.subheader("💾 Game Sessions")
 
-    # Show current session info
+    # Show current session info with save status
     if st.session_state.current_game_session_id:
-        st.success(f"📂 Current: {st.session_state.game_session_name}")
+        if datetime.now() - st.session_state.last_auto_save < timedelta(minutes=1):
+            st.success(f"📂 Current: {st.session_state.game_session_name} ✓ Saved")
+        else:
+            st.info(f"📂 Current: {st.session_state.game_session_name}")
         
         session_col1, session_col2 = st.columns(2)
         
@@ -2775,9 +2863,24 @@ with st.sidebar:
     # Game management
     st.subheader("Game Management")
 
-    if st.button("🔄 New Game", help="Start a new game"):
-        reset_game()
-        st.success("New game started!")
+    if st.button("🔄 New Game", help="Start a new game (auto-saves current game if active)"):
+        # Check if there's meaningful game data to save
+        has_game_data = (
+            st.session_state.home_score > 0 or 
+            st.session_state.away_score > 0 or 
+            len(st.session_state.lineup_history) > 0 or
+            st.session_state.quarter_lineup_set
+        )
+
+        if has_game_data and st.session_state.current_game_session_id:
+            # Auto-save before resetting
+            reset_game(save_current=True)
+            st.info("Started new game. Your previous game was auto-saved and can be loaded from 'My Saved Games'.")
+        else:
+            # No meaningful data to save
+            reset_game(save_current=False)
+            st.success("New game started!")
+    
         st.rerun()
 
     st.divider()
@@ -2787,15 +2890,48 @@ with st.sidebar:
     st.caption(f"Role: {st.session_state.user_info['role'].title()}")
 
     if st.button("🚪 Logout"):
-        # Save roster before logout
-        if st.session_state.roster:
-            save_user_roster(st.session_state.user_info['id'], st.session_state.roster)
-            st.success("Roster saved!")
+    # Save current game progress if there's meaningful data
+    has_game_data = (
+        st.session_state.home_score > 0 or 
+        st.session_state.away_score > 0 or 
+        len(st.session_state.lineup_history) > 0 or
+        st.session_state.quarter_lineup_set
+    )
+    
+    # Save roster
+    if st.session_state.roster:
+        save_user_roster(st.session_state.user_info['id'], st.session_state.roster)
+        st.success("Roster saved!")
+    
+    # Save current game session if active and has meaningful data
+    if (has_game_data and st.session_state.current_game_session_id):
+        current_game_data = {
+            'roster': st.session_state.roster,
+            'home_team_name': st.session_state.home_team_name,
+            'away_team_name': st.session_state.away_team_name,
+            'custom_game_name': st.session_state.custom_game_name,
+            'current_quarter': st.session_state.current_quarter,
+            'quarter_length': st.session_state.quarter_length,
+            'home_score': st.session_state.home_score,
+            'away_score': st.session_state.away_score,
+            'current_lineup': st.session_state.current_lineup,
+            'quarter_lineup_set': st.session_state.quarter_lineup_set,
+            'current_game_time': st.session_state.current_game_time,
+            'lineup_history': st.session_state.lineup_history,
+            'score_history': st.session_state.score_history,
+            'quarter_end_history': st.session_state.quarter_end_history,
+            'player_stats': st.session_state.player_stats,
+            'turnover_history': st.session_state.turnover_history,
+            'player_turnovers': st.session_state.player_turnovers
+        }
         
-        # Clear session
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        st.rerun()
+        if update_game_session(st.session_state.current_game_session_id, current_game_data):
+            st.success("Game progress saved!")
+    
+    # Clear session
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    st.rerun()
         
     # Admin panel access
     if st.session_state.user_info['role'] == 'admin':
