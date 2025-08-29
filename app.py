@@ -2896,42 +2896,42 @@ with st.sidebar:
             st.session_state.away_score > 0 or 
             len(st.session_state.lineup_history) > 0 or
             st.session_state.quarter_lineup_set
-    )
+        )
     
-    # Save roster
-    if st.session_state.roster:
-        save_user_roster(st.session_state.user_info['id'], st.session_state.roster)
-        st.success("Roster saved!")
+        # Save roster
+        if st.session_state.roster:
+            save_user_roster(st.session_state.user_info['id'], st.session_state.roster)
+            st.success("Roster saved!")
     
-    # Save current game session if active and has meaningful data
-    if (has_game_data and st.session_state.current_game_session_id):
-        current_game_data = {
-            'roster': st.session_state.roster,
-            'home_team_name': st.session_state.home_team_name,
-            'away_team_name': st.session_state.away_team_name,
-            'custom_game_name': st.session_state.custom_game_name,
-            'current_quarter': st.session_state.current_quarter,
-            'quarter_length': st.session_state.quarter_length,
-            'home_score': st.session_state.home_score,
-            'away_score': st.session_state.away_score,
-            'current_lineup': st.session_state.current_lineup,
-            'quarter_lineup_set': st.session_state.quarter_lineup_set,
-            'current_game_time': st.session_state.current_game_time,
-            'lineup_history': st.session_state.lineup_history,
-            'score_history': st.session_state.score_history,
-            'quarter_end_history': st.session_state.quarter_end_history,
-            'player_stats': st.session_state.player_stats,
-            'turnover_history': st.session_state.turnover_history,
-            'player_turnovers': st.session_state.player_turnovers
-        }
+        # Save current game session if active and has meaningful data
+        if has_game_data and st.session_state.current_game_session_id:
+            current_game_data = {
+                'roster': st.session_state.roster,
+                'home_team_name': st.session_state.home_team_name,
+                'away_team_name': st.session_state.away_team_name,
+                'custom_game_name': st.session_state.custom_game_name,
+                'current_quarter': st.session_state.current_quarter,
+                'quarter_length': st.session_state.quarter_length,
+                'home_score': st.session_state.home_score,
+                'away_score': st.session_state.away_score,
+                'current_lineup': st.session_state.current_lineup,
+                'quarter_lineup_set': st.session_state.quarter_lineup_set,
+                'current_game_time': st.session_state.current_game_time,
+                'lineup_history': st.session_state.lineup_history,
+                'score_history': st.session_state.score_history,
+                'quarter_end_history': st.session_state.quarter_end_history,
+                'player_stats': st.session_state.player_stats,
+                'turnover_history': st.session_state.turnover_history,
+                'player_turnovers': st.session_state.player_turnovers
+            }
         
-        if update_game_session(st.session_state.current_game_session_id, current_game_data):
+            if update_game_session(st.session_state.current_game_session_id, current_game_data):
             st.success("Game progress saved!")
     
-    # Clear session
-    for key in list(st.session_state.keys()):
-        del st.session_state[key]
-    st.rerun()
+        # Clear session
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
         
     # Admin panel access
     if st.session_state.user_info['role'] == 'admin':
