@@ -2890,12 +2890,12 @@ with st.sidebar:
     st.caption(f"Role: {st.session_state.user_info['role'].title()}")
 
     if st.button("🚪 Logout"):
-    # Save current game progress if there's meaningful data
-    has_game_data = (
-        st.session_state.home_score > 0 or 
-        st.session_state.away_score > 0 or 
-        len(st.session_state.lineup_history) > 0 or
-        st.session_state.quarter_lineup_set
+        # Save current game progress if there's meaningful data
+        has_game_data = (
+            st.session_state.home_score > 0 or 
+            st.session_state.away_score > 0 or 
+            len(st.session_state.lineup_history) > 0 or
+            st.session_state.quarter_lineup_set
     )
     
     # Save roster
