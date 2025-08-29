@@ -2496,6 +2496,7 @@ with st.sidebar:
 
     roster_col1, roster_col2 = st.columns(2)
     
+    
     with roster_col1:
         if st.button("🔄 Change Roster"):
             # Check if there's meaningful game data to save
@@ -2504,40 +2505,41 @@ with st.sidebar:
                 st.session_state.away_score > 0 or 
                 len(st.session_state.lineup_history) > 0 or
                 st.session_state.quarter_lineup_set
-        )
-        
-        if has_game_data and st.session_state.current_game_session_id:
-            # Auto-save current game progress before changing roster
-            current_game_data = {
-                'roster': st.session_state.roster,
-                'home_team_name': st.session_state.home_team_name,
-                'away_team_name': st.session_state.away_team_name,
-                'custom_game_name': st.session_state.custom_game_name,
-                'current_quarter': st.session_state.current_quarter,
-                'quarter_length': st.session_state.quarter_length,
-                'home_score': st.session_state.home_score,
-                'away_score': st.session_state.away_score,
-                'current_lineup': st.session_state.current_lineup,
-                'quarter_lineup_set': st.session_state.quarter_lineup_set,
-                'current_game_time': st.session_state.current_game_time,
-                'lineup_history': st.session_state.lineup_history,
-                'score_history': st.session_state.score_history,
-                'quarter_end_history': st.session_state.quarter_end_history,
-                'player_stats': st.session_state.player_stats,
-                'turnover_history': st.session_state.turnover_history,
-                'player_turnovers': st.session_state.player_turnovers
-            }
+            )
+    
+            if has_game_data and st.session_state.current_game_session_id:
+                # Auto-save current game progress before changing roster
+                current_game_data = {
+                    'roster': st.session_state.roster,
+                    'home_team_name': st.session_state.home_team_name,
+                    'away_team_name': st.session_state.away_team_name,
+                    'custom_game_name': st.session_state.custom_game_name,
+                    'current_quarter': st.session_state.current_quarter,
+                    'quarter_length': st.session_state.quarter_length,
+                    'home_score': st.session_state.home_score,
+                    'away_score': st.session_state.away_score,
+                    'current_lineup': st.session_state.current_lineup,
+                    'quarter_lineup_set': st.session_state.quarter_lineup_set,
+                    'current_game_time': st.session_state.current_game_time,
+                    'lineup_history': st.session_state.lineup_history,
+                    'score_history': st.session_state.score_history,
+                    'quarter_end_history': st.session_state.quarter_end_history,
+                    'player_stats': st.session_state.player_stats,
+                    'turnover_history': st.session_state.turnover_history,
+                    'player_turnovers': st.session_state.player_turnovers
+                }
             
-            if update_game_session(st.session_state.current_game_session_id, current_game_data):
-                st.success("Current game progress auto-saved!")
-            else:
-                st.warning("Could not auto-save current game progress")
-        
-        # Reset roster and game state
-        st.session_state.roster_set = False
-        st.session_state.roster = []
-        reset_game(save_current=False)
-        st.rerun()
+                if update_game_session(st.session_state.current_game_session_id, current_game_data):
+                    st.success("Current game progress auto-saved!")
+                else:
+                    st.warning("Could not auto-save current game progress")
+    
+            # Reset roster and game state
+            st.session_state.roster_set = False
+            st.session_state.roster = []
+            reset_game(save_current=False)
+            st.rerun()
+    
 
     with roster_col2:
         if st.button("💾 Save Roster"):
