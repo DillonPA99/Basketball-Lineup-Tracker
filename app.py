@@ -118,7 +118,6 @@ def init_firebase():
         app = firebase_admin.initialize_app(cred)
         db = firestore.client()
         
-        st.success("✅ Firebase initialized successfully!")
         return app, db
         
     except Exception as e:
@@ -133,29 +132,6 @@ def init_firebase():
         elif "permission" in str(e).lower():
             st.error("🔒 **Permission issue** - Please verify your service account has proper permissions")
         
-        logger.error(f"Firebase initialization failed: {str(e)}")
-        return None, None
-    
-    # Try to create Firebase app
-    try:
-        # Convert secrets format to dict if needed
-        if hasattr(cred_data, '_asdict'):
-            cred_dict = dict(cred_data._asdict())
-        else:
-            cred_dict = dict(cred_data)
-        
-        cred = credentials.Certificate(cred_dict)
-        app = firebase_admin.initialize_app(cred)
-        db = firestore.client()
-        
-        # Only show success message in debug mode
-        if st.secrets.get("debug_mode", False):
-            st.success("✅ Firebase initialized successfully")
-        
-        return app, db
-        
-    except Exception as e:
-        st.error(f"❌ **Failed to initialize Firebase:** {str(e)}")
         logger.error(f"Firebase initialization failed: {str(e)}")
         return None, None
 
