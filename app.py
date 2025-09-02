@@ -111,9 +111,6 @@ def init_firebase():
         else:
             cred_dict = dict(cred_data)
         
-        st.write("🔍 Attempting Firebase connection...")  # Debug line
-        st.write(f"📧 Using service account: {cred_dict.get('client_email', 'Unknown')}")  # Debug line
-        
         cred = credentials.Certificate(cred_dict)
         app = firebase_admin.initialize_app(cred)
         db = firestore.client()
