@@ -1006,9 +1006,8 @@ def execute_custom_query(query):
 # ============================================================================
 # CREATE DEFAULT ADMIN FUNCTION (FIREBASE VERSION)
 # ============================================================================
-
 def create_default_admin():
-    """Create default admin user if no admin exists - Firebase version."""
+    """Create default admin user if no admin exists - SILENT version."""
     try:
         # Check if any admin user exists
         admin_users = db.collection('users').where(
@@ -1016,63 +1015,46 @@ def create_default_admin():
         ).limit(1).get()
         
         if not admin_users:  # No admin exists
-            st.info("🔧 No admin user found. Creating default admin...")
+            # Create default admin silently
+            admin_doc = db.collection('users').document()
+            admin_doc.set({
+                'username': 'admin',
+                'password_hash': '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',
+                'email': 'admin@example.com',
+                'role': 'admin',
+                'created_at': get_current_utc_time(),
+                'is_active': True,
+                'registered_with_key': 'MANUAL_ADMIN'
+            })
             
-            try:
-                # Create default admin
-                admin_doc = db.collection('users').document()
-                admin_doc.set({
-                    'username': 'admin',
-                    'password_hash': '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',  # admin123
-                    'email': 'admin@example.com',
-                    'role': 'admin',
-                    'created_at': get_current_utc_time(),
-                    'is_active': True,
-                    'registered_with_key': 'MANUAL_ADMIN'
-                })
-                
-                # Create initial product key
-                key_doc = db.collection('product_keys').document()
-                key_doc.set({
-                    'key_code': 'DEMO-2024-KEYS-ABCD',
-                    'description': 'Initial demo key',
-                    'max_uses': 10,
-                    'current_uses': 0,
-                    'expires_at': get_current_utc_time() + timedelta(days=365),
-                    'created_by': admin_doc.id,
-                    'is_active': True,
-                    'created_at': get_current_utc_time()
-                })
-                
-                st.success("✅ Default admin created successfully!")
-                st.info("""
-                **Default Admin Credentials:**
-                - Username: `admin`
-                - Password: `admin123`
-                - Product Key: `DEMO-2024-KEYS-ABCD`
-                """)
-                
-                return True
-                
-            except Exception as e:
-                st.error(f"Failed to create default admin: {str(e)}")
-                return False
-        else:
-            # Admin exists
+            # Create initial product key silently
+            key_doc = db.collection('product_keys').document()
+            key_doc.set({
+                'key_code': 'DEMO-2024-KEYS-ABCD',
+                'description': 'Initial demo key',
+                'max_uses': 10,
+                'current_uses': 0,
+                'expires_at': get_current_utc_time() + timedelta(days=365),
+                'created_by': admin_doc.id,
+                'is_active': True,
+                'created_at': get_current_utc_time()
+            })
+            
             return True
+        else:
+            return True  # Admin exists
             
     except Exception as e:
-        st.warning(f"⚠️ Could not check for admin user: {str(e)}")
+        # Silent error handling
+        logger.error(f"Error setting up admin: {str(e)}")
         return False
 
-# Create default admin
 try:
     if db:
         create_default_admin()
-    else:
-        st.warning("Cannot create default admin - database connection not available.")
 except Exception as e:
-    st.warning(f"Cannot create default admin: {str(e)}")
+    # Log error but don't show to user
+    logger.error(f"Cannot create default admin: {str(e)}")
 
 # ============================================================================
 # REST OF THE APPLICATION (UNCHANGED)
