@@ -21,6 +21,15 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 import firebase_admin
 from firebase_admin import credentials, firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
+import warnings
+import logging
+
+warnings.filterwarnings("ignore")
+os.environ.setdefault('GOOGLE_CLOUD_DISABLE_GRPC', '1')
+logging.getLogger('google').setLevel(logging.ERROR)
+logging.getLogger('firebase_admin').setLevel(logging.ERROR)
+logging.getLogger('google.auth').setLevel(logging.ERROR)
+logging.getLogger('google.cloud').setLevel(logging.ERROR)
 
 # Add these helper functions after your imports
 def make_timezone_aware(dt):
@@ -88,9 +97,8 @@ def load_firebase_credentials():
     return None
 
 @st.cache_resource
-
 def init_firebase():
-    """Initialize Firebase with robust error handling and caching."""
+    """Initialize Firebase silently."""
     
     # Check if Firebase is already initialized
     if firebase_admin._apps:
@@ -99,11 +107,11 @@ def init_firebase():
     cred_data = load_firebase_credentials()
     
     if not cred_data:
-        st.error("❌ **Missing Firebase credentials!** Please check your Streamlit secrets or environment variables.")
-        # ... existing error display code ...
+        # Don't show error to user, just return None
+        logger.error("Missing Firebase credentials")
         return None, None
     
-    # Try to create Firebase app
+    # Try to create Firebase app silently
     try:
         # Convert secrets format to dict if needed
         if hasattr(cred_data, '_asdict'):
@@ -111,69 +119,62 @@ def init_firebase():
         else:
             cred_dict = dict(cred_data)
         
+        # Suppress Firebase initialization logs
+        old_level = logging.getLogger().level
+        logging.getLogger().setLevel(logging.ERROR)
+        logging.getLogger('google').setLevel(logging.ERROR)
+        logging.getLogger('firebase_admin').setLevel(logging.ERROR)
+        
         cred = credentials.Certificate(cred_dict)
         app = firebase_admin.initialize_app(cred)
         db = firestore.client()
         
+        # Restore logging level
+        logging.getLogger().setLevel(old_level)
+        
         return app, db
         
     except Exception as e:
-        st.error(f"❌ **Firebase initialization failed:** {str(e)}")
-        st.error(f"🔍 **Detailed error:** {type(e).__name__}")  # Show error type
-        
-        # Show more specific error information
-        if "private key" in str(e).lower():
-            st.error("🔑 **Private key issue** - Please verify your private key is complete and properly formatted")
-        elif "project" in str(e).lower():
-            st.error("📁 **Project issue** - Please verify your Firebase project ID and that Firestore is enabled")
-        elif "permission" in str(e).lower():
-            st.error("🔒 **Permission issue** - Please verify your service account has proper permissions")
-        
         logger.error(f"Firebase initialization failed: {str(e)}")
         return None, None
 
 def test_firebase_connection(db, show_details=False):
-    """Test Firebase connection with optional detailed output."""
+    """Test Firebase connection silently."""
     try:
         # Test connection with a simple read
         test_collection = db.collection('users').limit(1)
         docs = test_collection.get()
-        
-        if show_details:
-            st.success("🔥 Firebase connection successful!")
-            st.info(f"✅ Database access verified - found {len(docs)} test documents")
-        
         return True
         
     except Exception as e:
-        error_msg = str(e)
-        if show_details:
-            st.error(f"❌ Firebase connection failed: {error_msg}")
-        logger.error(f"Firebase connection test failed: {error_msg}")
+        logger.error(f"Firebase connection test failed: {str(e)}")
         return False
 
-# Get database connection (replaces the old initialization block)
+# Get database connection
 @st.cache_resource
 def get_database_connection():
-    """Get database connection with error handling."""
+    """Get database connection silently."""
     try:
         firebase_app, db = init_firebase()
         if db is None:
-            st.error("Database connection failed. Please check your configuration.")
-            st.stop()
+            logger.error("Database connection failed")
+            return None
         
         # Test connection quietly
         if not test_firebase_connection(db, show_details=False):
-            st.error("Database connection test failed.")
-            st.stop()
+            logger.error("Database connection test failed")
+            return None
             
         return db
     except Exception as e:
-        st.error(f"Failed to connect to database: {str(e)}")
-        st.stop()
+        logger.error(f"Failed to connect to database: {str(e)}")
+        return None
 
 # Initialize database connection
-db = get_database_connection()
+if 'db' not in st.session_state:
+    st.session_state.db = get_database_connection()
+    
+db = st.session_state.db
 # ============================================================================
 # FIREBASE DATABASE FUNCTIONS (REPLACE SUPABASE FUNCTIONS)
 # ============================================================================
@@ -1049,12 +1050,10 @@ def create_default_admin():
         logger.error(f"Error setting up admin: {str(e)}")
         return False
 
-try:
-    if db:
-        create_default_admin()
-except Exception as e:
-    # Log error but don't show to user
-    logger.error(f"Cannot create default admin: {str(e)}")
+# Create default admin silently
+if db and 'admin_initialized' not in st.session_state:
+    create_default_admin()
+    st.session_state.admin_initialized = True
 
 # ============================================================================
 # REST OF THE APPLICATION (UNCHANGED)
