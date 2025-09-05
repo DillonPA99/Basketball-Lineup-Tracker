@@ -1856,7 +1856,7 @@ def calculate_lineup_plus_minus():
 # ============================================================================
 
 def calculate_player_efficiency_score(player):
-    """Calculate a comprehensive efficiency score for a player using True Shooting Percentage."""
+    """Calculate a comprehensive efficiency score for a player using per-minute metrics and True Shooting Percentage."""
     if player not in st.session_state.player_stats:
         return 0
     
@@ -1868,6 +1868,13 @@ def calculate_player_efficiency_score(player):
     ft_attempts = stats.get('free_throws_attempted', 0)
     turnovers = st.session_state.player_turnovers.get(player, 0)
     
+    # Calculate minutes played from lineup history
+    minutes_played = calculate_player_minutes_played(player)
+    
+    # If no meaningful playing time, return 0
+    if minutes_played < 0.5:  # Less than 30 seconds
+        return 0
+    
     # Calculate True Shooting Percentage
     # TS% = Points / (2 * True Shooting Attempts)
     # True Shooting Attempts = FGA + 0.44 * FTA
@@ -1877,27 +1884,28 @@ def calculate_player_efficiency_score(player):
     else:
         true_shooting_percentage = 0
     
-    # Efficiency score based on volume and efficiency
-    # Base score from points (volume)
-    volume_score = points
+    # Calculate per-minute stats
+    points_per_minute = points / minutes_played
+    attempts_per_minute = (fg_attempts + ft_attempts) / minutes_played
+    turnovers_per_minute = turnovers / minutes_played
+    
+    # Base efficiency score from points per minute (scaled up for readability)
+    base_score = points_per_minute * 10
     
     # Efficiency bonus - TS% above 50% gets bonus, below 50% gets penalty
     # Scale TS% to a reasonable range (0.5 = average, 0.6 = excellent)
-    if true_shooting_attempts >= 3:  # Only apply efficiency modifier with meaningful sample
+    efficiency_modifier = 0
+    if (fg_attempts + ft_attempts) >= 3:  # Only apply efficiency modifier with meaningful sample
         efficiency_modifier = (true_shooting_percentage - 0.5) * 20  # 60% TS = +2, 40% TS = -2
-    else:
-        efficiency_modifier = 0  # No efficiency bonus/penalty for small samples
     
-    # Turnover penalty (relative to usage)
-    # More severe penalty if player has high usage (more shots/FTs)
-    usage_indicator = fg_attempts + ft_attempts
-    if usage_indicator > 0:
-        turnover_penalty = (turnovers / usage_indicator) * 5  # Penalty scales with usage
-    else:
-        turnover_penalty = turnovers * 1  # Flat penalty if no shots taken
+    # Turnover penalty per minute (scaled appropriately)
+    turnover_penalty = turnovers_per_minute * 3
+    
+    # Usage consideration - players taking more shots per minute get slight bonus for being featured
+    usage_bonus = min(attempts_per_minute * 0.5, 2)  # Cap at +2 points
     
     # Final efficiency score
-    efficiency_score = volume_score + efficiency_modifier - turnover_penalty
+    efficiency_score = base_score + efficiency_modifier + usage_bonus - turnover_penalty
     
     return max(0, efficiency_score)  # Don't allow negative scores
 
@@ -2210,7 +2218,7 @@ def recommend_best_lineup(include_defense=True):
     lineup_scores.sort(key=lambda x: x['total_score'], reverse=True)
     
     return best_lineup, lineup_scores
-
+    
 def display_lineup_recommendation():
     """Display the lineup recommendation interface."""
     st.subheader("🎯 Best Lineup Recommendation")
