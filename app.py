@@ -2133,6 +2133,7 @@ def calculate_lineup_chemistry_score(lineup):
     
     return chemistry_score
 
+
 def recommend_best_lineup(include_defense=True):
     """Recommend the best 5-player lineup using multiple criteria including defense."""
     if len(st.session_state.roster) < 5:
@@ -2156,38 +2157,45 @@ def recommend_best_lineup(include_defense=True):
         
         # Calculate multiple scoring factors
         
-        # 1. Individual player efficiency (with or without defense)
-        if include_defense:
-            efficiency_total = sum(calculate_player_efficiency_score_with_defense(player) for player in lineup_list)
-        else:
-            efficiency_total = sum(calculate_player_efficiency_score(player) for player in lineup_list)
+        # 1. Offensive efficiency (separate from defensive)
+        offensive_efficiency = sum(calculate_player_efficiency_score(player) for player in lineup_list)
         
-        # 2. Positional balance
+        # 2. Defensive efficiency (if enabled)
+        defensive_efficiency = 0
+        if include_defense:
+            defensive_stats = calculate_individual_defensive_impact()
+            for player in lineup_list:
+                if player in defensive_stats:
+                    defensive_efficiency += defensive_stats[player].get('defensive_events_per_minute', 0) * 5
+        
+        # 3. Positional balance
         position_score = calculate_position_balance_score(lineup_list)
         
-        # 3. Historical lineup performance
+        # 4. Historical lineup performance
         historical_score = get_lineup_historical_performance(lineup_list)
         
-        # 4. Player chemistry
+        # 5. Player chemistry
         chemistry_score = calculate_lineup_chemistry_score(lineup_list)
         
-        # 5. Plus/minus (but weighted lower than other factors)
+        # 6. Plus/minus (but weighted lower than other factors)
         individual_stats = calculate_individual_plus_minus()
         plus_minus_total = sum(individual_stats.get(player, {}).get('plus_minus', 0) for player in lineup_list)
         
-        # Combine all factors with weights
+        # Combine all factors with weights (defense always included)
         total_score = (
-            efficiency_total * 0.35 +  # 35% individual efficiency
-            position_score * 0.25 +    # 25% positional balance
-            historical_score * 0.20 +  # 20% historical lineup performance
-            chemistry_score * 0.15 +   # 15% player chemistry
-            plus_minus_total * 0.05     # 5% individual plus/minus
+            offensive_efficiency * 0.25 +   # 25% offensive efficiency
+            defensive_efficiency * 0.20 +   # 20% defensive efficiency
+            position_score * 0.25 +         # 25% positional balance
+            historical_score * 0.15 +       # 15% historical lineup performance
+            chemistry_score * 0.10 +        # 10% player chemistry
+            plus_minus_total * 0.05          # 5% individual plus/minus
         )
         
         lineup_scores.append({
             'lineup': lineup_list,
             'total_score': total_score,
-            'efficiency': efficiency_total,
+            'offensive_efficiency': offensive_efficiency,
+            'defensive_efficiency': defensive_efficiency,
             'position_balance': position_score,
             'historical': historical_score,
             'chemistry': chemistry_score,
