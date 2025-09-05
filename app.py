@@ -1851,6 +1851,50 @@ def calculate_lineup_plus_minus():
     
     return dict(lineup_stats)
 
+def calculate_player_minutes_played(player):
+    """Calculate total minutes played for a player based on lineup history."""
+    if not st.session_state.lineup_history:
+        return 0
+    
+    def parse_game_time(time_str):
+        """Convert MM:SS format to total seconds remaining."""
+        try:
+            if ':' in time_str:
+                minutes, seconds = map(int, time_str.split(':'))
+                return minutes * 60 + seconds
+            return 0
+        except:
+            return 0
+    
+    total_seconds = 0
+    
+    # Go through each lineup period and calculate time for this player
+    for i in range(len(st.session_state.lineup_history)):
+        lineup_event = st.session_state.lineup_history[i]
+        
+        # Check if player was in this lineup
+        if player in lineup_event.get('new_lineup', []):
+            current_time_seconds = parse_game_time(lineup_event.get('game_time', '0:00'))
+            
+            if i < len(st.session_state.lineup_history) - 1:
+                # Time until next lineup change
+                next_event = st.session_state.lineup_history[i + 1]
+                next_time_seconds = parse_game_time(next_event.get('game_time', '0:00'))
+                
+                # Time elapsed = current_time - next_time (since clock counts down)
+                time_elapsed = current_time_seconds - next_time_seconds
+            else:
+                # Last lineup period - use time from lineup start to current game time
+                current_game_time_seconds = parse_game_time(st.session_state.current_game_time)
+                time_elapsed = current_time_seconds - current_game_time_seconds
+            
+            # Ensure positive time (handle quarter changes, etc.)
+            time_elapsed = max(0, time_elapsed)
+            total_seconds += time_elapsed
+    
+    # Convert to minutes
+    return total_seconds / 60.0
+
 # ============================================================================
 # OFFENSIVE EFFICIENCY CALCULATION (True Shooting Percentage)
 # ============================================================================
