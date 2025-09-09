@@ -4157,165 +4157,30 @@ tab1, tab2, tab3 = st.tabs(["🏀 Live Game", "📊 Analytics", "📝 Event Log"
 with tab1:
     st.header("Live Game Management")
     
-    # Create a sticky container for the live game controls
-    with st.container():
-        # Use columns to create a fixed-height scrollable area
-        game_controls_col, spacer_col = st.columns([3, 1])
+    # Sticky header with only game status (quarter, clock, scores)
+    with st.container(height=120):
+        st.subheader("Game Status")
+        status_col1, status_col2, status_col3, status_col4, status_col5 = st.columns([1, 1, 1, 1, 1])
         
-        with game_controls_col:
-            # Container with fixed height that stays visible
-            with st.container(height=600):  # Adjust height as needed
-                # Current game status - always visible at top
-                st.subheader("🎮 Game Status")
-                status_col1, status_col2, status_col3, status_col4, status_col5 = st.columns([1, 1, 1, 1, 1])
-                
-                with status_col1:
-                    st.metric("Quarter", st.session_state.current_quarter)
-                with status_col2:
-                    st.metric("Game Clock", st.session_state.current_game_time)
-                with status_col3:
-                    st.metric("Home Score", st.session_state.home_score)
-                with status_col4:
-                    st.metric("Away Score", st.session_state.away_score)
-                with status_col5:
-                    if st.button("🔚 End Quarter", type="primary", key="end_quarter_sticky"):
-                        success = end_quarter()
-                        if success:
-                            st.success(f"Quarter ended! Now in {st.session_state.current_quarter}")
-                            st.rerun()
-                        else:
-                            st.error("Cannot advance quarter further")
-                
-                st.divider()
-                
-                # Quick scoring buttons - always visible
-                st.subheader("⚡ Quick Score")
-                
-                # Check if lineup is set for current quarter
-                if not st.session_state.quarter_lineup_set:
-                    st.warning("⚠️ Set starting lineup first for detailed home team stats")
-                
-                # Get current players for dropdown (home team only)
-                current_players = st.session_state.current_lineup if st.session_state.quarter_lineup_set else []
-                
-                # Side-by-side team scoring
-                home_col, away_col = st.columns(2)
-                
-                with home_col:
-                    st.markdown("### 🏠 **HOME**")
-                    
-                    # Player selection for home team
-                    if st.session_state.quarter_lineup_set:
-                        player_options = ["Quick Score"] + current_players
-                        home_scorer = st.selectbox(
-                            "Player:",
-                            player_options,
-                            key="sticky_home_scorer"
-                        )
-                    else:
-                        home_scorer = "Quick Score"
-                    
-                    # Compact scoring buttons
-                    h_ft_make, h_ft_miss = st.columns(2)
-                    with h_ft_make:
-                        if st.button("✅ FT", key="sticky_h_ft_make", use_container_width=True):
-                            handle_score_entry("home", 1, home_scorer, "free_throw", True)
-                    with h_ft_miss:
-                        if st.button("❌ FT", key="sticky_h_ft_miss", use_container_width=True):
-                            handle_score_entry("home", 0, home_scorer, "free_throw", False)
-                    
-                    h_2pt_make, h_2pt_miss = st.columns(2)
-                    with h_2pt_make:
-                        if st.button("✅ 2PT", key="sticky_h_2pt_make", use_container_width=True):
-                            handle_score_entry("home", 2, home_scorer, "field_goal", True)
-                    with h_2pt_miss:
-                        if st.button("❌ 2PT", key="sticky_h_2pt_miss", use_container_width=True):
-                            handle_score_entry("home", 0, home_scorer, "field_goal", False)
-                    
-                    h_3pt_make, h_3pt_miss = st.columns(2)
-                    with h_3pt_make:
-                        if st.button("✅ 3PT", key="sticky_h_3pt_make", use_container_width=True):
-                            handle_score_entry("home", 3, home_scorer, "three_pointer", True)
-                    with h_3pt_miss:
-                        if st.button("❌ 3PT", key="sticky_h_3pt_miss", use_container_width=True):
-                            handle_score_entry("home", 0, home_scorer, "three_pointer", False)
-                    
-                    # Turnover button
-                    if st.button("📝 Turnover", key="sticky_h_to", use_container_width=True):
-                        player_to_record = None if home_scorer == "Quick Score" else home_scorer
-                        add_turnover("home", player_to_record)
-                        st.success("HOME turnover recorded")
-                        st.rerun()
-                
-                with away_col:
-                    st.markdown("### 🛣️ **AWAY**")
-                    st.caption("Team totals only")
-                    
-                    # Away team scoring buttons
-                    a_ft_make, a_ft_miss = st.columns(2)
-                    with a_ft_make:
-                        if st.button("✅ FT", key="sticky_a_ft_make", use_container_width=True):
-                            handle_score_entry("away", 1, "Quick Score", "free_throw", True)
-                    with a_ft_miss:
-                        if st.button("❌ FT", key="sticky_a_ft_miss", use_container_width=True):
-                            handle_score_entry("away", 0, "Quick Score", "free_throw", False)
-                    
-                    a_2pt_make, a_2pt_miss = st.columns(2)
-                    with a_2pt_make:
-                        if st.button("✅ 2PT", key="sticky_a_2pt_make", use_container_width=True):
-                            handle_score_entry("away", 2, "Quick Score", "field_goal", True)
-                    with a_2pt_miss:
-                        if st.button("❌ 2PT", key="sticky_a_2pt_miss", use_container_width=True):
-                            handle_score_entry("away", 0, "Quick Score", "field_goal", False)
-                    
-                    a_3pt_make, a_3pt_miss = st.columns(2)
-                    with a_3pt_make:
-                        if st.button("✅ 3PT", key="sticky_a_3pt_make", use_container_width=True):
-                            handle_score_entry("away", 3, "Quick Score", "three_pointer", True)
-                    with a_3pt_miss:
-                        if st.button("❌ 3PT", key="sticky_a_3pt_miss", use_container_width=True):
-                            handle_score_entry("away", 0, "Quick Score", "three_pointer", False)
-                    
-                    # Away turnover button
-                    if st.button("📝 Turnover", key="sticky_a_to", use_container_width=True):
-                        add_turnover("away", None)
-                        st.success("AWAY turnover recorded")
-                        st.rerun()
-                
-                # Undo button - always visible
-                if st.session_state.score_history or st.session_state.turnover_history:
-                    st.divider()
-                    
-                    undo_col1, undo_col2 = st.columns(2)
-                    
-                    if st.session_state.score_history:
-                        with undo_col1:
-                            last_score = st.session_state.score_history[-1]
-                            shot_type = last_score.get('shot_type', 'unknown')
-                            made = last_score.get('made', True)
-                            
-                            undo_text = f"↩️ {last_score['team'].upper()} "
-                            if shot_type == 'free_throw':
-                                undo_text += f"FT {'✅' if made else '❌'}"
-                            elif shot_type == 'field_goal':
-                                undo_text += f"2PT {'✅' if made else '❌'}"
-                            elif shot_type == 'three_pointer':
-                                undo_text += f"3PT {'✅' if made else '❌'}"
-                            
-                            if st.button(undo_text, key="sticky_undo_score", use_container_width=True):
-                                undo_last_score()
-                    
-                    if st.session_state.turnover_history:
-                        with undo_col2:
-                            last_turnover = st.session_state.turnover_history[-1]
-                            if st.button(f"↩️ {last_turnover['team'].upper()} TO", key="sticky_undo_to", use_container_width=True):
-                                if undo_last_turnover():
-                                    st.success("Turnover undone!")
-                                    st.rerun()
+        with status_col1:
+            st.metric("Quarter", st.session_state.current_quarter)
+        with status_col2:
+            st.metric("Game Clock", st.session_state.current_game_time)
+        with status_col3:
+            st.metric("Home Score", st.session_state.home_score)
+        with status_col4:
+            st.metric("Away Score", st.session_state.away_score)
+        with status_col5:
+            if st.button("End Quarter", type="primary", key="end_quarter_sticky"):
+                success = end_quarter()
+                if success:
+                    st.success(f"Quarter ended! Now in {st.session_state.current_quarter}")
+                    st.rerun()
+                else:
+                    st.error("Cannot advance quarter further")
     
-    # Scrollable content area below the sticky controls
+    # All other content is scrollable below the sticky header
     st.divider()
-    st.subheader("📋 Lineup Management")
     
     # Rest of your lineup management code goes here (not in the fixed container)
     # This section will be scrollable while the game controls stay fixed above
