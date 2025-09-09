@@ -3555,47 +3555,6 @@ with st.sidebar:
 
     st.divider()
 
-    # Quick Game Stats
-    st.subheader("📊 Quick Stats")
-
-    if st.session_state.quarter_lineup_set or st.session_state.score_history:
-        # Game Flow
-        total_points = st.session_state.home_score + st.session_state.away_score
-        point_differential = abs(st.session_state.home_score - st.session_state.away_score)
-    
-        stats_col1, stats_col2 = st.columns(2)
-    
-        with stats_col1:
-            st.metric("Total Points", total_points)
-            st.metric("Point Diff", point_differential)
-    
-        with stats_col2:
-            # Calculate pace (points per quarter if we have quarter data)
-            quarters_played = len(st.session_state.quarter_end_history) + (1 if st.session_state.current_quarter != "Q1" or st.session_state.quarter_lineup_set else 0)
-            pace = total_points / max(quarters_played, 1) if quarters_played > 0 else 0
-            st.metric("Pace", f"{pace:.1f} ppq")
-        
-            # Turnovers
-            home_tos, away_tos = get_team_turnovers()
-            total_turnovers = home_tos + away_tos
-            st.metric("Total TOs", total_turnovers)
-    
-        # Top Performer (if we have player stats)
-        if st.session_state.player_stats:
-            top_scorer = max(st.session_state.player_stats.items(), key=lambda x: x[1]['points'], default=(None, {'points': 0}))
-            if top_scorer[0] and top_scorer[1]['points'] > 0:
-                player_name = top_scorer[0].split('(')[0].strip()
-                st.success(f"🏀 Leading: {player_name} ({top_scorer[1]['points']} pts)")
-    
-        # Shooting Efficiency (quick calculation)
-        home_total_attempts = sum(stats.get('field_goals_attempted', 0) + stats.get('free_throws_attempted', 0) for stats in st.session_state.player_stats.values())
-        if home_total_attempts > 0:
-            home_total_makes = sum(stats.get('field_goals_made', 0) + stats.get('free_throws_made', 0) for stats in st.session_state.player_stats.values())
-            shooting_pct = (home_total_makes / home_total_attempts) * 100
-            st.metric("Home Shooting", f"{shooting_pct:.1f}%")
-    else:
-        st.info("Start game to see stats")
-
     st.subheader("📧 Email Analytics Report")
     
     # Check if there's meaningful game data to export
