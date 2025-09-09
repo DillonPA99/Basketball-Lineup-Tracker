@@ -4270,21 +4270,6 @@ with tab1:
             if st.button("❌ 3PT", key="away_3pt_miss", use_container_width=True):
                 handle_score_entry("away", 0, "Quick Score (No Player)", "three_pointer", False)
 
-    # Quick stats display
-    if st.session_state.player_stats:
-        st.write("**Live Scoring Leaders:**")
-        top_scorers = get_top_scorers(3)
-
-        if top_scorers:
-            score_cols = st.columns(len(top_scorers))
-            for i, (player, stats) in enumerate(top_scorers):
-                with score_cols[i]:
-                    st.metric(
-                        f"{player.split('(')[0].strip()}",
-                        f"{stats['points']} pts",
-                        help=f"FG: {stats['field_goals_made']}/{stats['field_goals_attempted']}"
-                    )
-
     # Enhanced undo last score
     if st.session_state.score_history:
         last_score = st.session_state.score_history[-1]
