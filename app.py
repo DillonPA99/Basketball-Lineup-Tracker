@@ -4156,42 +4156,220 @@ tab1, tab2, tab3 = st.tabs(["🏀 Live Game", "📊 Analytics", "📝 Event Log"
 # ------------------------------------------------------------------
 with tab1:
     st.header("Live Game Management")
-    
-    # Sticky header with only game status (quarter, clock, scores)
-    with st.container(height=120):
-        st.subheader("Game Status")
-        status_col1, status_col2, status_col3, status_col4, status_col5 = st.columns([1, 1, 1, 1, 1])
-        
-        with status_col1:
-            st.metric("Quarter", st.session_state.current_quarter)
-        with status_col2:
-            st.metric("Game Clock", st.session_state.current_game_time)
-        with status_col3:
-            st.metric("Home Score", st.session_state.home_score)
-        with status_col4:
-            st.metric("Away Score", st.session_state.away_score)
-        with status_col5:
-            if st.button("End Quarter", type="primary", key="end_quarter_sticky"):
-                success = end_quarter()
-                if success:
-                    st.success(f"Quarter ended! Now in {st.session_state.current_quarter}")
-                    st.rerun()
-                else:
-                    st.error("Cannot advance quarter further")
-    
-    # All other content is scrollable below the sticky header
+    # Current game status
+    status_col1, status_col2, status_col3, status_col4, status_col5 = st.columns([1, 1, 1, 1, 1])
+    with status_col1:
+        st.metric("Quarter", st.session_state.current_quarter)
+    with status_col2:
+        st.metric("Game Clock", st.session_state.current_game_time)
+    with status_col3:
+        st.metric("Home Score", st.session_state.home_score)
+    with status_col4:
+        st.metric("Away Score", st.session_state.away_score)
+    with status_col5:
+        if st.button("🔚 End Quarter", type="primary"):
+            success = end_quarter()
+            if success:
+                st.success(f"Quarter ended! Now in {st.session_state.current_quarter}")
+                st.rerun()
+            else:
+                st.error("Cannot advance quarter further")
     st.divider()
+
+    # Enhanced Score management with faster player attribution
+    st.subheader("Score Tracking")
+
+    # Check if lineup is set for current quarter
+    if not st.session_state.quarter_lineup_set:
+        st.warning("⚠️ Please set a starting lineup for this quarter before tracking home team player stats.")
+
+    # Get current players for dropdown (home team only)
+    current_players = st.session_state.current_lineup if st.session_state.quarter_lineup_set else []
+
+    # Side-by-side team scoring (eliminates need to select home/away)
+    home_col, away_col = st.columns(2)
     
-    # Rest of your lineup management code goes here (not in the fixed container)
-    # This section will be scrollable while the game controls stay fixed above
+    with home_col:
+        st.markdown("### 🏠 **HOME TEAM**")
+        
+        # Player selection for home team
+        if st.session_state.quarter_lineup_set:
+            player_options = ["Quick Score (No Player)"] + current_players
+            home_scorer = st.selectbox(
+                "Player:",
+                player_options,
+                help="Select player for detailed stats, or use 'Quick Score' for team-only tracking",
+                key="home_scorer_select"
+            )
+        else:
+            home_scorer = "Quick Score (No Player)"
+
+        # Home team scoring buttons
+        st.write("**Score Entry**")
+        
+        # Free Throws
+        home_ft_make, home_ft_miss = st.columns(2)
+        with home_ft_make:
+            if st.button("✅ FT", key="home_ft_make", use_container_width=True, type="primary"):
+                handle_score_entry("home", 1, home_scorer, "free_throw", True)
+        with home_ft_miss:
+            if st.button("❌ FT", key="home_ft_miss", use_container_width=True):
+                handle_score_entry("home", 0, home_scorer, "free_throw", False)
+
+        # 2-Point Field Goals
+        home_2pt_make, home_2pt_miss = st.columns(2)
+        with home_2pt_make:
+            if st.button("✅ 2PT", key="home_2pt_make", use_container_width=True, type="primary"):
+                handle_score_entry("home", 2, home_scorer, "field_goal", True)
+        with home_2pt_miss:
+            if st.button("❌ 2PT", key="home_2pt_miss", use_container_width=True):
+                handle_score_entry("home", 0, home_scorer, "field_goal", False)
+
+        # 3-Point Field Goals
+        home_3pt_make, home_3pt_miss = st.columns(2)
+        with home_3pt_make:
+            if st.button("✅ 3PT", key="home_3pt_make", use_container_width=True, type="primary"):
+                handle_score_entry("home", 3, home_scorer, "three_pointer", True)
+        with home_3pt_miss:
+            if st.button("❌ 3PT", key="home_3pt_miss", use_container_width=True):
+                handle_score_entry("home", 0, home_scorer, "three_pointer", False)
+
+    with away_col:
+        st.markdown("### 🛣️ **AWAY TEAM**")
+        st.info("📊 Away team scoring recorded as team totals only")
+        
+        # Away team scoring buttons
+        st.write("**Score Entry**")
+        
+        # Free Throws
+        away_ft_make, away_ft_miss = st.columns(2)
+        with away_ft_make:
+            if st.button("✅ FT", key="away_ft_make", use_container_width=True, type="primary"):
+                handle_score_entry("away", 1, "Quick Score (No Player)", "free_throw", True)
+        with away_ft_miss:
+            if st.button("❌ FT", key="away_ft_miss", use_container_width=True):
+                handle_score_entry("away", 0, "Quick Score (No Player)", "free_throw", False)
+
+        # 2-Point Field Goals
+        away_2pt_make, away_2pt_miss = st.columns(2)
+        with away_2pt_make:
+            if st.button("✅ 2PT", key="away_2pt_make", use_container_width=True, type="primary"):
+                handle_score_entry("away", 2, "Quick Score (No Player)", "field_goal", True)
+        with away_2pt_miss:
+            if st.button("❌ 2PT", key="away_2pt_miss", use_container_width=True):
+                handle_score_entry("away", 0, "Quick Score (No Player)", "field_goal", False)
+
+        # 3-Point Field Goals
+        away_3pt_make, away_3pt_miss = st.columns(2)
+        with away_3pt_make:
+            if st.button("✅ 3PT", key="away_3pt_make", use_container_width=True, type="primary"):
+                handle_score_entry("away", 3, "Quick Score (No Player)", "three_pointer", True)
+        with away_3pt_miss:
+            if st.button("❌ 3PT", key="away_3pt_miss", use_container_width=True):
+                handle_score_entry("away", 0, "Quick Score (No Player)", "three_pointer", False)
+
+    # Quick stats display
+    if st.session_state.player_stats:
+        st.write("**Live Scoring Leaders:**")
+        top_scorers = get_top_scorers(3)
+
+        if top_scorers:
+            score_cols = st.columns(len(top_scorers))
+            for i, (player, stats) in enumerate(top_scorers):
+                with score_cols[i]:
+                    st.metric(
+                        f"{player.split('(')[0].strip()}",
+                        f"{stats['points']} pts",
+                        help=f"FG: {stats['field_goals_made']}/{stats['field_goals_attempted']}"
+                    )
+
+    # Enhanced undo last score
+    if st.session_state.score_history:
+        last_score = st.session_state.score_history[-1]
+        undo_text = f"↩️ Undo: {last_score['team'].title()} "
+
+        # Show shot type and result
+        shot_type = last_score.get('shot_type', 'unknown')
+        made = last_score.get('made', True)
+        points = last_score.get('points', 0)
+
+        if shot_type == 'free_throw':
+            undo_text += f"FT {'Make' if made else 'Miss'}"
+        elif shot_type == 'field_goal':
+            undo_text += f"2PT {'Make' if made else 'Miss'}"
+        elif shot_type == 'three_pointer':
+            undo_text += f"3PT {'Make' if made else 'Miss'}"
+        else:
+            undo_text += f"+{points}"
+
+        if last_score.get('scorer') and last_score.get('scorer') != "Quick Score (No Player)":
+            undo_text += f" by {last_score['scorer'].split('(')[0].strip()}"
+
+        if st.button(undo_text):
+            undo_last_score()
+
+    st.write("**Turnover Tracking**")
     
+    turnover_col1, turnover_col2 = st.columns(2)
+    
+    with turnover_col1:
+        st.markdown("### 🏠 **HOME TURNOVERS**")
+        # Home team turnover player selection
+        if st.session_state.quarter_lineup_set:
+            home_turnover_player = st.selectbox(
+                "Player:",
+                ["Team Turnover"] + st.session_state.current_lineup,
+                key="home_to_player"
+            )
+        else:
+            home_turnover_player = "Team Turnover"
+        
+        if st.button("📝 HOME Turnover", key="home_turnover", use_container_width=True):
+            player_to_record = None if home_turnover_player == "Team Turnover" else home_turnover_player
+            add_turnover("home", player_to_record)
+            player_text = f" by {home_turnover_player.split('(')[0].strip()}" if home_turnover_player != "Team Turnover" else ""
+            st.success(f"HOME turnover recorded{player_text}")
+            st.rerun()
+    
+    with turnover_col2:
+        st.markdown("### 🛣️ **AWAY TURNOVERS**")
+        st.info("📊 Away team turnovers recorded as team totals only")
+        # Away team turnover (team only)
+        if st.button("📝 AWAY Turnover", key="away_turnover", use_container_width=True):
+            add_turnover("away", None)
+            st.success("AWAY turnover recorded")
+            st.rerun()
+    
+    # Display current turnover count
+    home_tos, away_tos = get_team_turnovers()
+    if home_tos > 0 or away_tos > 0:
+        to_count_col1, to_count_col2 = st.columns(2)
+        with to_count_col1:
+            st.metric("HOME Turnovers", home_tos)
+        with to_count_col2:
+            st.metric("AWAY Turnovers", away_tos)
+
+    # Undo last turnover
+    if st.session_state.turnover_history:
+        last_turnover = st.session_state.turnover_history[-1]
+        player_text = f" by {last_turnover['player'].split('(')[0].strip()}" if last_turnover.get('player') else ""
+        undo_text = f"↩️ Undo: {last_turnover['team'].upper()} turnover{player_text}"
+        
+        if st.button(undo_text):
+            if undo_last_turnover():
+                st.success("Last turnover undone!")
+                st.rerun()
+
+    # Lineup management section
+    st.subheader("Lineup Management")
+
     # Show current quarter lineup status
     if not st.session_state.quarter_lineup_set:
         st.info(f"🏀 Please set the starting lineup for {st.session_state.current_quarter}")
-    
-    # Available players (from roster)
+
+    # Available players (now from roster)
     available_players = [f"{p['name']} (#{p['jersey']})" for p in st.session_state.roster]
-    
+
     # Current lineup display
     if st.session_state.current_lineup:
         st.write("**Players on Court:**")
@@ -4201,54 +4379,55 @@ with tab1:
                 st.info(f"🏀 {player}")
     else:
         st.warning("No players currently on court")
-    
+
     # Substitution Management (only if lineup is set)
     if st.session_state.quarter_lineup_set:
         st.write("**Make Substitutions:**")
-        
+
         # Two-column layout for substitutions
         sub_col1, sub_col2 = st.columns(2)
-        
+
         with sub_col1:
             st.write("**Players Coming Out:**")
             players_out = st.multiselect(
                 "Select players to substitute out",
                 st.session_state.current_lineup,
-                key="players_out_scroll",
+                key="players_out",
                 help="Choose players currently on court to substitute out"
             )
-        
+
         with sub_col2:
             st.write("**Players Coming In:**")
+            # Available players for substitution (not currently on court)
             available_for_sub = [p for p in available_players if p not in st.session_state.current_lineup]
             players_in = st.multiselect(
                 "Select players to substitute in",
                 available_for_sub,
-                key="players_in_scroll",
+                key="players_in",
                 help="Choose players from bench to substitute in"
             )
-        
+
         # Time input for substitution
         game_time = st.text_input(
             "Game Time (MM:SS)",
             value=st.session_state.current_game_time,
-            help="Enter time remaining in current quarter",
-            placeholder="MM:SS format (e.g., 5:30)",
-            key="game_time_scroll"
+            help="Enter time remaining in current quarter (e.g., 5:30 for 5 minutes 30 seconds left)",
+            placeholder="MM:SS format (e.g., 5:30)"
         )
-        
+
         # Show what the new lineup will be
         if len(players_out) == len(players_in) and len(players_out) > 0:
             new_lineup = [p for p in st.session_state.current_lineup if p not in players_out] + players_in
             if len(new_lineup) == 5:
                 st.info(f"**New lineup will be:** {' | '.join(new_lineup)}")
-        
-        if st.button("🔄 Make Substitution", key="make_sub_scroll"):
+
+        if st.button("🔄 Make Substitution"):
             if len(players_out) != len(players_in):
                 st.error("Number of players coming out must equal number coming in!")
             elif len(players_out) == 0:
                 st.error("Please select at least one player to substitute!")
             else:
+                # Validate game time before making substitution
                 is_valid_time, time_message = validate_game_time(game_time, st.session_state.quarter_length)
                 if not is_valid_time:
                     st.error(f"Invalid game time: {time_message}")
@@ -4271,11 +4450,11 @@ with tab1:
             "Choose 5 players for the court",
             available_players,
             max_selections=5,
-            key="quarter_lineup_scroll",
+            key="quarter_lineup",
             help="Select exactly 5 players to start the quarter"
         )
-        
-        if st.button("✅ Set Starting Lineup", key="set_lineup_scroll"):
+
+        if st.button("✅ Set Starting Lineup"):
             if len(quick_lineup) != 5:
                 st.error("Please select exactly 5 players!")
             else:
@@ -4285,12 +4464,8 @@ with tab1:
                     st.rerun()
                 else:
                     st.error(f"Error setting lineup: {message}")
-    
-    # Include the lineup recommendation section
-    display_lineup_recommendation()
-    
-    st.divider()
 
+    st.divider()
 # ------------------------------------------------------------------
 # Tab 2: Analytics
 # ------------------------------------------------------------------
