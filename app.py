@@ -4466,6 +4466,11 @@ with tab1:
                     st.error(f"Error setting lineup: {message}")
 
     st.divider()
+    
+    display_lineup_recommendation()
+    
+    st.divider()
+    
 # ------------------------------------------------------------------
 # Tab 2: Analytics
 # ------------------------------------------------------------------
