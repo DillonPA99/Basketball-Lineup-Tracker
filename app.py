@@ -574,8 +574,10 @@ def ensure_active_game_session():
     return st.session_state.current_game_session_id is not None
 
 def save_game_session(user_id, session_name, game_data):
-    """Save current game session to Firebase - FIXED VERSION."""
+    """Save current game session to Firebase."""
     try:
+        final_session_name = generate_default_game_name()
+        
         # Prepare game data for storage with proper serialization
         game_session = {
             'user_id': user_id,
@@ -647,7 +649,7 @@ def save_game_session(user_id, session_name, game_data):
         doc_ref = db.collection('game_sessions').document()
         doc_ref.set(game_session)
         
-        return True, doc_ref.id
+        return True, doc_ref.id, final_session_name
         
     except Exception as e:
         st.error(f"Error saving game session: {str(e)}")
@@ -795,10 +797,11 @@ def delete_game_session(session_id):
         return False
 
 def update_game_session(session_id, game_data):
-    """Update an existing game session - FIXED VERSION."""
+    """Update an existing game session."""
     try:
         # Prepare update data with same serialization as save_game_session
         update_data = {
+            'session_name': generate_default_game_name(),
             'home_team_name': game_data.get('home_team_name', 'HOME'),
             'away_team_name': game_data.get('away_team_name', 'AWAY'),
             'custom_game_name': game_data.get('custom_game_name', ''),
@@ -1277,6 +1280,14 @@ def generate_default_game_name():
     
     # Default fallback
     return f"Game {current_date}"
+
+def update_session_name_if_needed():
+    """Update the current game session name if setup has changed."""
+    if st.session_state.current_game_session_id:
+        new_name = generate_default_game_name()
+        # Only update if the name has actually changed
+        if st.session_state.game_session_name != new_name:
+            st.session_state.game_session_name = new_name
 
 def reset_game(save_current=True):
     """Reset the game to default values, optionally saving current progress first."""
@@ -3400,6 +3411,7 @@ with st.sidebar:
                 
                 if update_game_session(st.session_state.current_game_session_id, game_data):
                     st.success("Game progress saved!")
+                    st.rerun()
                 else:
                     st.error("Failed to save game progress")
         
@@ -4157,6 +4169,7 @@ with setup_col4:
         st.session_state.home_team_name = home_name or "HOME"
         st.session_state.away_team_name = away_name or "AWAY"
         st.session_state.custom_game_name = game_name
+        update_session_name_if_needed()
         st.success("Game setup updated!")
         st.rerun()
 
