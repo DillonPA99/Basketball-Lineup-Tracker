@@ -2013,7 +2013,9 @@ def calculate_time_on_court():
         for score_event in st.session_state.score_history:
             if (score_event['team'] == 'away' and 
                 score_event.get('lineup') == lineup_event['new_lineup']):
-                if not score_event.get('made', True):  # Count missed shots
+                shot_type = score_event.get('shot_type', 'field_goal')
+                if (not score_event.get('made', True) and 
+                    shot_type in ['field_goal', 'three_pointer']):
                     opponent_missed_shots += 1
         
         for turnover_event in st.session_state.turnover_history:
