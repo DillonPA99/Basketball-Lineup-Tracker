@@ -1505,7 +1505,20 @@ def validate_game_time(time_str, quarter_length):
     except ValueError:
         return False, "Invalid time format - use numbers only"
 
-# Update the current lineup and log the change
+def update_player_minutes_on_lineup_change():
+    """Update minutes played for all players when lineup changes occur."""
+    for player_name in st.session_state.roster:
+        player_display = f"{player_name['name']} (#{player_name['jersey']})"
+        calculated_minutes = calculate_player_minutes_played(player_display)
+        st.session_state.player_stats[player_display]['minutes_played'] = calculated_minutes
+
+def update_all_player_minutes():
+    """Update the minutes_played field for all players based on game clock time."""
+    for roster_player in st.session_state.roster:
+        player_display = f"{roster_player['name']} (#{roster_player['jersey']})"
+        game_minutes = calculate_player_minutes_played(player_display)
+        st.session_state.player_stats[player_display]['minutes_played'] = game_minutes
+
 def update_lineup(new_lineup, game_time):
     """Update the current lineup with validation."""
     try:
@@ -1534,7 +1547,8 @@ def update_lineup(new_lineup, game_time):
         st.session_state.quarter_lineup_set = True
         st.session_state.current_game_time = game_time
 
-        # Add this before the return
+        update_player_minutes_on_lineup_change()
+
         check_auto_save()
 
         return True, "Lineup updated successfully"
@@ -1733,7 +1747,8 @@ def end_quarter():
     }
     st.session_state.quarter_end_history.append(quarter_end_event)
 
-    # Advance to next period
+    update_all_player_minutes()
+
     quarter_mapping = {
         "Q1": "Q2", "Q2": "Q3", "Q3": "Q4", "Q4": "OT1",
         "OT1": "OT2", "OT2": "OT3", "OT3": "OT3"
@@ -1745,7 +1760,6 @@ def end_quarter():
         st.session_state.current_lineup = []  # clear so user must set new 5
         st.session_state.current_game_time = f"{st.session_state.quarter_length}:00"
 
-        # Add this before the return
         check_auto_save()
         
         return True
