@@ -1355,6 +1355,9 @@ def check_auto_save():
         
         game_data = {
             'roster': st.session_state.roster,
+            'home_team_name': st.session_state.home_team_name,
+            'away_team_name': st.session_state.away_team_name,
+            'custom_game_name': st.session_state.custom_game_name,
             'current_quarter': st.session_state.current_quarter,
             'quarter_length': st.session_state.quarter_length,
             'home_score': st.session_state.home_score,
@@ -1367,7 +1370,9 @@ def check_auto_save():
             'quarter_end_history': st.session_state.quarter_end_history,
             'player_stats': st.session_state.player_stats,
             'turnover_history': st.session_state.turnover_history,
-            'player_turnovers': st.session_state.player_turnovers
+            'player_turnovers': st.session_state.player_turnovers,
+            'turnover_history': st.session_state.turnover_history, 
+            'player_turnovers': st.session_state.player_turnovers 
         }
         
         if update_game_session(st.session_state.current_game_session_id, game_data):
@@ -3359,6 +3364,9 @@ with st.sidebar:
             if st.button("💾 Save Progress", help="Update saved game with current progress"):
                 game_data = {
                     'roster': st.session_state.roster,
+                    'home_team_name': st.session_state.home_team_name,
+                    'away_team_name': st.session_state.away_team_name,
+                    'custom_game_name': st.session_state.custom_game_name, 
                     'current_quarter': st.session_state.current_quarter,
                     'quarter_length': st.session_state.quarter_length,
                     'home_score': st.session_state.home_score,
@@ -3369,7 +3377,9 @@ with st.sidebar:
                     'lineup_history': st.session_state.lineup_history,
                     'score_history': st.session_state.score_history,
                     'quarter_end_history': st.session_state.quarter_end_history,
-                    'player_stats': st.session_state.player_stats
+                    'player_stats': st.session_state.player_stats,
+                    'turnover_history': st.session_state.turnover_history,
+                    'player_turnovers': st.session_state.player_turnovers 
                 }
                 
                 if update_game_session(st.session_state.current_game_session_id, game_data):
