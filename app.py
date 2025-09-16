@@ -576,12 +576,10 @@ def ensure_active_game_session():
 def save_game_session(user_id, session_name, game_data):
     """Save current game session to Firebase."""
     try:
-        final_session_name = generate_default_game_name()
-        
         # Prepare game data for storage with proper serialization
         game_session = {
             'user_id': user_id,
-            'session_name': session_name,
+            'session_name': session_name,  # Use the passed session_name directly
             'home_team_name': game_data.get('home_team_name', 'HOME'),
             'away_team_name': game_data.get('away_team_name', 'AWAY'),
             'custom_game_name': game_data.get('custom_game_name', ''),
@@ -660,12 +658,14 @@ def save_game_session(user_id, session_name, game_data):
         doc_ref = db.collection('game_sessions').document()
         doc_ref.set(game_session)
         
-        return True, doc_ref.id, final_session_name
+        # Return only 2 values (removed final_session_name)
+        return True, doc_ref.id
         
     except Exception as e:
         st.error(f"Error saving game session: {str(e)}")
         import traceback
         st.error(f"Detailed error: {traceback.format_exc()}")
+        # Return only 2 values (removed final_session_name)
         return False, None
 
 
