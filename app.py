@@ -4552,11 +4552,6 @@ with tab2:
             'total_points': 0
         }
 
-        # DEBUG: Show score history for troubleshooting
-        if st.checkbox("Debug: Show Score History", value=False):
-            st.write("**Score History Debug Info:**")
-            for i, event in enumerate(st.session_state.score_history):
-                st.write(f"Event {i+1}: Team={event.get('team')}, Points={event.get('points')}, Shot Type={event.get('shot_type')}, Made={event.get('made')}")
 
         # Process score history for team stats with improved logic
         for score_event in st.session_state.score_history:
@@ -4645,10 +4640,6 @@ with tab2:
             
             st.metric("Total Points", home_shooting_stats['total_points'])
             
-            # Debug info for home team
-            if st.checkbox("Debug: Home Team Stats", value=False):
-                st.json(home_shooting_stats)
-
         with team_col2:
             st.markdown("### Away Team")
             
@@ -4688,9 +4679,6 @@ with tab2:
             
             st.metric("Total Points", away_shooting_stats['total_points'])
             
-            # Debug info for away team
-            if st.checkbox("Debug: Away Team Stats", value=False):
-                st.json(away_shooting_stats)
         
         # Individual Home Team Player Statistics (now includes turnovers)
         if st.session_state.player_stats or st.session_state.player_turnovers:
@@ -4926,9 +4914,7 @@ with tab2:
                 quarter_end_data.append({
                     "Quarter": quarter_end.get("quarter", "Unknown"),
                     "Final Score": quarter_end.get("final_score", "0-0"),
-                    "Game Time": quarter_end.get("game_time", "Unknown"),
                     "Final Lineup": " | ".join(quarter_end.get("final_lineup", [])),
-                    "Timestamp": quarter_end.get("timestamp", "").strftime("%H:%M:%S") if quarter_end.get("timestamp") else "Unknown"
                 })
 
             if quarter_end_data:
@@ -4957,7 +4943,6 @@ with tab2:
                     "Game Time": lineup_event.get("game_time", "Unknown"),
                     "Score": f"{lineup_event.get('home_score', 0)}-{lineup_event.get('away_score', 0)}",
                     "Lineup": " | ".join(lineup_event.get("new_lineup", [])),
-                    "Time Logged": lineup_event.get("timestamp", "").strftime("%H:%M:%S") if lineup_event.get("timestamp") else "Unknown"
                 })
 
             if lineup_data:
