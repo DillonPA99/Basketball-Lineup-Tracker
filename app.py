@@ -598,7 +598,10 @@ def save_game_session(user_id, session_name, game_data):
             'game_phase': 'In Progress' if game_data['current_quarter'] != 'Q4' else 'Final Quarter',
             'created_at': get_current_utc_time(),
             'updated_at': get_current_utc_time(),
-            'is_completed': False
+            'is_completed': False,
+            # Add points off turnover data
+            'points_off_turnovers': game_data.get('points_off_turnovers', {'home': 0, 'away': 0}),
+            'last_turnover_event': game_data.get('last_turnover_event', None)
         }
         
         # Serialize complex data structures properly
@@ -645,6 +648,14 @@ def save_game_session(user_id, session_name, game_data):
             st.error(f"Error serializing player_turnovers: {e}")
             game_session['player_turnovers'] = base64.b64encode(pickle.dumps({})).decode('utf-8')
         
+        try:
+            # Serialize lineup points off turnovers
+            lineup_pot_dict = dict(game_data.get('lineup_points_off_turnovers', {}))
+            game_session['lineup_points_off_turnovers'] = base64.b64encode(pickle.dumps(lineup_pot_dict)).decode('utf-8')
+        except Exception as e:
+            st.error(f"Error serializing lineup_points_off_turnovers: {e}")
+            game_session['lineup_points_off_turnovers'] = base64.b64encode(pickle.dumps({})).decode('utf-8')
+        
         # Save to Firebase
         doc_ref = db.collection('game_sessions').document()
         doc_ref.set(game_session)
@@ -670,7 +681,7 @@ def load_game_session(session_id):
         session_data = doc.to_dict()
         
         # Decode pickled data with proper error handling
-        fields_to_decode = ['lineup_history', 'score_history', 'quarter_end_history', 'player_stats', 'turnover_history', 'player_turnovers']
+        fields_to_decode = ['lineup_history', 'score_history', 'quarter_end_history', 'player_stats', 'turnover_history', 'player_turnovers', 'lineup_points_off_turnovers']
         
         for field in fields_to_decode:
             if field in session_data and session_data[field]:
@@ -692,6 +703,9 @@ def load_game_session(session_id):
                     elif field == 'player_turnovers':
                         # Convert back to defaultdict(int)
                         session_data[field] = defaultdict(int, decoded_data)
+                    elif field == 'lineup_points_off_turnovers':
+                        # Convert back to defaultdict(int) for lineup points off turnovers
+                        session_data[field] = defaultdict(int, decoded_data)
                     else:
                         session_data[field] = decoded_data
                         
@@ -701,6 +715,8 @@ def load_game_session(session_id):
                     if field == 'turnover_history':
                         session_data[field] = []
                     elif field == 'player_turnovers':
+                        session_data[field] = defaultdict(int)
+                    elif field == 'lineup_points_off_turnovers':
                         session_data[field] = defaultdict(int)
                     elif field == 'player_stats':
                         session_data[field] = defaultdict(lambda: {
@@ -721,6 +737,8 @@ def load_game_session(session_id):
                     session_data[field] = []
                 elif field == 'player_turnovers':
                     session_data[field] = defaultdict(int)
+                elif field == 'lineup_points_off_turnovers':
+                    session_data[field] = defaultdict(int)
                 elif field == 'player_stats':
                     session_data[field] = defaultdict(lambda: {
                         'points': 0,
@@ -734,6 +752,13 @@ def load_game_session(session_id):
                     })
                 else:
                     session_data[field] = []
+        
+        # Initialize points off turnover data if not present
+        if 'points_off_turnovers' not in session_data:
+            session_data['points_off_turnovers'] = {'home': 0, 'away': 0}
+        
+        if 'last_turnover_event' not in session_data:
+            session_data['last_turnover_event'] = None
         
         return session_data
         
@@ -814,7 +839,10 @@ def update_game_session(session_id, game_data):
             'last_activity': get_current_utc_time(),
             'total_events': len(game_data.get('lineup_history', [])) + len(game_data.get('score_history', [])),
             'game_phase': 'In Progress' if game_data['current_quarter'] != 'Q4' else 'Final Quarter',
-            'updated_at': get_current_utc_time()
+            'updated_at': get_current_utc_time(),
+            # Add points off turnover data
+            'points_off_turnovers': game_data.get('points_off_turnovers', {'home': 0, 'away': 0}),
+            'last_turnover_event': game_data.get('last_turnover_event', None)
         }
         
         # Serialize complex data with error handling
@@ -833,6 +861,10 @@ def update_game_session(session_id, game_data):
             
             player_turnovers_dict = dict(game_data.get('player_turnovers', {}))
             update_data['player_turnovers'] = base64.b64encode(pickle.dumps(player_turnovers_dict)).decode('utf-8')
+            
+            # Serialize lineup points off turnovers
+            lineup_pot_dict = dict(game_data.get('lineup_points_off_turnovers', {}))
+            update_data['lineup_points_off_turnovers'] = base64.b64encode(pickle.dumps(lineup_pot_dict)).decode('utf-8')
             
         except Exception as e:
             st.error(f"Error serializing data for update: {e}")
@@ -1250,7 +1282,15 @@ if "turnover_history" not in st.session_state:
 
 if "player_turnovers" not in st.session_state:
     st.session_state.player_turnovers = defaultdict(int)
+    
+if "last_turnover_event" not in st.session_state:
+    st.session_state.last_turnover_event = None
 
+if "points_off_turnovers" not in st.session_state:
+    st.session_state.points_off_turnovers = {'home': 0, 'away': 0}
+
+if "lineup_points_off_turnovers" not in st.session_state:
+    st.session_state.lineup_points_off_turnovers = defaultdict(int)
 
 # ------------------------------------------------------------------
 # Helper functions
@@ -1300,7 +1340,7 @@ def reset_game(save_current=True):
          len(st.session_state.lineup_history) > 0 or
          st.session_state.quarter_lineup_set)):
         
-        # Prepare current game data
+        # Prepare current game data (including points off turnover data)
         current_game_data = {
             'roster': st.session_state.roster,
             'home_team_name': st.session_state.home_team_name,
@@ -1318,7 +1358,10 @@ def reset_game(save_current=True):
             'quarter_end_history': st.session_state.quarter_end_history,
             'player_stats': st.session_state.player_stats,
             'turnover_history': st.session_state.turnover_history,
-            'player_turnovers': st.session_state.player_turnovers
+            'player_turnovers': st.session_state.player_turnovers,
+            'points_off_turnovers': st.session_state.points_off_turnovers,
+            'lineup_points_off_turnovers': st.session_state.lineup_points_off_turnovers,
+            'last_turnover_event': st.session_state.last_turnover_event
         }
         
         # Update the saved game
@@ -1327,7 +1370,7 @@ def reset_game(save_current=True):
         else:
             st.warning("Could not auto-save previous game progress")
     
-    # Now reset game state
+    # Now reset game state (including points off turnover data)
     st.session_state.current_quarter = "Q1"
     st.session_state.home_score = 0
     st.session_state.away_score = 0
@@ -1349,10 +1392,14 @@ def reset_game(save_current=True):
         'minutes_played': 0
     })
     
+    # Reset points off turnover data
+    st.session_state.points_off_turnovers = {'home': 0, 'away': 0}
+    st.session_state.lineup_points_off_turnovers = defaultdict(int)
+    st.session_state.last_turnover_event = None
+    
     # Clear current session (user will need to save new game manually)
     st.session_state.current_game_session_id = None
     st.session_state.game_session_name = None
-
 
 # Auto-save functionality
 def check_auto_save():
@@ -1572,6 +1619,32 @@ def handle_score_entry(team, points, scorer, shot_type, made):
 
     # Ensure we have an active session
     ensure_active_game_session()
+
+    # Check for points off turnover opportunity
+    is_points_off_turnover = False
+    if (st.session_state.last_turnover_event and 
+        made and points > 0 and
+        st.session_state.last_turnover_event['benefiting_team'] == team):
+
+        # Check if this score happened within reasonable time after turnover (e.g., 30 seconds)
+        time_since_turnover = datetime.now() - st.session_state.last_turnover_event['turnover_timestamp']
+        
+        # Also check if we're still in the same quarter
+        same_quarter = st.session_state.last_turnover_event['turnover_quarter'] == st.session_state.current_quarter
+        
+        if time_since_turnover.total_seconds() <= 30 and same_quarter:
+            is_points_off_turnover = True
+            
+            # Add to team points off turnovers
+            st.session_state.points_off_turnovers[team] += points
+            
+            # Add to lineup points off turnovers (if lineup is set)
+            if st.session_state.quarter_lineup_set and st.session_state.current_lineup:
+                lineup_key = " | ".join(sorted(st.session_state.current_lineup))
+                st.session_state.lineup_points_off_turnovers[lineup_key] += points
+            
+            # Clear the turnover event after using it
+            st.session_state.last_turnover_event = None    
     
     # Only track player stats for home team with actual player selected
     if team == "home" and scorer != "Quick Score (No Player)":
@@ -1594,7 +1667,8 @@ def handle_score_entry(team, points, scorer, shot_type, made):
         }.get(shot_type, "Shot")
         
         if made:
-            st.success(f"✅ {shot_text} Make by {scorer.split('(')[0].strip()} (+{points})")
+            pot_indicator = " 🔄 (Points off TO)" if is_points_off_turnover else ""
+            st.success(f"✅ {shot_text} Make by {scorer.split('(')[0].strip()} (+{points}){pot_indicator}")
         else:
             st.info(f"📊 {shot_text} Miss by {scorer.split('(')[0].strip()}")
     else:
@@ -1616,7 +1690,8 @@ def handle_score_entry(team, points, scorer, shot_type, made):
         }.get(shot_type, "Shot")
         
         if made:
-            st.success(f"✅ {team_name} {shot_text} Make (+{points})")
+            pot_indicator = " 🔄 (Points off TO)" if is_points_off_turnover else ""
+            st.success(f"✅ {team_name} {shot_text} Make (+{points}){pot_indicator}")
         else:
             st.info(f"📊 {team_name} {shot_text} Miss")
     
@@ -1626,11 +1701,26 @@ def handle_score_entry(team, points, scorer, shot_type, made):
     check_auto_save()
 
 def undo_last_score():
-    """Improved undo functionality."""
+    """Improved undo functionality with points off turnover handling."""
     if not st.session_state.score_history:
         return
         
     last_score = st.session_state.score_history[-1]
+    
+    # Check if this score was points off turnover and reverse it
+    if hasattr(last_score, 'is_points_off_turnover') and last_score.get('is_points_off_turnover'):
+        team = last_score['team']
+        points = last_score['points']
+        
+        # Remove from team points off turnovers
+        if st.session_state.points_off_turnovers[team] >= points:
+            st.session_state.points_off_turnovers[team] -= points
+        
+        # Remove from lineup points off turnovers
+        if st.session_state.current_lineup:
+            lineup_key = " | ".join(sorted(st.session_state.current_lineup))
+            if st.session_state.lineup_points_off_turnovers[lineup_key] >= points:
+                st.session_state.lineup_points_off_turnovers[lineup_key] -= points
     
     # Remove from team score if points were added
     if last_score['points'] > 0:
@@ -1671,6 +1761,18 @@ def undo_last_score():
     st.success("Last entry undone!")
     st.rerun()
 
+# Function to get points off turnover statistics
+def get_points_off_turnovers_stats():
+    """Get team and lineup points off turnover statistics."""
+    return {
+        'team_stats': dict(st.session_state.points_off_turnovers),
+        'lineup_stats': dict(st.session_state.lineup_points_off_turnovers)
+    }
+
+# Function to clear expired turnover opportunities (call this when quarter ends)
+def clear_turnover_opportunity():
+    """Clear any pending turnover opportunity when quarter ends."""
+    st.session_state.last_turnover_event = None
 
 def add_turnover(team, player=None):
     """Add a turnover to the game log."""
@@ -1688,6 +1790,14 @@ def add_turnover(team, player=None):
     # Update individual player stats for home team only
     if team == "home" and player and player != "Team Turnover":
         st.session_state.player_turnovers[player] += 1
+
+    st.session_state.last_turnover_event = {
+        'turnover_team': team,
+        'benefiting_team': 'away' if team == 'home' else 'home',
+        'turnover_timestamp': datetime.now(),
+        'turnover_quarter': st.session_state.current_quarter,
+        'turnover_lineup': st.session_state.current_lineup.copy() if st.session_state.current_lineup else []
+    }
     
     check_auto_save()
 
@@ -1714,6 +1824,12 @@ def get_team_turnovers():
     away_turnovers = sum(1 for to in st.session_state.turnover_history if to['team'] == 'away')
     return home_turnovers, away_turnovers
 
+# Function to reset points off turnover stats (add to reset_game function)
+def reset_points_off_turnovers():
+    """Reset points off turnover statistics."""
+    st.session_state.points_off_turnovers = {'home': 0, 'away': 0}
+    st.session_state.lineup_points_off_turnovers = defaultdict(int)
+    st.session_state.last_turnover_event = None
 
 # ------------------------------------------------------------------
 # NEW: Capture end-of-quarter snapshot in lineup history at 0:00
@@ -1759,6 +1875,8 @@ def end_quarter():
     st.session_state.quarter_end_history.append(quarter_end_event)
 
     update_all_player_minutes()
+    
+    clear_turnover_opportunity()
 
     quarter_mapping = {
         "Q1": "Q2", "Q2": "Q3", "Q3": "Q4", "Q4": "OT1",
@@ -1776,7 +1894,7 @@ def end_quarter():
         return True
         
     return False
-
+    
 # ------------------------------------------------------------------
 # Quarter Settings Update
 # ------------------------------------------------------------------
@@ -2789,6 +2907,62 @@ FINAL SCORE: {st.session_state.home_team_name} {st.session_state.home_score} - {
                 
                 email_body += "\n"
 
+    # Points off Turnovers Analytics
+    email_body += "POINTS OFF TURNOVERS\n===================\n"
+    
+    # Get points off turnover stats
+    pot_stats = get_points_off_turnovers_stats()
+    home_pot = pot_stats['team_stats'].get('home', 0)
+    away_pot = pot_stats['team_stats'].get('away', 0)
+    
+    email_body += f"HOME Points off Turnovers: {home_pot}\n"
+    email_body += f"AWAY Points off Turnovers: {away_pot}\n"
+    email_body += f"Total Points off Turnovers: {home_pot + away_pot}\n\n"
+    
+    # Calculate efficiency if there are turnovers
+    home_turnovers, away_turnovers = get_team_turnovers()
+    
+    if home_turnovers > 0 or away_turnovers > 0:
+        email_body += "POINTS OFF TURNOVERS EFFICIENCY:\n"
+        
+        home_efficiency = (home_pot / away_turnovers) if away_turnovers > 0 else 0
+        away_efficiency = (away_pot / home_turnovers) if home_turnovers > 0 else 0
+        
+        email_body += f"HOME Efficiency: {home_efficiency:.1f} points per opponent turnover\n"
+        email_body += f"AWAY Efficiency: {away_efficiency:.1f} points per opponent turnover\n\n"
+    
+    # Add lineup points off turnover performance
+    lineup_pot_stats = pot_stats['lineup_stats']
+    if lineup_pot_stats:
+        email_body += "LINEUP POINTS OFF TURNOVERS PERFORMANCE:\n"
+        
+        # Sort lineups by points off turnovers
+        sorted_lineups = sorted(lineup_pot_stats.items(), key=lambda x: x[1], reverse=True)
+        
+        for lineup, points in sorted_lineups:
+            if points > 0:
+                email_body += f"Lineup: {lineup}\n"
+                email_body += f"Points off Turnovers: {points}\n\n"
+        
+        if sorted_lineups:
+            best_lineup = sorted_lineups[0]
+            email_body += f"BEST LINEUP FOR POINTS OFF TO: {best_lineup[1]} points\n"
+            email_body += f"{best_lineup[0]}\n\n"
+    
+    # Add impact analysis if applicable
+    if home_pot > 0 or away_pot > 0:
+        email_body += "POINTS OFF TURNOVERS IMPACT:\n"
+        
+        if st.session_state.home_score > 0:
+            home_pot_percentage = (home_pot / st.session_state.home_score) * 100
+            email_body += f"HOME: {home_pot_percentage:.1f}% of total points came from turnovers\n"
+        
+        if st.session_state.away_score > 0:
+            away_pot_percentage = (away_pot / st.session_state.away_score) * 100
+            email_body += f"AWAY: {away_pot_percentage:.1f}% of total points came from turnovers\n"
+        
+        email_body += "\n"
+
     # Plus/Minus Analytics
     email_body += "PLUS/MINUS ANALYTICS\n====================\n"
     
@@ -3546,7 +3720,11 @@ with st.sidebar:
                                     'quarter_end_history': st.session_state.quarter_end_history,
                                     'player_stats': st.session_state.player_stats,
                                     'turnover_history': st.session_state.turnover_history,
-                                    'player_turnovers': st.session_state.player_turnovers
+                                    'player_turnovers': st.session_state.player_turnovers,
+                                    'points_off_turnovers': st.session_state.points_off_turnovers,
+                                    'lineup_points_off_turnovers': st.session_state.lineup_points_off_turnovers,
+                                    'last_turnover_event': st.session_state.last_turnover_event
+                                    
                                 }
                                 update_game_session(st.session_state.current_game_session_id, current_game_data)
                             
@@ -3571,7 +3749,10 @@ with st.sidebar:
                                 st.session_state.quarter_end_history = loaded_data['quarter_end_history']
                                 st.session_state.player_stats = loaded_data['player_stats']
                                 st.session_state.turnover_history = loaded_data.get('turnover_history', [])
-                                st.session_state.player_turnovers = loaded_data.get('player_turnovers', defaultdict(int))     
+                                st.session_state.player_turnovers = loaded_data.get('player_turnovers', defaultdict(int)) 
+                                st.session_state.points_off_turnovers = loaded_data.get('points_off_turnovers', {'home': 0, 'away': 0})
+                                st.session_state.lineup_points_off_turnovers = loaded_data.get('lineup_points_off_turnovers', defaultdict(int))
+                                st.session_state.last_turnover_event = loaded_data.get('last_turnover_event', None)
                                 st.session_state.current_game_session_id = session['id']
                                 st.session_state.game_session_name = session['session_name']
                                 st.success(f"Loaded game: {session['session_name']}")
@@ -4827,6 +5008,131 @@ with tab2:
                 st.info("No individual player statistics available yet.")
 
         display_defensive_analytics()
+
+        # Points Off Turnovers Analytics Section
+        st.subheader("Points Off Turnovers")
+
+        # Get points off turnover stats
+        pot_stats = get_points_off_turnovers_stats()
+        home_pot = pot_stats['team_stats'].get('home', 0)
+        away_pot = pot_stats['team_stats'].get('away', 0)
+        lineup_pot_stats = pot_stats['lineup_stats']
+
+        # Team Points Off Turnovers Comparison
+        st.write("**Team Points Off Turnovers**")
+
+        pot_col1, pot_col2, pot_col3 = st.columns(3)
+
+        with pot_col1:
+            st.metric("HOME Points off TO", home_pot)
+
+        with pot_col2:
+            st.metric("AWAY Points off TO", away_pot)
+
+        with pot_col3:
+            total_pot = home_pot + away_pot
+            st.metric("Total Points off TO", total_pot)
+
+        # Calculate efficiency metrics if there are turnovers
+        home_turnovers, away_turnovers = get_team_turnovers()
+
+        if home_turnovers > 0 or away_turnovers > 0:
+            st.write("**Points Off Turnovers Efficiency**")
+    
+            efficiency_col1, efficiency_col2 = st.columns(2)
+    
+            with efficiency_col1:
+                # HOME team efficiency (points scored off AWAY team turnovers)
+                home_efficiency = (home_pot / away_turnovers) if away_turnovers > 0 else 0
+                st.metric(
+                    "HOME Efficiency", 
+                    f"{home_efficiency:.1f} pts/TO",
+                    help=f"Points scored per opponent turnover ({home_pot} points ÷ {away_turnovers} opp turnovers)"
+                )
+    
+            with efficiency_col2:
+                # AWAY team efficiency (points scored off HOME team turnovers)
+                away_efficiency = (away_pot / home_turnovers) if home_turnovers > 0 else 0
+                st.metric(
+                    "AWAY Efficiency", 
+                    f"{away_efficiency:.1f} pts/TO",
+                    help=f"Points scored per opponent turnover ({away_pot} points ÷ {home_turnovers} opp turnovers)"
+                )
+
+        # Lineup Points Off Turnovers Analysis
+        if lineup_pot_stats:
+            st.write("**Lineup Points Off Turnovers Performance**")
+    
+            lineup_pot_data = []
+            for lineup, points in lineup_pot_stats.items():
+                if points > 0:  # Only show lineups that scored points off turnovers
+                    lineup_pot_data.append({
+                        'Lineup': lineup,
+                        'Points off TO': points,
+                        'Players': lineup.replace(" | ", ", ")
+                    })
+    
+            if lineup_pot_data:
+                lineup_pot_df = pd.DataFrame(lineup_pot_data)
+                lineup_pot_df = lineup_pot_df.sort_values('Points off TO', ascending=False)
+        
+                st.dataframe(
+                    lineup_pot_df[['Players', 'Points off TO']],
+                    use_container_width=True,
+                    hide_index=True
+                )
+        
+                # Chart of lineup points off turnovers
+                if len(lineup_pot_df) > 1:
+                    fig_pot = px.bar(
+                        lineup_pot_df,
+                        x='Players',
+                        y='Points off TO',
+                        title='Points Off Turnovers by Lineup',
+                        color='Points off TO',
+                        color_continuous_scale='viridis'
+                    )
+                    fig_pot.update_xaxes(tickangle=45)
+                    fig_pot.update_layout(
+                        xaxis_title='Lineup',
+                        yaxis_title='Points Off Turnovers'
+                    )
+                    st.plotly_chart(fig_pot, use_container_width=True)
+        
+                # Best performing lineup
+                if len(lineup_pot_df) > 0:
+                    best_lineup = lineup_pot_df.iloc[0]
+                    st.success(f"**Best Lineup for Points off TO:** {best_lineup['Points off TO']} points")
+                    st.write(f"_{best_lineup['Players']}_")
+            else:
+                st.info("No lineup has scored points off turnovers yet.")
+        else:
+            st.info("No points off turnovers recorded yet.")
+
+        # Points Off Turnovers vs Total Points Analysis
+        if home_pot > 0 or away_pot > 0:
+            st.write("**Points Off Turnovers Impact Analysis**")
+    
+            impact_col1, impact_col2 = st.columns(2)
+    
+            with impact_col1:
+                if st.session_state.home_score > 0:
+                    home_pot_percentage = (home_pot / st.session_state.home_score) * 100
+                    st.metric(
+                        "HOME % of Points from TO", 
+                        f"{home_pot_percentage:.1f}%",
+                        help=f"{home_pot} points off TO out of {st.session_state.home_score} total points"
+                    )
+    
+            with impact_col2:
+                if st.session_state.away_score > 0:
+                    away_pot_percentage = (away_pot / st.session_state.away_score) * 100
+                    st.metric(
+                        "AWAY % of Points from TO", 
+                        f"{away_pot_percentage:.1f}%",
+                        help=f"{away_pot} points off TO out of {st.session_state.away_score} total points"
+                    )
+
         
         # Plus/Minus Analytics
         st.subheader("Plus/Minus Analytics")
