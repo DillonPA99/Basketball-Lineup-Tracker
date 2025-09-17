@@ -753,12 +753,16 @@ def load_game_session(session_id):
                 else:
                     session_data[field] = []
         
-        # Initialize points off turnover data if not present
-        if 'points_off_turnovers' not in session_data:
+        # FIXED: Properly initialize points off turnover data
+        if 'points_off_turnovers' not in session_data or session_data['points_off_turnovers'] is None:
             session_data['points_off_turnovers'] = {'home': 0, 'away': 0}
         
         if 'last_turnover_event' not in session_data:
             session_data['last_turnover_event'] = None
+        
+        # FIXED: Ensure lineup_points_off_turnovers is properly handled
+        if 'lineup_points_off_turnovers' not in session_data:
+            session_data['lineup_points_off_turnovers'] = defaultdict(int)
         
         return session_data
         
