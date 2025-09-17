@@ -2917,7 +2917,6 @@ FINAL SCORE: {st.session_state.home_team_name} {st.session_state.home_score} - {
     
     email_body += f"HOME Points off Turnovers: {home_pot}\n"
     email_body += f"AWAY Points off Turnovers: {away_pot}\n"
-    email_body += f"Total Points off Turnovers: {home_pot + away_pot}\n\n"
     
     # Calculate efficiency if there are turnovers
     home_turnovers, away_turnovers = get_team_turnovers()
@@ -5028,10 +5027,6 @@ with tab2:
 
         with pot_col2:
             st.metric("AWAY Points off TO", away_pot)
-
-        with pot_col3:
-            total_pot = home_pot + away_pot
-            st.metric("Total Points off TO", total_pot)
 
         # Calculate efficiency metrics if there are turnovers
         home_turnovers, away_turnovers = get_team_turnovers()
