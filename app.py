@@ -2036,7 +2036,7 @@ def calculate_lineup_plus_minus():
     return dict(lineup_stats)
 
 def calculate_player_minutes_played(player):
-    """Calculate total minutes played for a player based on lineup history - FIXED to match lineup calculation."""
+    """Calculate total minutes played for a player based on lineup history - CORRECTED VERSION."""
     if not st.session_state.lineup_history:
         return 0
     
@@ -2058,40 +2058,43 @@ def calculate_player_minutes_played(player):
         
         # Check if player was in this lineup
         if player in lineup_event.get('new_lineup', []):
-            # Time when this lineup started (higher number = more time left)
+            # Time when this lineup started
             lineup_start_seconds = parse_game_time(lineup_event.get('game_time', '0:00'))
             
             if i < len(st.session_state.lineup_history) - 1:
-                # Time when next lineup change occurred (lower number = less time left)
+                # Time when next lineup change occurred
                 next_event = st.session_state.lineup_history[i + 1]
                 lineup_end_seconds = parse_game_time(next_event.get('game_time', '0:00'))
                 
-                # Handle quarter transitions (when clock resets from 0:00 to full quarter)
-                if lineup_end_seconds > lineup_start_seconds:
-                    # Quarter ended, so player played from lineup_start_seconds to 0:00
-                    time_elapsed = lineup_start_seconds
-                else:
-                    # Normal case: time elapsed = start_time - end_time
+                # Check if we're in the same quarter
+                same_quarter = lineup_event.get('quarter') == next_event.get('quarter')
+                
+                if same_quarter:
+                    # Normal substitution within quarter: start_time - end_time
                     time_elapsed = lineup_start_seconds - lineup_end_seconds
+                else:
+                    # Quarter ended: player played from lineup_start to end of quarter (0:00)
+                    time_elapsed = lineup_start_seconds
             else:
                 # Last lineup period - player is still on court
                 current_game_time_seconds = parse_game_time(st.session_state.current_game_time)
+                current_quarter = st.session_state.current_quarter
+                lineup_quarter = lineup_event.get('quarter')
                 
-                # Handle quarter transitions for current lineup
-                if current_game_time_seconds > lineup_start_seconds:
-                    # We're in a new quarter, player played full previous quarter
-                    time_elapsed = lineup_start_seconds
-                else:
+                if current_quarter == lineup_quarter:
                     # Same quarter: time elapsed = start_time - current_time
                     time_elapsed = lineup_start_seconds - current_game_time_seconds
+                else:
+                    # Different quarter: player played from lineup_start to end of that quarter
+                    time_elapsed = lineup_start_seconds
             
-            # Ensure positive time (safety check)
+            # Ensure positive time
             time_elapsed = max(0, time_elapsed)
             total_seconds += time_elapsed
     
     # Convert to minutes
     return total_seconds / 60.0
-
+    
 # ============================================================================
 # OFFENSIVE EFFICIENCY CALCULATION (True Shooting Percentage)
 # ============================================================================
@@ -2155,7 +2158,7 @@ def calculate_player_efficiency_score(player):
 # ============================================================================
 
 def calculate_time_on_court():
-    """Calculate time on court for each lineup based on game clock differences - FIXED VERSION."""
+    """Calculate time on court for each lineup based on game clock differences - IMPROVED VERSION."""
     lineup_time_data = {}
     
     def parse_game_time(time_str):
@@ -2188,24 +2191,27 @@ def calculate_time_on_court():
             next_event = st.session_state.lineup_history[i + 1]
             lineup_end_seconds = parse_game_time(next_event.get('game_time', '0:00'))
             
-            # Handle quarter transitions
-            if lineup_end_seconds > lineup_start_seconds:
-                # Quarter ended
-                time_elapsed = lineup_start_seconds
-            else:
-                # Normal lineup change within quarter
+            # Check if we're in the same quarter (more reliable than just comparing times)
+            same_quarter = lineup_event.get('quarter') == next_event.get('quarter')
+            
+            if same_quarter:
+                # Normal lineup change within quarter: start_time - end_time
                 time_elapsed = lineup_start_seconds - lineup_end_seconds
+            else:
+                # Quarter ended: lineup played from start_time to end of quarter (0:00)
+                time_elapsed = lineup_start_seconds
         else:
             # Last lineup period - still active
             current_game_time_seconds = parse_game_time(st.session_state.current_game_time)
+            current_quarter = st.session_state.current_quarter
+            lineup_quarter = lineup_event.get('quarter')
             
-            # Handle quarter transitions for current lineup
-            if current_game_time_seconds > lineup_start_seconds:
-                # We're in a new quarter
-                time_elapsed = lineup_start_seconds
-            else:
-                # Same quarter
+            if current_quarter == lineup_quarter:
+                # Same quarter: time elapsed = start_time - current_time
                 time_elapsed = lineup_start_seconds - current_game_time_seconds
+            else:
+                # Different quarter: lineup played until end of that quarter
+                time_elapsed = lineup_start_seconds
         
         # Ensure positive time
         time_elapsed = max(0, time_elapsed)
@@ -2238,7 +2244,7 @@ def calculate_time_on_court():
     return lineup_time_data
 
 def calculate_individual_defensive_impact():
-    """Calculate defensive impact for individual players based on time-weighted performance."""
+    """Calculate defensive impact for individual players based on time-weighted performance - CORRECTED."""
     time_data = calculate_time_on_court()
     player_defensive_stats = {}
     
@@ -2276,7 +2282,6 @@ def calculate_individual_defensive_impact():
         total_minutes = stats['total_time_seconds'] / 60.0
         
         if total_minutes > 0:
-            # Defensive events per minute (weighted: turnovers = 1.5x, misses = 1x)
             stats['defensive_events_per_minute'] = stats['weighted_defensive_events'] / total_minutes
             stats['turnovers_per_minute'] = stats['opponent_turnovers'] / total_minutes
             stats['missed_shots_per_minute'] = stats['opponent_missed_shots'] / total_minutes
