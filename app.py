@@ -2624,6 +2624,14 @@ def display_defensive_analytics():
                     'Misses/Min': f"{stats['missed_shots_per_minute']:.2f}",
                     'Total Def Events': f"{stats['weighted_defensive_events']:.1f}"
                 })
+
+        if defensive_data:
+            defensive_df = pd.DataFrame(defensive_data)
+            defensive_df = defensive_df.sort_values('Def Events/Min', ascending=False)
+            st.dataframe(defensive_df, use_container_width=True, hide_index=True)
+            
+        else:
+            st.info("No individual defensive data available yet.")
     
     # Lineup Defensive Ratings
     st.write("**Lineup Defensive Performance (Per Minute)**")
