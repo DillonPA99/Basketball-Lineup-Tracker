@@ -2244,56 +2244,60 @@ def calculate_time_on_court():
     return lineup_time_data
 
 def calculate_individual_defensive_impact():
-    """Calculate defensive impact for individual players based on time-weighted performance - CORRECTED."""
-    time_data = calculate_time_on_court()
+    """Calculate defensive impact for individual players using the same minutes calculation as other functions."""
     player_defensive_stats = {}
     
     # Initialize stats for all players who have been on court
-    for lineup_tuple, stats in time_data.items():
-        for player in lineup_tuple:
+    for lineup_event in st.session_state.lineup_history:
+        players = lineup_event.get('new_lineup', [])
+        for player in players:
             if player not in player_defensive_stats:
                 player_defensive_stats[player] = {
-                    'total_time_seconds': 0,
+                    'total_minutes_played': 0.0,
                     'opponent_turnovers': 0,
                     'opponent_missed_shots': 0,
-                    'weighted_defensive_events': 0,
-                    'defensive_events_per_minute': 0
+                    'weighted_defensive_events': 0
                 }
     
-    # Aggregate stats by player
+    # Use the exact same minutes calculation logic as calculate_player_minutes_played
+    for player in player_defensive_stats:
+        # Calculate minutes using the existing function to ensure consistency
+        calculated_minutes = calculate_player_minutes_played(player)
+        player_defensive_stats[player]['total_minutes_played'] = calculated_minutes
+    
+    # Now calculate defensive events for each player based on lineup participation
+    time_data = calculate_time_on_court()
+    
+    # Aggregate defensive events by player
     for lineup_tuple, stats in time_data.items():
         lineup_size = len(lineup_tuple)
         
         if lineup_size > 0:
             # Distribute defensive credit equally among lineup members
-            time_per_player = stats['total_time_seconds'] / lineup_size
             turnovers_per_player = stats['opponent_turnovers'] / lineup_size
             missed_shots_per_player = stats['opponent_missed_shots'] / lineup_size
             weighted_events_per_player = stats['defensive_events'] / lineup_size
             
             for player in lineup_tuple:
-                player_defensive_stats[player]['total_time_seconds'] += time_per_player
-                player_defensive_stats[player]['opponent_turnovers'] += turnovers_per_player
-                player_defensive_stats[player]['opponent_missed_shots'] += missed_shots_per_player
-                player_defensive_stats[player]['weighted_defensive_events'] += weighted_events_per_player
+                if player in player_defensive_stats:
+                    player_defensive_stats[player]['opponent_turnovers'] += turnovers_per_player
+                    player_defensive_stats[player]['opponent_missed_shots'] += missed_shots_per_player
+                    player_defensive_stats[player]['weighted_defensive_events'] += weighted_events_per_player
     
     # Calculate per-minute defensive metrics
     for player, stats in player_defensive_stats.items():
-        total_minutes = stats['total_time_seconds'] / 60.0
+        total_minutes = stats['total_minutes_played']
         
         if total_minutes > 0:
             stats['defensive_events_per_minute'] = stats['weighted_defensive_events'] / total_minutes
             stats['turnovers_per_minute'] = stats['opponent_turnovers'] / total_minutes
             stats['missed_shots_per_minute'] = stats['opponent_missed_shots'] / total_minutes
-            stats['total_minutes_played'] = total_minutes
         else:
             stats['defensive_events_per_minute'] = 0
             stats['turnovers_per_minute'] = 0
             stats['missed_shots_per_minute'] = 0
-            stats['total_minutes_played'] = 0
     
     return player_defensive_stats
-
 # ============================================================================
 # COMBINED EFFICIENCY SCORE (Offense + Defense)
 # ============================================================================
