@@ -756,16 +756,12 @@ def load_game_session(session_id):
                 else:
                     session_data[field] = []
         
-        # FIXED: Properly initialize points off turnover data
-        if 'points_off_turnovers' not in session_data or session_data['points_off_turnovers'] is None:
+        points_off_to = session_data.get('points_off_turnovers')
+        if not points_off_to or not isinstance(points_off_to, dict):
             session_data['points_off_turnovers'] = {'home': 0, 'away': 0}
         
         if 'last_turnover_event' not in session_data:
             session_data['last_turnover_event'] = None
-        
-        # FIXED: Ensure lineup_points_off_turnovers is properly handled
-        if 'lineup_points_off_turnovers' not in session_data:
-            session_data['lineup_points_off_turnovers'] = defaultdict(int)
         
         return session_data
         
