@@ -1766,13 +1766,32 @@ def undo_last_score():
     st.rerun()
 
 # Function to get points off turnover statistics
-def get_points_off_turnovers_stats():
-    """Get team and lineup points off turnover statistics."""
-    return {
-        'team_stats': dict(st.session_state.points_off_turnovers),
-        'lineup_stats': dict(st.session_state.lineup_points_off_turnovers)
-    }
 
+def get_points_off_turnovers_stats():
+    """Get team and lineup points off turnover statistics - FIXED VERSION."""
+    # Ensure we have valid data structures
+    team_stats = st.session_state.get('points_off_turnovers', {'home': 0, 'away': 0})
+    if not isinstance(team_stats, dict):
+        team_stats = {'home': 0, 'away': 0}
+    
+    # Handle lineup stats more carefully
+    lineup_stats = st.session_state.get('lineup_points_off_turnovers', {})
+    
+    # Convert defaultdict to regular dict more carefully
+    if hasattr(lineup_stats, 'items'):
+        # Only include entries that have positive values
+        lineup_stats_dict = {}
+        for k, v in lineup_stats.items():
+            if v > 0:  # Only include lineups with actual points off turnovers
+                lineup_stats_dict[k] = v
+    else:
+        lineup_stats_dict = {}
+    
+    return {
+        'team_stats': team_stats,
+        'lineup_stats': lineup_stats_dict
+    }
+    
 # Function to clear expired turnover opportunities (call this when quarter ends)
 def clear_turnover_opportunity():
     """Clear any pending turnover opportunity when quarter ends."""
