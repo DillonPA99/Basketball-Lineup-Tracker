@@ -557,7 +557,10 @@ def ensure_active_game_session():
                 'quarter_end_history': st.session_state.quarter_end_history,
                 'player_stats': st.session_state.player_stats,
                 'turnover_history': st.session_state.turnover_history,
-                'player_turnovers': st.session_state.player_turnovers
+                'player_turnovers': st.session_state.player_turnovers,
+                'points_off_turnovers': st.session_state.points_off_turnovers,
+                'lineup_points_off_turnovers': st.session_state.lineup_points_off_turnovers,
+                'last_turnover_event': st.session_state.last_turnover_event
             }
             
             success, session_id = save_game_session(
@@ -3547,7 +3550,10 @@ with st.sidebar:
                     'quarter_end_history': st.session_state.quarter_end_history,
                     'player_stats': st.session_state.player_stats,
                     'turnover_history': st.session_state.turnover_history,
-                    'player_turnovers': st.session_state.player_turnovers
+                    'player_turnovers': st.session_state.player_turnovers,
+                    'points_off_turnovers': st.session_state.points_off_turnovers,
+                    'lineup_points_off_turnovers': st.session_state.lineup_points_off_turnovers,
+                    'last_turnover_event': st.session_state.last_turnover_event
                 }
             
                 if update_game_session(st.session_state.current_game_session_id, current_game_data):
@@ -3696,7 +3702,10 @@ with st.sidebar:
                                     'quarter_end_history': st.session_state.quarter_end_history,
                                     'player_stats': st.session_state.player_stats,
                                     'turnover_history': st.session_state.turnover_history,
-                                    'player_turnovers': st.session_state.player_turnovers
+                                    'player_turnovers': st.session_state.player_turnovers,
+                                    'points_off_turnovers': st.session_state.points_off_turnovers,
+                                    'lineup_points_off_turnovers': st.session_state.lineup_points_off_turnovers,
+                                    'last_turnover_event': st.session_state.last_turnover_event
                                 }
                             
                                 success, session_id = save_game_session(
@@ -3943,7 +3952,10 @@ with st.sidebar:
                 'quarter_end_history': st.session_state.quarter_end_history,
                 'player_stats': st.session_state.player_stats,
                 'turnover_history': st.session_state.turnover_history,
-                'player_turnovers': st.session_state.player_turnovers
+                'player_turnovers': st.session_state.player_turnovers,
+                'points_off_turnovers': st.session_state.points_off_turnovers,
+                'lineup_points_off_turnovers': st.session_state.lineup_points_off_turnovers,
+                'last_turnover_event': st.session_state.last_turnover_event
             }
         
             if update_game_session(st.session_state.current_game_session_id, current_game_data):
