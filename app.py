@@ -2036,7 +2036,7 @@ def calculate_lineup_plus_minus():
     return dict(lineup_stats)
 
 def calculate_player_minutes_played(player):
-    """Calculate total minutes played for a player based on lineup history."""
+    """Calculate total minutes played for a player based on lineup history - FIXED to match lineup calculation."""
     if not st.session_state.lineup_history:
         return 0
     
@@ -2058,21 +2058,34 @@ def calculate_player_minutes_played(player):
         
         # Check if player was in this lineup
         if player in lineup_event.get('new_lineup', []):
-            current_time_seconds = parse_game_time(lineup_event.get('game_time', '0:00'))
+            # Time when this lineup started (higher number = more time left)
+            lineup_start_seconds = parse_game_time(lineup_event.get('game_time', '0:00'))
             
             if i < len(st.session_state.lineup_history) - 1:
-                # Time until next lineup change
+                # Time when next lineup change occurred (lower number = less time left)
                 next_event = st.session_state.lineup_history[i + 1]
-                next_time_seconds = parse_game_time(next_event.get('game_time', '0:00'))
+                lineup_end_seconds = parse_game_time(next_event.get('game_time', '0:00'))
                 
-                # Time elapsed = current_time - next_time (since clock counts down)
-                time_elapsed = current_time_seconds - next_time_seconds
+                # Handle quarter transitions (when clock resets from 0:00 to full quarter)
+                if lineup_end_seconds > lineup_start_seconds:
+                    # Quarter ended, so player played from lineup_start_seconds to 0:00
+                    time_elapsed = lineup_start_seconds
+                else:
+                    # Normal case: time elapsed = start_time - end_time
+                    time_elapsed = lineup_start_seconds - lineup_end_seconds
             else:
-                # Last lineup period - use time from lineup start to current game time
+                # Last lineup period - player is still on court
                 current_game_time_seconds = parse_game_time(st.session_state.current_game_time)
-                time_elapsed = current_time_seconds - current_game_time_seconds
+                
+                # Handle quarter transitions for current lineup
+                if current_game_time_seconds > lineup_start_seconds:
+                    # We're in a new quarter, player played full previous quarter
+                    time_elapsed = lineup_start_seconds
+                else:
+                    # Same quarter: time elapsed = start_time - current_time
+                    time_elapsed = lineup_start_seconds - current_game_time_seconds
             
-            # Ensure positive time (handle quarter changes, etc.)
+            # Ensure positive time (safety check)
             time_elapsed = max(0, time_elapsed)
             total_seconds += time_elapsed
     
@@ -2142,7 +2155,7 @@ def calculate_player_efficiency_score(player):
 # ============================================================================
 
 def calculate_time_on_court():
-    """Calculate time on court for each lineup based on game clock differences."""
+    """Calculate time on court for each lineup based on game clock differences - FIXED VERSION."""
     lineup_time_data = {}
     
     def parse_game_time(time_str):
@@ -2169,23 +2182,35 @@ def calculate_time_on_court():
             }
         
         # Calculate time duration for this lineup period
-        current_time_seconds = parse_game_time(lineup_event.get('game_time', '0:00'))
+        lineup_start_seconds = parse_game_time(lineup_event.get('game_time', '0:00'))
         
         if i < len(st.session_state.lineup_history) - 1:
             next_event = st.session_state.lineup_history[i + 1]
-            next_time_seconds = parse_game_time(next_event.get('game_time', '0:00'))
+            lineup_end_seconds = parse_game_time(next_event.get('game_time', '0:00'))
             
-            # Time elapsed = current_time - next_time (since clock counts down)
-            time_elapsed = current_time_seconds - next_time_seconds
+            # Handle quarter transitions
+            if lineup_end_seconds > lineup_start_seconds:
+                # Quarter ended
+                time_elapsed = lineup_start_seconds
+            else:
+                # Normal lineup change within quarter
+                time_elapsed = lineup_start_seconds - lineup_end_seconds
         else:
-            # Last lineup period - use time from lineup start to current game time
+            # Last lineup period - still active
             current_game_time_seconds = parse_game_time(st.session_state.current_game_time)
-            time_elapsed = current_time_seconds - current_game_time_seconds
+            
+            # Handle quarter transitions for current lineup
+            if current_game_time_seconds > lineup_start_seconds:
+                # We're in a new quarter
+                time_elapsed = lineup_start_seconds
+            else:
+                # Same quarter
+                time_elapsed = lineup_start_seconds - current_game_time_seconds
         
-        # Ensure positive time (handle quarter changes, etc.)
+        # Ensure positive time
         time_elapsed = max(0, time_elapsed)
         
-        # Count defensive events during this lineup period
+        # Count defensive events during this lineup period (existing logic)
         opponent_turnovers = 0
         opponent_missed_shots = 0
         
