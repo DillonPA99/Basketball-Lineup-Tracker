@@ -2646,7 +2646,6 @@ def display_defensive_analytics():
                 'Turnovers/Min': f"{stats['turnovers_per_minute']:.2f}",
                 'Misses/Min': f"{stats['missed_shots_per_minute']:.2f}",
                 'Minutes Played': f"{stats['total_minutes']:.1f}",
-                'Sample Size': stats['sample_size'],
                 'Def Efficiency': f"{stats['defensive_efficiency']:.1f}"
             })
         
