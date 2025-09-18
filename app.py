@@ -1650,9 +1650,12 @@ def handle_score_entry(team, points, scorer, shot_type, made):
                 lineup_key = " | ".join(sorted(st.session_state.current_lineup))
                 st.session_state.lineup_points_off_turnovers[lineup_key] += points
             
+            # DEBUG: Add this temporarily to see what's happening
+            st.success(f"Points off turnover detected! {team.upper()} scored {points} points off turnover")
+            
             # Clear the turnover event after using it
             st.session_state.last_turnover_event = None    
-    
+
     # Only track player stats for home team with actual player selected
     if team == "home" and scorer != "Quick Score (No Player)":
         # Use add_score_with_player which handles both team score AND player stats
@@ -1665,6 +1668,10 @@ def handle_score_entry(team, points, scorer, shot_type, made):
             attempted=True
         )
         
+        # ADD THIS: Mark the last score event as points off turnover if applicable
+        if is_points_off_turnover and st.session_state.score_history:
+            st.session_state.score_history[-1]['is_points_off_turnover'] = True
+        
         # Success message with player info
         result_text = "Made" if made else "Missed"
         shot_text = {
@@ -1674,7 +1681,7 @@ def handle_score_entry(team, points, scorer, shot_type, made):
         }.get(shot_type, "Shot")
         
         if made:
-            pot_indicator = " 🔄 (Points off TO)" if is_points_off_turnover else ""
+            pot_indicator = " (Points off TO)" if is_points_off_turnover else ""
             st.success(f"✅ {shot_text} Make by {scorer.split('(')[0].strip()} (+{points}){pot_indicator}")
         else:
             st.info(f"📊 {shot_text} Miss by {scorer.split('(')[0].strip()}")
@@ -1689,6 +1696,10 @@ def handle_score_entry(team, points, scorer, shot_type, made):
             attempted=True
         )
         
+        # ADD THIS: Mark the last score event as points off turnover if applicable
+        if is_points_off_turnover and st.session_state.score_history:
+            st.session_state.score_history[-1]['is_points_off_turnover'] = True
+        
         team_name = "HOME" if team == "home" else "AWAY"
         shot_text = {
             "free_throw": "FT",
@@ -1697,7 +1708,7 @@ def handle_score_entry(team, points, scorer, shot_type, made):
         }.get(shot_type, "Shot")
         
         if made:
-            pot_indicator = " 🔄 (Points off TO)" if is_points_off_turnover else ""
+            pot_indicator = " (Points off TO)" if is_points_off_turnover else ""
             st.success(f"✅ {team_name} {shot_text} Make (+{points}){pot_indicator}")
         else:
             st.info(f"📊 {team_name} {shot_text} Miss")
@@ -1706,7 +1717,7 @@ def handle_score_entry(team, points, scorer, shot_type, made):
     
     # Add this line at the end
     check_auto_save()
-
+    
 def undo_last_score():
     """Improved undo functionality with points off turnover handling."""
     if not st.session_state.score_history:
