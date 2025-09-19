@@ -5279,14 +5279,6 @@ with tab2:
                     else:
                         return ''
                 
-                st.dataframe(
-                    plus_minus_df[["Player", "Plus/Minus"]].style.applymap(
-                        color_plus_minus, subset=["Plus/Minus"]
-                    ),
-                    use_container_width=True,
-                    hide_index=True
-                )
-                
                 # Plus/Minus Chart
                 fig_individual = px.bar(
                     plus_minus_df, 
