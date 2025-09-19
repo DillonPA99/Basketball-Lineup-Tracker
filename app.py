@@ -1868,6 +1868,30 @@ def reset_points_off_turnovers():
     st.session_state.last_turnover_event = None
 
 
+def color_plus_minus(val):
+    """
+    Color code plus/minus values in dataframes.
+    Green for positive, red for negative, black for zero.
+    """
+    try:
+        # Handle string values like "+5" or "-3"
+        if isinstance(val, str):
+            if val.startswith('+'):
+                numeric_val = int(val[1:])
+            else:
+                numeric_val = int(val)
+        else:
+            numeric_val = val
+        
+        if numeric_val > 0:
+            return 'background-color: lightgreen'
+        elif numeric_val < 0:
+            return 'background-color: lightcoral'
+        else:
+            return 'background-color: lightgray'
+    except (ValueError, TypeError):
+        return ''
+
 
 # ------------------------------------------------------------------
 # NEW: Capture end-of-quarter snapshot in lineup history at 0:00
