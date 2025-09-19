@@ -2244,7 +2244,7 @@ def calculate_time_on_court():
     return lineup_time_data
 
 def calculate_individual_defensive_impact():
-    """Calculate defensive impact for individual players using the same minutes calculation as other functions."""
+    """Calculate defensive impact for individual players - FIXED VERSION."""
     player_defensive_stats = {}
     
     # Initialize stats for all players who have been on court
@@ -2259,30 +2259,42 @@ def calculate_individual_defensive_impact():
                     'weighted_defensive_events': 0
                 }
     
-    # Use the exact same minutes calculation logic as calculate_player_minutes_played
+    # Calculate minutes using the existing function
     for player in player_defensive_stats:
-        # Calculate minutes using the existing function to ensure consistency
         calculated_minutes = calculate_player_minutes_played(player)
         player_defensive_stats[player]['total_minutes_played'] = calculated_minutes
     
-    # Now calculate defensive events for each player based on lineup participation
-    time_data = calculate_time_on_court()
+    # Now count defensive events that occurred while each player was on court
     
-    # Aggregate defensive events by player
-    for lineup_tuple, stats in time_data.items():
-        lineup_size = len(lineup_tuple)
-        
-        if lineup_size > 0:
-            # Distribute defensive credit equally among lineup members
-            turnovers_per_player = stats['opponent_turnovers'] / lineup_size
-            missed_shots_per_player = stats['opponent_missed_shots'] / lineup_size
-            weighted_events_per_player = stats['defensive_events'] / lineup_size
+    # Count turnovers that happened while player was on court
+    for turnover_event in st.session_state.turnover_history:
+        if turnover_event['team'] == 'away':  # Opponent turnover
+            # Find which players were on court when this turnover happened
+            turnover_quarter = turnover_event.get('quarter')
+            turnover_lineup = turnover_event.get('lineup', [])
             
-            for player in lineup_tuple:
-                if player in player_defensive_stats:
-                    player_defensive_stats[player]['opponent_turnovers'] += turnovers_per_player
-                    player_defensive_stats[player]['opponent_missed_shots'] += missed_shots_per_player
-                    player_defensive_stats[player]['weighted_defensive_events'] += weighted_events_per_player
+            # If we have lineup info, count it for those players
+            if turnover_lineup:
+                for player in turnover_lineup:
+                    if player in player_defensive_stats:
+                        player_defensive_stats[player]['opponent_turnovers'] += 1
+                        player_defensive_stats[player]['weighted_defensive_events'] += 1.5  # Turnovers weighted 1.5x
+    
+    # Count missed shots that happened while player was on court
+    for score_event in st.session_state.score_history:
+        if (score_event['team'] == 'away' and  # Opponent shot
+            not score_event.get('made', True) and  # Shot was missed
+            score_event.get('shot_type') in ['field_goal', 'three_pointer']):  # Only count FG/3PT misses
+            
+            # Find which players were on court when this miss happened
+            miss_lineup = score_event.get('lineup', [])
+            
+            # If we have lineup info, count it for those players
+            if miss_lineup:
+                for player in miss_lineup:
+                    if player in player_defensive_stats:
+                        player_defensive_stats[player]['opponent_missed_shots'] += 1
+                        player_defensive_stats[player]['weighted_defensive_events'] += 1.0  # Misses weighted 1x
     
     # Calculate per-minute defensive metrics
     for player, stats in player_defensive_stats.items():
@@ -2298,6 +2310,7 @@ def calculate_individual_defensive_impact():
             stats['missed_shots_per_minute'] = 0
     
     return player_defensive_stats
+
 # ============================================================================
 # COMBINED EFFICIENCY SCORE (Offense + Defense)
 # ============================================================================
@@ -2571,37 +2584,123 @@ def display_lineup_recommendation():
 # Remove the old combined efficiency function since we're calculating offense and defense separately
 
 def calculate_lineup_defensive_rating():
-    """Calculate time-based defensive rating for each 5-man lineup combination."""
-    time_data = calculate_time_on_court()
+    """Calculate time-based defensive rating for each 5-man lineup combination - FIXED VERSION."""
     lineup_defensive_ratings = {}
     
-    for lineup_tuple, stats in time_data.items():
+    def parse_game_time(time_str):
+        """Convert MM:SS format to total seconds remaining."""
+        try:
+            if ':' in time_str:
+                minutes, seconds = map(int, time_str.split(':'))
+                return minutes * 60 + seconds
+            return 0
+        except:
+            return 0
+    
+    # Process each lineup period to calculate time duration and defensive events
+    for i in range(len(st.session_state.lineup_history)):
+        lineup_event = st.session_state.lineup_history[i]
+        current_lineup = tuple(sorted(lineup_event['new_lineup']))
+        
+        if current_lineup not in lineup_defensive_ratings:
+            lineup_defensive_ratings[current_lineup] = {
+                'opponent_turnovers': 0,
+                'opponent_missed_shots': 0,
+                'total_time_seconds': 0,
+                'defensive_events': 0
+            }
+        
+        # Calculate time duration for this lineup period
+        lineup_start_seconds = parse_game_time(lineup_event.get('game_time', '0:00'))
+        
+        if i < len(st.session_state.lineup_history) - 1:
+            next_event = st.session_state.lineup_history[i + 1]
+            lineup_end_seconds = parse_game_time(next_event.get('game_time', '0:00'))
+            
+            # Check if we're in the same quarter
+            same_quarter = lineup_event.get('quarter') == next_event.get('quarter')
+            
+            if same_quarter:
+                # Normal lineup change within quarter: start_time - end_time
+                time_elapsed = lineup_start_seconds - lineup_end_seconds
+            else:
+                # Quarter ended: lineup played from start_time to end of quarter (0:00)
+                time_elapsed = lineup_start_seconds
+        else:
+            # Last lineup period - still active
+            current_game_time_seconds = parse_game_time(st.session_state.current_game_time)
+            current_quarter = st.session_state.current_quarter
+            lineup_quarter = lineup_event.get('quarter')
+            
+            if current_quarter == lineup_quarter:
+                # Same quarter: time elapsed = start_time - current_time
+                time_elapsed = lineup_start_seconds - current_game_time_seconds
+            else:
+                # Different quarter: lineup played until end of that quarter
+                time_elapsed = lineup_start_seconds
+        
+        # Ensure positive time
+        time_elapsed = max(0, time_elapsed)
+        lineup_defensive_ratings[current_lineup]['total_time_seconds'] += time_elapsed
+        
+        # Count defensive events that occurred during this specific lineup period
+        lineup_quarter = lineup_event.get('quarter')
+        lineup_game_time = lineup_event.get('game_time')
+        lineup_players = lineup_event.get('new_lineup', [])
+        
+        # For this lineup period, count turnovers that happened with this exact lineup
+        for turnover_event in st.session_state.turnover_history:
+            if (turnover_event['team'] == 'away' and  # Opponent turnover
+                turnover_event.get('quarter') == lineup_quarter and  # Same quarter
+                turnover_event.get('lineup') == lineup_players):  # Same lineup on court
+                
+                lineup_defensive_ratings[current_lineup]['opponent_turnovers'] += 1
+        
+        # Count missed shots that happened with this exact lineup
+        for score_event in st.session_state.score_history:
+            if (score_event['team'] == 'away' and  # Opponent shot
+                not score_event.get('made', True) and  # Shot was missed
+                score_event.get('shot_type') in ['field_goal', 'three_pointer'] and  # Only FG/3PT
+                score_event.get('quarter') == lineup_quarter and  # Same quarter
+                score_event.get('lineup') == lineup_players):  # Same lineup on court
+                
+                lineup_defensive_ratings[current_lineup]['opponent_missed_shots'] += 1
+        
+        # Calculate weighted defensive events for this lineup
+        weighted_events = (lineup_defensive_ratings[current_lineup]['opponent_turnovers'] * 1.5 + 
+                          lineup_defensive_ratings[current_lineup]['opponent_missed_shots'] * 1.0)
+        lineup_defensive_ratings[current_lineup]['defensive_events'] = weighted_events
+    
+    # Convert to final format with per-minute stats
+    final_ratings = {}
+    for lineup_tuple, stats in lineup_defensive_ratings.items():
         total_minutes = stats['total_time_seconds'] / 60.0
         
         if total_minutes > 0:
-            # Defensive events per minute (weighted)
             defensive_events_per_minute = stats['defensive_events'] / total_minutes
             turnovers_per_minute = stats['opponent_turnovers'] / total_minutes
             missed_shots_per_minute = stats['opponent_missed_shots'] / total_minutes
             
             # Defensive efficiency score (higher is better)
-            # Scale to make it more readable (multiply by 10)
             defensive_efficiency = defensive_events_per_minute * 10
             
             lineup_key = " | ".join(lineup_tuple)
-            lineup_defensive_ratings[lineup_key] = {
+            final_ratings[lineup_key] = {
                 'defensive_events_per_minute': defensive_events_per_minute,
                 'turnovers_per_minute': turnovers_per_minute,
                 'missed_shots_per_minute': missed_shots_per_minute,
                 'defensive_efficiency': defensive_efficiency,
                 'total_minutes': total_minutes,
+                'total_opponent_turnovers': stats['opponent_turnovers'],
+                'total_opponent_missed_shots': stats['opponent_missed_shots'],
+                'total_defensive_events': stats['defensive_events'],
                 'sample_size': 'Small' if total_minutes < 2 else 'Medium' if total_minutes < 5 else 'Large'
             }
     
-    return lineup_defensive_ratings
+    return final_ratings
 
 def display_defensive_analytics():
-    """Display defensive impact analytics with total stats."""
+    """Display defensive impact analytics with total stats - FIXED VERSION."""
     st.subheader("🛡️ Defensive Impact Analytics")
     
     if not st.session_state.lineup_history:
@@ -2620,18 +2719,53 @@ def display_defensive_analytics():
                     'Player': player.split('(')[0].strip(),
                     'Minutes Played': f"{stats['total_minutes_played']:.1f}",
                     'Total Def Events': f"{stats['weighted_defensive_events']:.1f}",
-                    'Opp. Turnovers': f"{stats['opponent_turnovers']:.1f}",
-                    'Opp. Missed FGs': f"{stats['opponent_missed_shots']:.1f}"
+                    'Opp. Turnovers': f"{stats['opponent_turnovers']:.0f}",
+                    'Opp. Missed FGs': f"{stats['opponent_missed_shots']:.0f}",
+                    'Def Events/Min': f"{stats['defensive_events_per_minute']:.2f}"
                 })
 
         if defensive_data:
             defensive_df = pd.DataFrame(defensive_data)
-            defensive_df = defensive_df.sort_values('Total Def Events', ascending=False)
+            defensive_df = defensive_df.sort_values('Total Def Events', ascending=False, key=lambda x: pd.to_numeric(x, errors='coerce'))
             st.dataframe(defensive_df, use_container_width=True, hide_index=True)
             
         else:
             st.info("No individual defensive data available yet.")
     
+    # Lineup Defensive Ratings
+    st.write("**Lineup Defensive Performance**")
+    lineup_defense = calculate_lineup_defensive_rating()
+    
+    if lineup_defense:
+        lineup_defensive_data = []
+        for lineup, stats in lineup_defense.items():
+            lineup_defensive_data.append({
+                'Lineup': lineup,
+                'Minutes Played': f"{stats['total_minutes']:.1f}",
+                'Total Def Events': f"{stats['total_defensive_events']:.1f}",
+                'Opp. Turnovers': f"{stats['total_opponent_turnovers']:.0f}",
+                'Opp. Missed FGs': f"{stats['total_opponent_missed_shots']:.0f}",
+                'Def Events/Min': f"{stats['defensive_events_per_minute']:.2f}"
+            })
+        
+        if lineup_defensive_data:
+            lineup_def_df = pd.DataFrame(lineup_defensive_data)
+            lineup_def_df = lineup_def_df.sort_values('Total Def Events', ascending=False, key=lambda x: pd.to_numeric(x, errors='coerce'))
+            st.dataframe(lineup_def_df, use_container_width=True, hide_index=True)
+            
+            # Best and worst defensive lineups
+            if len(lineup_def_df) > 0:
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.success(f"**Best Defensive Lineup:** {lineup_def_df.iloc[0]['Total Def Events']} events")
+                    st.write(f"_{lineup_def_df.iloc[0]['Lineup']}_")
+                with col2:
+                    if len(lineup_def_df) > 1:
+                        st.error(f"**Worst Defensive Lineup:** {lineup_def_df.iloc[-1]['Total Def Events']} events")
+                        st.write(f"_{lineup_def_df.iloc[-1]['Lineup']}_")
+        else:
+            st.info("No lineup defensive data available yet.")
+            
     # Lineup Defensive Ratings
     st.write("**Lineup Defensive Performance**")
     lineup_defense = calculate_lineup_defensive_rating()
