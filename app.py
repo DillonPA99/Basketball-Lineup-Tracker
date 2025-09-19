@@ -5114,6 +5114,15 @@ with tab2:
             for player, turnover_count in st.session_state.player_turnovers.items():
                 if turnover_count > 0:
                     all_stat_players.add(player)
+
+            # Add players who have been on court (from lineup history)
+            for lineup_event in st.session_state.lineup_history:
+                for player in lineup_event.get('new_lineup', []):
+                    all_stat_players.add(player)
+
+            # Calculate plus/minus and defensive stats
+            individual_plus_minus = calculate_individual_plus_minus()
+            defensive_stats = calculate_individual_defensive_impact()
             
             if all_stat_players:
                 player_shooting_data = []
@@ -5133,6 +5142,16 @@ with tab2:
                     # Get turnover count
                     turnovers = st.session_state.player_turnovers.get(player, 0)
                     
+                    # Get plus/minus
+                    plus_minus = individual_plus_minus.get(player, {}).get('plus_minus', 0)
+                    
+                    # Get defensive impact
+                    def_stats = defensive_stats.get(player, {})
+                    def_impact_score = def_stats.get('weighted_defensive_events', 0)
+
+                    # Calculate minutes played from lineup history
+                    minutes_played = calculate_player_minutes_played(player)
+                    
                     # Calculate 2PT stats (FG - 3PT)
                     two_pt_made = stats['field_goals_made'] - stats['three_pointers_made']
                     two_pt_attempted = stats['field_goals_attempted'] - stats['three_pointers_attempted']
@@ -5141,8 +5160,9 @@ with tab2:
                     if stats['field_goals_attempted'] > 0:
                         efg_pct = ((stats['field_goals_made'] + 0.5 * stats['three_pointers_made']) / stats['field_goals_attempted']) * 100
                     
-                    player_shooting_data.append({
+                   player_shooting_data.append({
                         'Player': player.split('(')[0].strip(),
+                        'Minutes': f"{minutes_played:.1f}",
                         'Points': stats['points'],
                         'FT': f"{stats['free_throws_made']}/{stats['free_throws_attempted']}" if stats['free_throws_attempted'] > 0 else "0/0",
                         'FT%': f"{stats['free_throws_made']/stats['free_throws_attempted']*100:.1f}%" if stats['free_throws_attempted'] > 0 else "0.0%",
@@ -5153,7 +5173,11 @@ with tab2:
                         'FG': f"{stats['field_goals_made']}/{stats['field_goals_attempted']}" if stats['field_goals_attempted'] > 0 else "0/0",
                         'FG%': f"{stats['field_goals_made']/stats['field_goals_attempted']*100:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%",
                         'eFG%': f"{efg_pct:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%",
-                        'Turnovers': turnovers  # ADD THIS COLUMN
+                        'Turnovers': turnovers,
+                        '+/-': f"+{plus_minus}" if plus_minus >= 0 else str(plus_minus),
+                        'Def Impact': f"{def_impact_score:.1f}",
+                        'Raw +/-': plus_minus  # For sorting purposes
+                    
                     })
                 
                 if player_shooting_data:
