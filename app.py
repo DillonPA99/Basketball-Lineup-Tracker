@@ -5270,6 +5270,23 @@ with tab2:
                 plus_minus_df = pd.DataFrame(plus_minus_data)
                 plus_minus_df = plus_minus_df.sort_values("Raw +/-", ascending=False)
                 
+                # Color coding for plus/minus
+                def color_plus_minus(val):
+                    if '+' in str(val):
+                        return 'background-color: lightgreen'
+                    elif '-' in str(val):
+                        return 'background-color: lightcoral'
+                    else:
+                        return ''
+                
+                st.dataframe(
+                    plus_minus_df[["Player", "Plus/Minus"]].style.applymap(
+                        color_plus_minus, subset=["Plus/Minus"]
+                    ),
+                    use_container_width=True,
+                    hide_index=True
+                )
+                
                 # Plus/Minus Chart
                 fig_individual = px.bar(
                     plus_minus_df, 
