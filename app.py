@@ -5124,6 +5124,9 @@ with tab2:
             individual_plus_minus = calculate_individual_plus_minus()
             defensive_stats = calculate_individual_defensive_impact()
             
+# Fix for the indentation error around line 5163
+# Replace the problematic section with this corrected version:
+
             if all_stat_players:
                 player_shooting_data = []
                 for player in all_stat_players:
@@ -5160,7 +5163,7 @@ with tab2:
                     if stats['field_goals_attempted'] > 0:
                         efg_pct = ((stats['field_goals_made'] + 0.5 * stats['three_pointers_made']) / stats['field_goals_attempted']) * 100
                     
-                   player_shooting_data.append({
+                    player_shooting_data.append({
                         'Player': player.split('(')[0].strip(),
                         'Minutes': f"{minutes_played:.1f}",
                         'Points': stats['points'],
@@ -5177,7 +5180,6 @@ with tab2:
                         '+/-': f"+{plus_minus}" if plus_minus >= 0 else str(plus_minus),
                         'Def Impact': f"{def_impact_score:.1f}",
                         'Raw +/-': plus_minus  # For sorting purposes
-                    
                     })
                 
                 if player_shooting_data:
