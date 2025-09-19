@@ -2723,9 +2723,10 @@ def display_defensive_analytics():
                     'Minutes Played': f"{stats['total_minutes_played']:.1f}",
                     'Opp. Turnovers': f"{stats['opponent_turnovers']:.0f}",
                     'Opp. Missed FGs': f"{stats['opponent_missed_shots']:.0f}",
-                    'Total Def. Events': f"{total_def_events:.0f}",  # NEW COLUMN
-                    'Def. Impact Score': f"{stats['weighted_defensive_events']:.1f}",
-                    'Def Events/Min': f"{stats['defensive_events_per_minute']:.2f}"
+                    'Total Def. Events': f"{total_def_events:.0f}",
+                    'Def Events/Min': f"{stats['defensive_events_per_minute']:.2f}",
+                    'Def. Impact Score': f"{stats['weighted_defensive_events']:.1f}"
+                    
                 })
 
         if defensive_data:
@@ -2758,9 +2759,9 @@ def display_defensive_analytics():
                 'Minutes Played': f"{stats['total_minutes']:.1f}",
                 'Opp. Turnovers': f"{stats['total_opponent_turnovers']:.0f}",
                 'Opp. Missed FGs': f"{stats['total_opponent_missed_shots']:.0f}",
-                'Total Def. Events': f"{total_lineup_def_events:.0f}",  # NEW COLUMN
-                'Def. Impact Score': f"{stats['total_defensive_events']:.1f}",
-                'Def Events/Min': f"{stats['defensive_events_per_minute']:.2f}"
+                'Total Def. Events': f"{total_lineup_def_events:.0f}",
+                'Def Events/Min': f"{stats['defensive_events_per_minute']:.2f}",
+                'Def. Impact Score': f"{stats['total_defensive_events']:.1f}"
             })
         
         if lineup_defensive_data:
