@@ -1867,6 +1867,8 @@ def reset_points_off_turnovers():
     st.session_state.lineup_points_off_turnovers = defaultdict(int)
     st.session_state.last_turnover_event = None
 
+
+
 # ------------------------------------------------------------------
 # NEW: Capture end-of-quarter snapshot in lineup history at 0:00
 # ------------------------------------------------------------------
@@ -2009,8 +2011,8 @@ def calculate_individual_plus_minus():
 # ------------------------------------------------------------------
 
 def calculate_lineup_plus_minus():
-    """Calculate plus/minus for each unique 5-man lineup combination."""
-    lineup_stats = defaultdict(lambda: {'plus_minus': 0, 'minutes': 0, 'appearances': 0})
+    """Calculate plus/minus and points scored for each unique 5-man lineup combination."""
+    lineup_stats = defaultdict(lambda: {'plus_minus': 0, 'minutes': 0, 'appearances': 0, 'points_scored': 0})
     
     if not st.session_state.lineup_history:
         return {}
@@ -2023,18 +2025,28 @@ def calculate_lineup_plus_minus():
         # Get score changes during this lineup period
         if i < len(st.session_state.lineup_history) - 1:
             next_event = st.session_state.lineup_history[i + 1]
-            score_change = (next_event['home_score'] - lineup_event['home_score']) - \
-                          (next_event['away_score'] - lineup_event['away_score'])
+            home_score_change = next_event['home_score'] - lineup_event['home_score']
+            away_score_change = next_event['away_score'] - lineup_event['away_score']
+            
+            # Plus/minus is home points - away points during this period
+            score_change = home_score_change - away_score_change
+            
+            # Points scored by this lineup (home team points only)
+            points_scored = home_score_change
         else:
             # For the last lineup, use current scores
-            score_change = (st.session_state.home_score - lineup_event['home_score']) - \
-                          (st.session_state.away_score - lineup_event['away_score'])
+            home_score_change = st.session_state.home_score - lineup_event['home_score']
+            away_score_change = st.session_state.away_score - lineup_event['away_score']
+            
+            score_change = home_score_change - away_score_change
+            points_scored = home_score_change
         
         lineup_stats[lineup_key]['plus_minus'] += score_change
+        lineup_stats[lineup_key]['points_scored'] += points_scored
         lineup_stats[lineup_key]['appearances'] += 1
     
     return dict(lineup_stats)
-
+    
 def calculate_player_minutes_played(player):
     """Calculate total minutes played for a player based on lineup history - CORRECTED VERSION."""
     if not st.session_state.lineup_history:
