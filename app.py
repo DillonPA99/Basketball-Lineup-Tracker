@@ -4869,6 +4869,10 @@ with tab2:
 
         # Team Shooting Comparison
         st.write("**Team Shooting Comparison**")
+
+        pot_stats = get_points_off_turnovers_stats()
+        home_pot = pot_stats['team_stats'].get('home', 0)
+        away_pot = pot_stats['team_stats'].get('away', 0)
         
         team_col1, team_col2 = st.columns(2)
         
@@ -4908,6 +4912,21 @@ with tab2:
                 f"{home_shooting_stats['field_goals_made']}/{home_shooting_stats['field_goals_attempted']}", 
                 f"{fg_pct:.1f}%"
             )
+
+            # Points Off Turnovers
+            st.metric(
+                "Points off Turnovers", 
+                home_pot,
+                help="Points scored immediately following opponent turnovers"
+            )
+
+             # NEW: Points Off Turnovers Percentage
+            home_pot_percentage = (home_pot / home_shooting_stats['total_points'] * 100) if home_shooting_stats['total_points'] > 0 else 0
+            st.metric(
+                "Points off TO %", 
+                f"{home_pot_percentage:.1f}%",
+                help=f"{home_pot} points off TO out of {home_shooting_stats['total_points']} total points"
+            )
             
             st.metric("Total Points", home_shooting_stats['total_points'])
             
@@ -4946,6 +4965,21 @@ with tab2:
                 "Total FG", 
                 f"{away_shooting_stats['field_goals_made']}/{away_shooting_stats['field_goals_attempted']}", 
                 f"{away_fg_pct:.1f}%"
+            )
+
+            # Points Off Turnovers
+            st.metric(
+                "Points off Turnovers", 
+                away_pot,
+                help="Points scored immediately following opponent turnovers"
+            )
+    
+            # NEW: Points Off Turnovers Percentage
+            away_pot_percentage = (away_pot / away_shooting_stats['total_points'] * 100) if away_shooting_stats['total_points'] > 0 else 0
+            st.metric(
+                "Points off TO %", 
+                f"{away_pot_percentage:.1f}%",
+                help=f"{away_pot} points off TO out of {away_shooting_stats['total_points']} total points"
             )
             
             st.metric("Total Points", away_shooting_stats['total_points'])
