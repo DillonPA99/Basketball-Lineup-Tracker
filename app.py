@@ -2775,13 +2775,13 @@ def display_defensive_analytics():
                 col1, col2 = st.columns(2)
                 with col1:
                     best_lineup = lineup_def_df.iloc[0]
-                    st.success(f"**Best Defensive Lineup:** {best_lineup['Total Def. Events']} total events")
+                    st.success(f"**Best Defensive Lineup:** {best_lineup['Def. Impact Score']} Def. Impact Score")
                     st.write(f"_{best_lineup['Lineup']}_")
                     st.caption(f"{best_lineup['Opp. Turnovers']} TOs + {best_lineup['Opp. Missed FGs']} misses in {best_lineup['Minutes Played']} min")
                 with col2:
                     if len(lineup_def_df) > 1:
                         worst_lineup = lineup_def_df.iloc[-1]
-                        st.error(f"**Worst Defensive Lineup:** {worst_lineup['Total Def. Events']} total events")
+                        st.error(f"**Worst Defensive Lineup:** {worst_lineup['Def. Impact Score']} Def. Impact Score")
                         st.write(f"_{worst_lineup['Lineup']}_")
                         st.caption(f"{worst_lineup['Opp. Turnovers']} TOs + {worst_lineup['Opp. Missed FGs']} misses in {worst_lineup['Minutes Played']} min")
         else:
