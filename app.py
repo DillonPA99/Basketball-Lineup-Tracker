@@ -2620,8 +2620,8 @@ def display_defensive_analytics():
                     'Player': player.split('(')[0].strip(),
                     'Minutes Played': f"{stats['total_minutes_played']:.1f}",
                     'Total Def Events': f"{stats['weighted_defensive_events']:.1f}",
-                    'Total Turnovers': f"{stats['opponent_turnovers']:.1f}",
-                    'Total Misses': f"{stats['opponent_missed_shots']:.1f}"
+                    'Opp. Turnovers': f"{stats['opponent_turnovers']:.1f}",
+                    'Opp. Missed FGs': f"{stats['opponent_missed_shots']:.1f}"
                 })
 
         if defensive_data:
@@ -2652,10 +2652,10 @@ def display_defensive_analytics():
             
             lineup_defensive_data.append({
                 'Lineup': lineup,
+                'Minutes Played': f"{total_minutes:.1f}",
                 'Total Def Events': f"{total_def_events:.1f}",
-                'Total Turnovers': f"{total_turnovers:.1f}",
-                'Total Misses': f"{total_misses:.1f}",
-                'Minutes Played': f"{total_minutes:.1f}"
+                'Opp. Turnovers': f"{total_turnovers:.1f}",
+                'Opp. Missed FGs': f"{total_misses:.1f}"
             })
         
         if lineup_defensive_data:
