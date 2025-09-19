@@ -5304,50 +5304,9 @@ with tab2:
             else:
                 st.info("No individual player statistics available yet.")
 
-# Plus/Minus Analytics
-        st.subheader("Plus/Minus Analytics")
-        individual_stats = calculate_individual_plus_minus()
-        
-        if individual_stats:
-            plus_minus_data = []
-            for player, stats in individual_stats.items():
-                plus_minus_data.append({
-                    "Player": player,
-                    "Plus/Minus": f"+{stats['plus_minus']}" if stats['plus_minus'] >= 0 else str(stats['plus_minus']),
-                    "Raw +/-": stats['plus_minus']
-                })
-            
-            if plus_minus_data:
-                plus_minus_df = pd.DataFrame(plus_minus_data)
-                plus_minus_df = plus_minus_df.sort_values("Raw +/-", ascending=False)
-                
-                # Color coding for plus/minus
-                def color_plus_minus(val):
-                    if '+' in str(val):
-                        return 'background-color: lightgreen'
-                    elif '-' in str(val):
-                        return 'background-color: lightcoral'
-                    else:
-                        return ''
-                
-                # Plus/Minus Chart
-                fig_individual = px.bar(
-                    plus_minus_df, 
-                    x="Player", 
-                    y="Raw +/-",
-                    title="Individual Player Plus/Minus",
-                    color="Raw +/-",
-                    color_continuous_scale=["red", "white", "green"],
-                    color_continuous_midpoint=0
-                )
-                fig_individual.update_xaxes(tickangle=45)
-                st.plotly_chart(fig_individual, use_container_width=True)
-        else:
-            st.info("No plus/minus data available yet.")
-        
         # Lineup Plus/Minus
         st.write("**Lineup Plus/Minus**")
-        lineup_stats = calculate_lineup_plus_minus_with_time()
+        lineup_stats = calculate_lineup_plus_minus_with_time()  # Use the new function
         
         if lineup_stats:
             # Get additional lineup data
@@ -5357,6 +5316,7 @@ with tab2:
             
             lineup_plus_minus_data = []
             for lineup, stats in lineup_stats.items():
+                # Get defensive impact score
                 def_rating = lineup_defensive_ratings.get(lineup, {})
                 def_impact = def_rating.get('defensive_efficiency', 0)
                 
@@ -5370,7 +5330,7 @@ with tab2:
                     "Lineup": lineup,
                     "Appearances": stats['appearances'],
                     "Plus/Minus": f"+{stats['plus_minus']}" if stats['plus_minus'] >= 0 else str(stats['plus_minus']),
-                    "Minutes": f"{lineup_minutes:.1f}",
+                    "Minutes": f"{stats['minutes']:.1f}",  # Now shows actual time on court
                     "Total Points": total_points,
                     "Points off TO": lineup_pot_points,
                     "Def. Impact": f"{def_impact:.1f}",
@@ -5394,12 +5354,14 @@ with tab2:
                 if len(lineup_df) > 0:
                     col1, col2 = st.columns(2)
                     with col1:
-                        st.success(f"**Best Lineup:** +{lineup_df.iloc[0]['Raw +/-']}")
-                        st.write(f"_{lineup_df.iloc[0]['Lineup']}_")
+                        best_lineup = lineup_df.iloc[0]
+                        st.success(f"**Best Lineup:** +{best_lineup['Raw +/-']}")
+                        st.write(f"_{best_lineup['Lineup']}_")
 
                     with col2:
-                        st.error(f"**Worst Lineup:** {lineup_df.iloc[-1]['Raw +/-']}")
-                        st.write(f"_{lineup_df.iloc[-1]['Lineup']}_")
+                        worst_lineup = lineup_df.iloc[-1]
+                        st.error(f"**Worst Lineup:** {worst_lineup['Raw +/-']}")
+                        st.write(f"_{worst_lineup['Lineup']}_")
 
         else:
             st.info("No lineup plus/minus data available yet.")
