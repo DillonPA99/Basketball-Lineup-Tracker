@@ -2639,12 +2639,23 @@ def display_defensive_analytics():
     if lineup_defense:
         lineup_defensive_data = []
         for lineup, stats in lineup_defense.items():
+            # Calculate total defensive events from the time-based data
+            total_minutes = stats.get('total_minutes', 0)
+            def_events_per_min = stats.get('defensive_events_per_minute', 0)
+            total_def_events = def_events_per_min * total_minutes
+            
+            turnovers_per_min = stats.get('turnovers_per_minute', 0)
+            total_turnovers = turnovers_per_min * total_minutes
+            
+            misses_per_min = stats.get('missed_shots_per_minute', 0)
+            total_misses = misses_per_min * total_minutes
+            
             lineup_defensive_data.append({
                 'Lineup': lineup,
-                'Total Def Events': f"{stats['defensive_events']:.1f}",
-                'Total Turnovers': f"{stats['opponent_turnovers']:.1f}",
-                'Total Misses': f"{stats['opponent_missed_shots']:.1f}",
-                'Minutes Played': f"{stats['total_minutes']:.1f}"
+                'Total Def Events': f"{total_def_events:.1f}",
+                'Total Turnovers': f"{total_turnovers:.1f}",
+                'Total Misses': f"{total_misses:.1f}",
+                'Minutes Played': f"{total_minutes:.1f}"
             })
         
         if lineup_defensive_data:
@@ -2664,7 +2675,7 @@ def display_defensive_analytics():
                         st.write(f"_{lineup_def_df.iloc[-1]['Lineup']}_")
         else:
             st.info("No lineup defensive data available yet.")
-
+            
 def generate_game_report_excel():
     """Generate a comprehensive Excel report of the game data."""
     
