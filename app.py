@@ -5252,9 +5252,6 @@ with tab2:
 
         # Plus/Minus Analytics
         st.subheader("Plus/Minus Analytics")
-        
-        # Individual Player Plus/Minus
-        st.write("**Individual Player Plus/Minus**")
         individual_stats = calculate_individual_plus_minus()
         
         if individual_stats:
