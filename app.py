@@ -5296,12 +5296,43 @@ with tab2:
         lineup_stats = calculate_lineup_plus_minus()
         
         if lineup_stats:
+            # Get additional lineup data
+            lineup_defensive_ratings = calculate_lineup_defensive_rating()
+            pot_stats = get_points_off_turnovers_stats()
+            lineup_pot = pot_stats['lineup_stats']
+            
             lineup_plus_minus_data = []
             for lineup, stats in lineup_stats.items():
+                # Calculate minutes played for this lineup
+                lineup_minutes = 0.0
+                lineup_players = lineup.split(" | ")
+                
+                # Calculate average minutes for players in this lineup
+                total_player_minutes = 0
+                player_count = 0
+                for player in lineup_players:
+                    player_minutes = calculate_player_minutes_played(player)
+                    if player_minutes > 0:
+                        total_player_minutes += player_minutes
+                        player_count += 1
+                
+                if player_count > 0:
+                    lineup_minutes = total_player_minutes / player_count
+                
+                # Get defensive impact score
+                def_rating = lineup_defensive_ratings.get(lineup, {})
+                def_impact = def_rating.get('defensive_efficiency', 0)
+                
+                # Get points off turnovers for this lineup
+                lineup_pot_points = lineup_pot.get(lineup, 0)
+                
                 lineup_plus_minus_data.append({
                     "Lineup": lineup,
                     "Plus/Minus": f"+{stats['plus_minus']}" if stats['plus_minus'] >= 0 else str(stats['plus_minus']),
+                    "Minutes": f"{lineup_minutes:.1f}",
                     "Appearances": stats['appearances'],
+                    "Def. Impact": f"{def_impact:.1f}",
+                    "Points off TO": lineup_pot_points,
                     "Raw +/-": stats['plus_minus']
                 })
             
