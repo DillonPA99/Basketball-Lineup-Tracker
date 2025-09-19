@@ -5118,8 +5118,7 @@ with tab2:
             else:
                 st.info("No individual player statistics available yet.")
 
-        display_defensive_analytics()
-        
+                
         # Plus/Minus Analytics
         st.subheader("Plus/Minus Analytics")
         
@@ -5209,6 +5208,8 @@ with tab2:
                         st.write(f"_{lineup_df.iloc[-1]['Lineup']}_")
         else:
             st.info("No lineup plus/minus data available yet.")
+        
+        display_defensive_analytics()
 
             # Quarter end history (legacy / optional)
         if st.session_state.quarter_end_history:
