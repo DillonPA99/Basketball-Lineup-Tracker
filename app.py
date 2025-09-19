@@ -2718,7 +2718,7 @@ def display_defensive_analytics():
                 defensive_data.append({
                     'Player': player.split('(')[0].strip(),
                     'Minutes Played': f"{stats['total_minutes_played']:.1f}",
-                    'Total Def Events': f"{stats['weighted_defensive_events']:.1f}",
+                    'Def. Impact Score': f"{stats['weighted_defensive_events']:.1f}",
                     'Opp. Turnovers': f"{stats['opponent_turnovers']:.0f}",
                     'Opp. Missed FGs': f"{stats['opponent_missed_shots']:.0f}",
                     'Def Events/Min': f"{stats['defensive_events_per_minute']:.2f}"
@@ -2726,7 +2726,7 @@ def display_defensive_analytics():
 
         if defensive_data:
             defensive_df = pd.DataFrame(defensive_data)
-            defensive_df = defensive_df.sort_values('Total Def Events', ascending=False, key=lambda x: pd.to_numeric(x, errors='coerce'))
+            defensive_df = defensive_df.sort_values('Def. Impact Score', ascending=False, key=lambda x: pd.to_numeric(x, errors='coerce'))
             st.dataframe(defensive_df, use_container_width=True, hide_index=True)
             
         else:
@@ -2742,7 +2742,7 @@ def display_defensive_analytics():
             lineup_defensive_data.append({
                 'Lineup': lineup,
                 'Minutes Played': f"{stats['total_minutes']:.1f}",
-                'Total Def Events': f"{stats['total_defensive_events']:.1f}",
+                'Def. Impact Score': f"{stats['total_defensive_events']:.1f}",
                 'Opp. Turnovers': f"{stats['total_opponent_turnovers']:.0f}",
                 'Opp. Missed FGs': f"{stats['total_opponent_missed_shots']:.0f}",
                 'Def Events/Min': f"{stats['defensive_events_per_minute']:.2f}"
@@ -2750,18 +2750,18 @@ def display_defensive_analytics():
         
         if lineup_defensive_data:
             lineup_def_df = pd.DataFrame(lineup_defensive_data)
-            lineup_def_df = lineup_def_df.sort_values('Total Def Events', ascending=False, key=lambda x: pd.to_numeric(x, errors='coerce'))
+            lineup_def_df = lineup_def_df.sort_values('Def. Impact Score, ascending=False, key=lambda x: pd.to_numeric(x, errors='coerce'))
             st.dataframe(lineup_def_df, use_container_width=True, hide_index=True)
             
             # Best and worst defensive lineups
             if len(lineup_def_df) > 0:
                 col1, col2 = st.columns(2)
                 with col1:
-                    st.success(f"**Best Defensive Lineup:** {lineup_def_df.iloc[0]['Total Def Events']} events")
+                    st.success(f"**Best Defensive Lineup:** {lineup_def_df.iloc[0]['Def. Impact Score']} events")
                     st.write(f"_{lineup_def_df.iloc[0]['Lineup']}_")
                 with col2:
                     if len(lineup_def_df) > 1:
-                        st.error(f"**Worst Defensive Lineup:** {lineup_def_df.iloc[-1]['Total Def Events']} events")
+                        st.error(f"**Worst Defensive Lineup:** {lineup_def_df.iloc[-1]['Def. Impact Score']} events")
                         st.write(f"_{lineup_def_df.iloc[-1]['Lineup']}_")
         else:
             st.info("No lineup defensive data available yet.")
@@ -2787,25 +2787,25 @@ def display_defensive_analytics():
             lineup_defensive_data.append({
                 'Lineup': lineup,
                 'Minutes Played': f"{total_minutes:.1f}",
-                'Total Def Events': f"{total_def_events:.1f}",
+                'Def. Impact Score': f"{total_def_events:.1f}",
                 'Opp. Turnovers': f"{total_turnovers:.1f}",
                 'Opp. Missed FGs': f"{total_misses:.1f}"
             })
         
         if lineup_defensive_data:
             lineup_def_df = pd.DataFrame(lineup_defensive_data)
-            lineup_def_df = lineup_def_df.sort_values('Total Def Events', ascending=False)
+            lineup_def_df = lineup_def_df.sort_values('Def. Impact Score', ascending=False)
             st.dataframe(lineup_def_df, use_container_width=True, hide_index=True)
             
             # Best and worst defensive lineups
             if len(lineup_def_df) > 0:
                 col1, col2 = st.columns(2)
                 with col1:
-                    st.success(f"**Best Defensive Lineup:** {lineup_def_df.iloc[0]['Total Def Events']} events")
+                    st.success(f"**Best Defensive Lineup:** {lineup_def_df.iloc[0]['Def. Impact Score']} events")
                     st.write(f"_{lineup_def_df.iloc[0]['Lineup']}_")
                 with col2:
                     if len(lineup_def_df) > 1:
-                        st.error(f"**Worst Defensive Lineup:** {lineup_def_df.iloc[-1]['Total Def Events']} events")
+                        st.error(f"**Worst Defensive Lineup:** {lineup_def_df.iloc[-1]['Def. Impact Score']} events")
                         st.write(f"_{lineup_def_df.iloc[-1]['Lineup']}_")
         else:
             st.info("No lineup defensive data available yet.")
