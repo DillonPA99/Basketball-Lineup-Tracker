@@ -5325,11 +5325,15 @@ with tab2:
                 
                 # Get points off turnovers for this lineup
                 lineup_pot_points = lineup_pot.get(lineup, 0)
+
+                # Get total points scored by this lineup
+                total_points = stats.get('points_scored', 0)
                 
                 lineup_plus_minus_data.append({
                     "Lineup": lineup,
                     "Plus/Minus": f"+{stats['plus_minus']}" if stats['plus_minus'] >= 0 else str(stats['plus_minus']),
                     "Minutes": f"{lineup_minutes:.1f}",
+                    "Total Points": total_points,
                     "Def. Impact": f"{def_impact:.1f}",
                     "Points off TO": lineup_pot_points,
                     "Appearances": stats['appearances'],
@@ -5342,7 +5346,7 @@ with tab2:
                 
                 # Display all relevant columns including the new metrics
                 st.dataframe(
-                    lineup_df[["Lineup", "Plus/Minus", "Minutes", "Appearances", "Def. Impact", "Points off TO"]].style.applymap(
+                    lineup_df[["Lineup", "Plus/Minus", "Minutes", "Appearances", "Total Points", "Def. Impact", "Points off TO"]].style.applymap(
                         color_plus_minus, subset=["Plus/Minus"]
                     ),
                     use_container_width=True,
