@@ -4935,7 +4935,6 @@ with tab2:
             'total_points': 0
         }
 
-
         # Process score history for team stats with improved logic
         for score_event in st.session_state.score_history:
             team = score_event.get('team')
@@ -5034,14 +5033,13 @@ with tab2:
                 help="Points scored immediately following opponent turnovers"
             )
 
-             # Points Off Turnovers Percentage
+            # Points Off Turnovers Percentage
             home_pot_percentage = (home_pot / home_shooting_stats['total_points'] * 100) if home_shooting_stats['total_points'] > 0 else 0
             st.metric(
                 "Points off TO %", 
                 f"{home_pot_percentage:.1f}%",
                 help=f"{home_pot} points off TO out of {home_shooting_stats['total_points']} total points"
             )
-            
             
         with team_col2:
             st.markdown("### Away Team")
@@ -5097,7 +5095,6 @@ with tab2:
                 help=f"{away_pot} points off TO out of {away_shooting_stats['total_points']} total points"
             )
                         
-        
         # Individual Home Team Player Statistics (now includes turnovers)
         if st.session_state.player_stats or st.session_state.player_turnovers:
             st.write("**Home Team Individual Player Statistics**")
@@ -5124,9 +5121,6 @@ with tab2:
             individual_plus_minus = calculate_individual_plus_minus()
             defensive_stats = calculate_individual_defensive_impact()
             
-# Fix for the indentation error around line 5163
-# Replace the problematic section with this corrected version:
-
             if all_stat_players:
                 player_shooting_data = []
                 for player in all_stat_players:
@@ -5256,13 +5250,12 @@ with tab2:
             else:
                 st.info("No individual player statistics available yet.")
 
-                
         # Plus/Minus Analytics
         st.subheader("Plus/Minus Analytics")
         
         # Individual Player Plus/Minus
-         st.write("**Individual Player Plus/Minus**")
-         individual_stats = calculate_individual_plus_minus()
+        st.write("**Individual Player Plus/Minus**")
+        individual_stats = calculate_individual_plus_minus()
         
         if individual_stats:
             plus_minus_data = []
