@@ -5331,12 +5331,12 @@ with tab2:
                 
                 lineup_plus_minus_data.append({
                     "Lineup": lineup,
+                    "Appearances": stats['appearances'],
                     "Plus/Minus": f"+{stats['plus_minus']}" if stats['plus_minus'] >= 0 else str(stats['plus_minus']),
                     "Minutes": f"{lineup_minutes:.1f}",
                     "Total Points": total_points,
-                    "Def. Impact": f"{def_impact:.1f}",
                     "Points off TO": lineup_pot_points,
-                    "Appearances": stats['appearances'],
+                    "Def. Impact": f"{def_impact:.1f}",
                     "Raw +/-": stats['plus_minus']
                 })
             
@@ -5346,7 +5346,7 @@ with tab2:
                 
                 # Display all relevant columns including the new metrics
                 st.dataframe(
-                    lineup_df[["Lineup", "Plus/Minus", "Minutes", "Appearances", "Total Points", "Def. Impact", "Points off TO"]].style.applymap(
+                    lineup_df[["Lineup", "Appearances", "Plus/Minus", "Minutes", "Total Points", "Points off TO", "Def. Impact"]].style.applymap(
                         color_plus_minus, subset=["Plus/Minus"]
                     ),
                     use_container_width=True,
