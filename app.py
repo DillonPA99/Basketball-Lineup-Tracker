@@ -5330,9 +5330,9 @@ with tab2:
                     "Lineup": lineup,
                     "Plus/Minus": f"+{stats['plus_minus']}" if stats['plus_minus'] >= 0 else str(stats['plus_minus']),
                     "Minutes": f"{lineup_minutes:.1f}",
-                    "Appearances": stats['appearances'],
                     "Def. Impact": f"{def_impact:.1f}",
                     "Points off TO": lineup_pot_points,
+                    "Appearances": stats['appearances'],
                     "Raw +/-": stats['plus_minus']
                 })
             
@@ -5355,15 +5355,11 @@ with tab2:
                     with col1:
                         st.success(f"**Best Lineup:** +{lineup_df.iloc[0]['Raw +/-']}")
                         st.write(f"_{lineup_df.iloc[0]['Lineup']}_")
-                        st.write(f"Minutes: {lineup_df.iloc[0]['Minutes']}")
-                        st.write(f"Def. Impact: {lineup_df.iloc[0]['Def. Impact']}")
-                        st.write(f"Points off TO: {lineup_df.iloc[0]['Points off TO']}")
+
                     with col2:
                         st.error(f"**Worst Lineup:** {lineup_df.iloc[-1]['Raw +/-']}")
                         st.write(f"_{lineup_df.iloc[-1]['Lineup']}_")
-                        st.write(f"Minutes: {lineup_df.iloc[-1]['Minutes']}")
-                        st.write(f"Def. Impact: {lineup_df.iloc[-1]['Def. Impact']}")
-                        st.write(f"Points off TO: {lineup_df.iloc[-1]['Points off TO']}")
+
         else:
             st.info("No lineup plus/minus data available yet.")
         
