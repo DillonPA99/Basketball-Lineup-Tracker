@@ -2731,14 +2731,14 @@ def display_defensive_analytics():
 
         if defensive_data:
             defensive_df = pd.DataFrame(defensive_data)
-            # Sort by Total Def. Events instead of Def. Impact Score
-            defensive_df = defensive_df.sort_values('Total Def. Events', ascending=False, key=lambda x: pd.to_numeric(x, errors='coerce'))
+            # Sort by Def. Impact Score (weighted defensive events)
+            defensive_df = defensive_df.sort_values('Def. Impact Score', ascending=False, key=lambda x: pd.to_numeric(x, errors='coerce'))
             st.dataframe(defensive_df, use_container_width=True, hide_index=True)
             
             # Highlight top defensive performer
             if len(defensive_df) > 0:
                 top_defender = defensive_df.iloc[0]
-                st.success(f"🛡️ **Top Defensive Player:** {top_defender['Player']} ({top_defender['Total Def. Events']} total defensive events)")
+                st.success(f"🛡️ **Top Defensive Player:** {top_defender['Player']} (Impact Score: {top_defender['Def. Impact Score']})")
                 st.caption(f"Breakdown: {top_defender['Opp. Turnovers']} opponent turnovers, {top_defender['Opp. Missed FGs']} opponent missed field goals in {top_defender['Minutes Played']} minutes")
                 
         else:
