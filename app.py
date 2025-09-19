@@ -1289,11 +1289,11 @@ if "player_turnovers" not in st.session_state:
 if "last_turnover_event" not in st.session_state:
     st.session_state.last_turnover_event = None
 
-if "points_off_turnovers" not in st.session_state:
-    st.session_state.points_off_turnovers = {'home': 0, 'away': 0}
+# if "points_off_turnovers" not in st.session_state:
+#    st.session_state.points_off_turnovers = {'home': 0, 'away': 0}
 
-if "lineup_points_off_turnovers" not in st.session_state:
-    st.session_state.lineup_points_off_turnovers = defaultdict(int)
+#if "lineup_points_off_turnovers" not in st.session_state:
+#    st.session_state.lineup_points_off_turnovers = defaultdict(int)
 
 # ------------------------------------------------------------------
 # Helper functions
@@ -1781,28 +1781,27 @@ def undo_last_score():
 # Function to get points off turnover statistics
 
 def get_points_off_turnovers_stats():
-    """Get team and lineup points off turnover statistics - FIXED VERSION."""
-    # Ensure we have valid data structures
-    team_stats = st.session_state.get('points_off_turnovers', {'home': 0, 'away': 0})
-    if not isinstance(team_stats, dict):
-        team_stats = {'home': 0, 'away': 0}
+    """Get team and lineup points off turnover statistics - SINGLE SOURCE VERSION."""
+    team_stats = {'home': 0, 'away': 0}
+    lineup_stats = defaultdict(int)
     
-    # Handle lineup stats more carefully
-    lineup_stats = st.session_state.get('lineup_points_off_turnovers', {})
-    
-    # Convert defaultdict to regular dict more carefully
-    if hasattr(lineup_stats, 'items'):
-        # Only include entries that have positive values
-        lineup_stats_dict = {}
-        for k, v in lineup_stats.items():
-            if v > 0:  # Only include lineups with actual points off turnovers
-                lineup_stats_dict[k] = v
-    else:
-        lineup_stats_dict = {}
+    # Calculate from score_history only - single source of truth
+    for score_event in st.session_state.score_history:
+        if score_event.get('is_points_off_turnover', False):
+            team = score_event['team']
+            points = score_event['points']
+            
+            # Add to team total
+            team_stats[team] += points
+            
+            # Add to lineup total if lineup info exists
+            if score_event.get('lineup'):
+                lineup_key = " | ".join(sorted(score_event['lineup']))
+                lineup_stats[lineup_key] += points
     
     return {
         'team_stats': team_stats,
-        'lineup_stats': lineup_stats_dict
+        'lineup_stats': dict(lineup_stats)
     }
     
 # Function to clear expired turnover opportunities (call this when quarter ends)
