@@ -2010,6 +2010,7 @@ def calculate_individual_plus_minus():
 # Lineup Plus-Minus Calculation
 # ------------------------------------------------------------------
 
+# Add this new function after your other helper functions (around line 1000-1500)
 def calculate_lineup_plus_minus_with_time():
     """Calculate plus/minus and actual time on court for each unique 5-man lineup combination."""
     lineup_stats = defaultdict(lambda: {'plus_minus': 0, 'minutes': 0, 'appearances': 0, 'points_scored': 0})
