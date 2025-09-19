@@ -2750,7 +2750,7 @@ def display_defensive_analytics():
         
         if lineup_defensive_data:
             lineup_def_df = pd.DataFrame(lineup_defensive_data)
-            lineup_def_df = lineup_def_df.sort_values('Def. Impact Score, ascending=False, key=lambda x: pd.to_numeric(x, errors='coerce'))
+            lineup_def_df = lineup_def_df.sort_values('Def. Impact Score', ascending=False, key=lambda x: pd.to_numeric(x, errors='coerce'))
             st.dataframe(lineup_def_df, use_container_width=True, hide_index=True)
             
             # Best and worst defensive lineups
