@@ -2010,9 +2010,19 @@ def calculate_individual_plus_minus():
 # Lineup Plus-Minus Calculation
 # ------------------------------------------------------------------
 
-def calculate_lineup_plus_minus():
-    """Calculate plus/minus and points scored for each unique 5-man lineup combination."""
+def calculate_lineup_plus_minus_with_time():
+    """Calculate plus/minus and actual time on court for each unique 5-man lineup combination."""
     lineup_stats = defaultdict(lambda: {'plus_minus': 0, 'minutes': 0, 'appearances': 0, 'points_scored': 0})
+    
+    def parse_game_time(time_str):
+        """Convert MM:SS format to total seconds remaining."""
+        try:
+            if ':' in time_str:
+                minutes, seconds = map(int, time_str.split(':'))
+                return minutes * 60 + seconds
+            return 0
+        except:
+            return 0
     
     if not st.session_state.lineup_history:
         return {}
@@ -2021,6 +2031,41 @@ def calculate_lineup_plus_minus():
     for i in range(len(st.session_state.lineup_history)):
         lineup_event = st.session_state.lineup_history[i]
         lineup_key = " | ".join(sorted(lineup_event['new_lineup']))
+        
+        # Calculate time duration for this lineup period
+        lineup_start_seconds = parse_game_time(lineup_event.get('game_time', '0:00'))
+        
+        if i < len(st.session_state.lineup_history) - 1:
+            next_event = st.session_state.lineup_history[i + 1]
+            lineup_end_seconds = parse_game_time(next_event.get('game_time', '0:00'))
+            
+            # Check if we're in the same quarter
+            same_quarter = lineup_event.get('quarter') == next_event.get('quarter')
+            
+            if same_quarter:
+                # Normal lineup change within quarter: start_time - end_time
+                time_elapsed = lineup_start_seconds - lineup_end_seconds
+            else:
+                # Quarter ended: lineup played from start_time to end of quarter (0:00)
+                time_elapsed = lineup_start_seconds
+        else:
+            # Last lineup period - still active
+            current_game_time_seconds = parse_game_time(st.session_state.current_game_time)
+            current_quarter = st.session_state.current_quarter
+            lineup_quarter = lineup_event.get('quarter')
+            
+            if current_quarter == lineup_quarter:
+                # Same quarter: time elapsed = start_time - current_time
+                time_elapsed = lineup_start_seconds - current_game_time_seconds
+            else:
+                # Different quarter: lineup played until end of that quarter
+                time_elapsed = lineup_start_seconds
+        
+        # Ensure positive time
+        time_elapsed = max(0, time_elapsed)
+        
+        # Convert to minutes
+        time_elapsed_minutes = time_elapsed / 60.0
         
         # Get score changes during this lineup period
         if i < len(st.session_state.lineup_history) - 1:
@@ -2041,8 +2086,10 @@ def calculate_lineup_plus_minus():
             score_change = home_score_change - away_score_change
             points_scored = home_score_change
         
+        # Update lineup stats
         lineup_stats[lineup_key]['plus_minus'] += score_change
         lineup_stats[lineup_key]['points_scored'] += points_scored
+        lineup_stats[lineup_key]['minutes'] += time_elapsed_minutes
         lineup_stats[lineup_key]['appearances'] += 1
     
     return dict(lineup_stats)
@@ -5299,7 +5346,7 @@ with tab2:
         
         # Lineup Plus/Minus
         st.write("**Lineup Plus/Minus**")
-        lineup_stats = calculate_lineup_plus_minus()
+        lineup_stats = calculate_lineup_plus_minus_with_time()
         
         if lineup_stats:
             # Get additional lineup data
@@ -5309,23 +5356,6 @@ with tab2:
             
             lineup_plus_minus_data = []
             for lineup, stats in lineup_stats.items():
-                # Calculate minutes played for this lineup
-                lineup_minutes = 0.0
-                lineup_players = lineup.split(" | ")
-                
-                # Calculate average minutes for players in this lineup
-                total_player_minutes = 0
-                player_count = 0
-                for player in lineup_players:
-                    player_minutes = calculate_player_minutes_played(player)
-                    if player_minutes > 0:
-                        total_player_minutes += player_minutes
-                        player_count += 1
-                
-                if player_count > 0:
-                    lineup_minutes = total_player_minutes / player_count
-                
-                # Get defensive impact score
                 def_rating = lineup_defensive_ratings.get(lineup, {})
                 def_impact = def_rating.get('defensive_efficiency', 0)
                 
