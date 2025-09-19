@@ -4880,12 +4880,14 @@ with tab2:
         with team_col1:
             st.markdown("### Home Team")
             
-            # Free Throws
-            ft_pct = (home_shooting_stats['free_throws_made'] / home_shooting_stats['free_throws_attempted'] * 100) if home_shooting_stats['free_throws_attempted'] > 0 else 0
+            st.metric("Total Points", home_shooting_stats['total_points'])
+
+            # Total Field Goals
+            fg_pct = (home_shooting_stats['field_goals_made'] / home_shooting_stats['field_goals_attempted'] * 100) if home_shooting_stats['field_goals_attempted'] > 0 else 0
             st.metric(
-                "Free Throws", 
-                f"{home_shooting_stats['free_throws_made']}/{home_shooting_stats['free_throws_attempted']}", 
-                f"{ft_pct:.1f}%"
+                "Total FG", 
+                f"{home_shooting_stats['field_goals_made']}/{home_shooting_stats['field_goals_attempted']}", 
+                f"{fg_pct:.1f}%"
             )
             
             # 2-Point Field Goals (FG - 3PT)
@@ -4905,13 +4907,13 @@ with tab2:
                 f"{home_shooting_stats['three_pointers_made']}/{home_shooting_stats['three_pointers_attempted']}", 
                 f"{three_pt_pct:.1f}%"
             )
-            
-            # Total Field Goals
-            fg_pct = (home_shooting_stats['field_goals_made'] / home_shooting_stats['field_goals_attempted'] * 100) if home_shooting_stats['field_goals_attempted'] > 0 else 0
+
+            # Free Throws
+            ft_pct = (home_shooting_stats['free_throws_made'] / home_shooting_stats['free_throws_attempted'] * 100) if home_shooting_stats['free_throws_attempted'] > 0 else 0
             st.metric(
-                "Total FG", 
-                f"{home_shooting_stats['field_goals_made']}/{home_shooting_stats['field_goals_attempted']}", 
-                f"{fg_pct:.1f}%"
+                "Free Throws", 
+                f"{home_shooting_stats['free_throws_made']}/{home_shooting_stats['free_throws_attempted']}", 
+                f"{ft_pct:.1f}%"
             )
 
             # Points Off Turnovers
@@ -4921,7 +4923,7 @@ with tab2:
                 help="Points scored immediately following opponent turnovers"
             )
 
-             # NEW: Points Off Turnovers Percentage
+             # Points Off Turnovers Percentage
             home_pot_percentage = (home_pot / home_shooting_stats['total_points'] * 100) if home_shooting_stats['total_points'] > 0 else 0
             st.metric(
                 "Points off TO %", 
@@ -4929,7 +4931,6 @@ with tab2:
                 help=f"{home_pot} points off TO out of {home_shooting_stats['total_points']} total points"
             )
             
-            st.metric("Total Points", home_shooting_stats['total_points'])
             
         with team_col2:
             st.markdown("### Away Team")
