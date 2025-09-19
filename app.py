@@ -5166,6 +5166,7 @@ with tab2:
                     player_shooting_data.append({
                         'Player': player.split('(')[0].strip(),
                         'Minutes': f"{minutes_played:.1f}",
+                        '+/-': f"+{plus_minus}" if plus_minus >= 0 else str(plus_minus),
                         'Points': stats['points'],
                         'FT': f"{stats['free_throws_made']}/{stats['free_throws_attempted']}" if stats['free_throws_attempted'] > 0 else "0/0",
                         'FT%': f"{stats['free_throws_made']/stats['free_throws_attempted']*100:.1f}%" if stats['free_throws_attempted'] > 0 else "0.0%",
@@ -5177,9 +5178,7 @@ with tab2:
                         'FG%': f"{stats['field_goals_made']/stats['field_goals_attempted']*100:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%",
                         'eFG%': f"{efg_pct:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%",
                         'Turnovers': turnovers,
-                        '+/-': f"+{plus_minus}" if plus_minus >= 0 else str(plus_minus),
-                        'Def Impact': f"{def_impact_score:.1f}",
-                        'Raw +/-': plus_minus  # For sorting purposes
+                        'Def Impact': f"{def_impact_score:.1f}"                    
                     })
                 
                 if player_shooting_data:
