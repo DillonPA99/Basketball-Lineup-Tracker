@@ -5250,7 +5250,7 @@ with tab2:
             else:
                 st.info("No individual player statistics available yet.")
 
-        # Plus/Minus Analytics
+# Plus/Minus Analytics
         st.subheader("Plus/Minus Analytics")
         individual_stats = calculate_individual_plus_minus()
         
@@ -5340,8 +5340,9 @@ with tab2:
                 lineup_df = pd.DataFrame(lineup_plus_minus_data)
                 lineup_df = lineup_df.sort_values("Raw +/-", ascending=False)
                 
+                # Display all relevant columns including the new metrics
                 st.dataframe(
-                    lineup_df[["Lineup", "Plus/Minus", "Appearances"]].style.applymap(
+                    lineup_df[["Lineup", "Plus/Minus", "Minutes", "Appearances", "Def. Impact", "Points off TO"]].style.applymap(
                         color_plus_minus, subset=["Plus/Minus"]
                     ),
                     use_container_width=True,
@@ -5354,9 +5355,15 @@ with tab2:
                     with col1:
                         st.success(f"**Best Lineup:** +{lineup_df.iloc[0]['Raw +/-']}")
                         st.write(f"_{lineup_df.iloc[0]['Lineup']}_")
+                        st.write(f"Minutes: {lineup_df.iloc[0]['Minutes']}")
+                        st.write(f"Def. Impact: {lineup_df.iloc[0]['Def. Impact']}")
+                        st.write(f"Points off TO: {lineup_df.iloc[0]['Points off TO']}")
                     with col2:
                         st.error(f"**Worst Lineup:** {lineup_df.iloc[-1]['Raw +/-']}")
                         st.write(f"_{lineup_df.iloc[-1]['Lineup']}_")
+                        st.write(f"Minutes: {lineup_df.iloc[-1]['Minutes']}")
+                        st.write(f"Def. Impact: {lineup_df.iloc[-1]['Def. Impact']}")
+                        st.write(f"Points off TO: {lineup_df.iloc[-1]['Points off TO']}")
         else:
             st.info("No lineup plus/minus data available yet.")
         
