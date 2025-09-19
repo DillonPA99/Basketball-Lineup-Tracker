@@ -4793,9 +4793,9 @@ with tab2:
         with col1:
             st.metric("Quarters Completed", len(st.session_state.quarter_end_history))
         with col2:
-            st.metric("Scoring Plays", len(st.session_state.score_history))
-        with col3:
             st.metric("Lineup Changes", len([lh for lh in st.session_state.lineup_history if not lh.get('is_quarter_end')]))
+        with col3:
+            st.metric("Scoring Plays", len(st.session_state.score_history))
         with col4:
             st.metric("Total Points", st.session_state.home_score + st.session_state.away_score)
             
