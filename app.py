@@ -1633,7 +1633,15 @@ def handle_score_entry(team, points, scorer, shot_type, made):
         st.session_state.last_turnover_event['benefiting_team'] == team):
 
         # Check if this score happened within reasonable time after turnover (e.g., 30 seconds)
-        time_since_turnover = datetime.now() - st.session_state.last_turnover_event['turnover_timestamp']
+        # Use timezone-aware datetime for comparison
+        current_time = get_current_utc_time()  # This returns timezone-aware datetime
+        turnover_timestamp = st.session_state.last_turnover_event['turnover_timestamp']
+        
+        # Ensure turnover timestamp is timezone-aware
+        if turnover_timestamp.tzinfo is None:
+            turnover_timestamp = turnover_timestamp.replace(tzinfo=timezone.utc)
+        
+        time_since_turnover = current_time - turnover_timestamp
         
         # Also check if we're still in the same quarter
         same_quarter = st.session_state.last_turnover_event['turnover_quarter'] == st.session_state.current_quarter
