@@ -2473,7 +2473,7 @@ def calculate_position_balance_score(lineup):
 def get_lineup_historical_performance(lineup):
     """Get historical plus/minus for this exact lineup combination."""
     lineup_key = " | ".join(sorted(lineup))
-    lineup_stats = calculate_lineup_plus_minus()
+    lineup_stats = calculate_lineup_plus_minus_with_time()  # Use the correct function name
     
     if lineup_key in lineup_stats:
         plus_minus = lineup_stats[lineup_key]['plus_minus']
@@ -2484,6 +2484,7 @@ def get_lineup_historical_performance(lineup):
         return weighted_score
     
     return 0  # No historical data
+
 
 def calculate_lineup_chemistry_score(lineup):
     """Calculate how well players work together based on historical data."""
