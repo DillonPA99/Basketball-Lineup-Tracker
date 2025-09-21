@@ -1289,11 +1289,11 @@ if "player_turnovers" not in st.session_state:
 if "last_turnover_event" not in st.session_state:
     st.session_state.last_turnover_event = None
 
-# if "points_off_turnovers" not in st.session_state:
-#    st.session_state.points_off_turnovers = {'home': 0, 'away': 0}
+ if "points_off_turnovers" not in st.session_state:
+    st.session_state.points_off_turnovers = {'home': 0, 'away': 0}
 
-#if "lineup_points_off_turnovers" not in st.session_state:
-#    st.session_state.lineup_points_off_turnovers = defaultdict(int)
+if "lineup_points_off_turnovers" not in st.session_state:
+    st.session_state.lineup_points_off_turnovers = defaultdict(int)
 
 # ------------------------------------------------------------------
 # Helper functions
