@@ -3058,6 +3058,13 @@ Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
 FINAL SCORE: {st.session_state.home_team_name} {st.session_state.home_score} - {st.session_state.away_score} {st.session_state.away_team_name}
 
+GAME STATISTICS
+===============
+Quarters Completed: {len(st.session_state.quarter_end_history)}
+Lineup Changes: {lineup_changes}
+Scoring Plays: {len(st.session_state.score_history)}
+Total Points: {total_points}
+
 """
     # Calculate and add shooting statistics
     email_body += "SHOOTING STATISTICS\n===================\n"
@@ -3124,7 +3131,7 @@ FINAL SCORE: {st.session_state.home_team_name} {st.session_state.home_score} - {
     email_body += f"Total FG: {away_shooting_stats['field_goals_made']}/{away_shooting_stats['field_goals_attempted']} ({away_fg_pct:.1f}%)\n"
     email_body += f"Total Points: {away_shooting_stats['total_points']}\n\n"
 
-    # Individual Home Team Player Statistics (including turnovers)
+    # Individual Home Team Player Statistics (including turnovers, minutes, defensive stats)
     if st.session_state.player_stats or st.session_state.player_turnovers:
         email_body += "HOME TEAM INDIVIDUAL PLAYER STATISTICS\n======================================\n"
         
@@ -3137,13 +3144,36 @@ FINAL SCORE: {st.session_state.home_team_name} {st.session_state.home_score} - {
             if turnover_count > 0:
                 all_stat_players.add(player)
         
+        # Add players from lineup history who may not have other stats
+        for lineup_event in st.session_state.lineup_history:
+            for player in lineup_event.get('new_lineup', []):
+                all_stat_players.add(player)
+        
         if all_stat_players:
+            # Calculate additional analytics
+            individual_plus_minus = calculate_individual_plus_minus()
+            defensive_stats = calculate_individual_defensive_impact()
+            
             for player in sorted(all_stat_players):
                 stats = st.session_state.player_stats.get(player, {'points': 0, 'field_goals_made': 0, 'field_goals_attempted': 0, 'three_pointers_made': 0, 'three_pointers_attempted': 0, 'free_throws_made': 0, 'free_throws_attempted': 0})
                 turnovers = st.session_state.player_turnovers.get(player, 0)
                 
+                # Get minutes played
+                minutes_played = calculate_player_minutes_played(player)
+                
+                # Get plus/minus
+                plus_minus = individual_plus_minus.get(player, {}).get('plus_minus', 0)
+                
+                # Get defensive stats
+                def_stats = defensive_stats.get(player, {})
+                opp_turnovers = def_stats.get('opponent_turnovers', 0)
+                opp_missed_shots = def_stats.get('opponent_missed_shots', 0)
+                def_impact_score = def_stats.get('weighted_defensive_events', 0)
+                
                 email_body += f"{player.split('(')[0].strip()}:\n"
                 email_body += f"  Points: {stats['points']}\n"
+                email_body += f"  Minutes Played: {minutes_played:.1f}\n"
+                email_body += f"  Plus/Minus: {'+' + str(plus_minus) if plus_minus >= 0 else str(plus_minus)}\n"
                 
                 if stats['free_throws_attempted'] > 0:
                     ft_pct = stats['free_throws_made']/stats['free_throws_attempted']*100
@@ -3168,7 +3198,31 @@ FINAL SCORE: {st.session_state.home_team_name} {st.session_state.home_score} - {
                 if turnovers > 0:
                     email_body += f"  Turnovers: {turnovers}\n"
                 
+                # Add defensive stats
+                if opp_turnovers > 0 or opp_missed_shots > 0:
+                    email_body += f"  Defensive Impact:\n"
+                    email_body += f"    Opponent Turnovers: {opp_turnovers}\n"
+                    email_body += f"    Opponent Missed Shots: {opp_missed_shots}\n"
+                    email_body += f"    Defensive Impact Score: {def_impact_score:.1f}\n"
+                
                 email_body += "\n"
+
+    # Turnover Analysis
+    home_turnovers, away_turnovers = get_team_turnovers()
+    if home_turnovers > 0 or away_turnovers > 0:
+        email_body += "TURNOVER ANALYSIS\n=================\n"
+        email_body += f"HOME Team Turnovers: {home_turnovers}\n"
+        email_body += f"AWAY Team Turnovers: {away_turnovers}\n"
+        
+        # Turnover differential
+        turnover_diff = away_turnovers - home_turnovers
+        if turnover_diff > 0:
+            email_body += f"HOME has {turnover_diff} fewer turnovers (advantage)\n"
+        elif turnover_diff < 0:
+            email_body += f"AWAY has {abs(turnover_diff)} fewer turnovers (advantage)\n"
+        else:
+            email_body += "Even turnover battle\n"
+        email_body += "\n"
 
     # Points off Turnovers Analytics
     email_body += "POINTS OFF TURNOVERS\n===================\n"
@@ -3182,8 +3236,6 @@ FINAL SCORE: {st.session_state.home_team_name} {st.session_state.home_score} - {
     email_body += f"AWAY Points off Turnovers: {away_pot}\n"
     
     # Calculate efficiency if there are turnovers
-    home_turnovers, away_turnovers = get_team_turnovers()
-    
     if home_turnovers > 0 or away_turnovers > 0:
         email_body += "POINTS OFF TURNOVERS EFFICIENCY:\n"
         
@@ -3235,29 +3287,104 @@ FINAL SCORE: {st.session_state.home_team_name} {st.session_state.home_score} - {
         sorted_players = sorted(individual_stats.items(), key=lambda x: x[1]['plus_minus'], reverse=True)
         for player, stats in sorted_players:
             pm_text = f"+{stats['plus_minus']}" if stats['plus_minus'] >= 0 else str(stats['plus_minus'])
-            email_body += f"{player}: {pm_text}\n"
+            email_body += f"{player.split('(')[0].strip()}: {pm_text}\n"
         email_body += "\n"
     
-    # Lineup Plus/Minus
-    lineup_stats = calculate_lineup_plus_minus()
+    # Lineup Plus/Minus with enhanced stats
+    lineup_stats = calculate_lineup_plus_minus_with_time()
     if lineup_stats:
-        email_body += "LINEUP PLUS/MINUS:\n"
+        email_body += "LINEUP PLUS/MINUS WITH TIME PLAYED:\n"
         sorted_lineups = sorted(lineup_stats.items(), key=lambda x: x[1]['plus_minus'], reverse=True)
         for lineup, stats in sorted_lineups:
             pm_text = f"+{stats['plus_minus']}" if stats['plus_minus'] >= 0 else str(stats['plus_minus'])
             email_body += f"Lineup: {lineup}\n"
-            email_body += f"Plus/Minus: {pm_text} (Appearances: {stats['appearances']})\n\n"
+            email_body += f"Plus/Minus: {pm_text}\n"
+            email_body += f"Time Played: {stats['minutes']:.1f} minutes\n"
+            email_body += f"Appearances: {stats['appearances']}\n"
+            email_body += f"Points Scored: {stats.get('points_scored', 0)}\n\n"
         
         # Best and Worst Lineups
         if len(sorted_lineups) > 0:
             best_lineup = sorted_lineups[0]
             worst_lineup = sorted_lineups[-1]
-            email_body += f"BEST LINEUP: +{best_lineup[1]['plus_minus']}\n{best_lineup[0]}\n\n"
-            email_body += f"WORST LINEUP: {worst_lineup[1]['plus_minus']}\n{worst_lineup[0]}\n\n"
+            email_body += f"BEST LINEUP: +{best_lineup[1]['plus_minus']} in {best_lineup[1]['minutes']:.1f} minutes\n"
+            email_body += f"{best_lineup[0]}\n\n"
+            email_body += f"WORST LINEUP: {worst_lineup[1]['plus_minus']} in {worst_lineup[1]['minutes']:.1f} minutes\n"
+            email_body += f"{worst_lineup[0]}\n\n"
+
+    # Defensive Analytics
+    email_body += "DEFENSIVE ANALYTICS\n==================\n"
+    
+    # Individual defensive impact
+    defensive_stats = calculate_individual_defensive_impact()
+    if defensive_stats:
+        email_body += "INDIVIDUAL DEFENSIVE IMPACT:\n"
+        
+        # Sort by defensive impact score
+        sorted_def_players = sorted(
+            [(player, stats) for player, stats in defensive_stats.items() if stats['total_minutes_played'] > 0],
+            key=lambda x: x[1]['weighted_defensive_events'], 
+            reverse=True
+        )
+        
+        for player, def_stats in sorted_def_players:
+            email_body += f"{player.split('(')[0].strip()}:\n"
+            email_body += f"  Minutes Played: {def_stats['total_minutes_played']:.1f}\n"
+            email_body += f"  Opponent Turnovers: {def_stats['opponent_turnovers']}\n"
+            email_body += f"  Opponent Missed Shots: {def_stats['opponent_missed_shots']}\n"
+            email_body += f"  Defensive Impact Score: {def_stats['weighted_defensive_events']:.1f}\n"
+            if def_stats['total_minutes_played'] > 0:
+                email_body += f"  Defensive Events per Minute: {def_stats['defensive_events_per_minute']:.2f}\n"
+            email_body += "\n"
+    
+    # Lineup defensive performance
+    lineup_defensive_ratings = calculate_lineup_defensive_rating()
+    if lineup_defensive_ratings:
+        email_body += "LINEUP DEFENSIVE PERFORMANCE:\n"
+        
+        # Sort by total defensive events
+        sorted_def_lineups = sorted(
+            lineup_defensive_ratings.items(),
+            key=lambda x: x[1]['total_defensive_events'],
+            reverse=True
+        )
+        
+        for lineup, def_stats in sorted_def_lineups:
+            if def_stats['total_minutes'] > 0:
+                email_body += f"Lineup: {lineup}\n"
+                email_body += f"Time Played: {def_stats['total_minutes']:.1f} minutes\n"
+                email_body += f"Opponent Turnovers: {def_stats['total_opponent_turnovers']}\n"
+                email_body += f"Opponent Missed Shots: {def_stats['total_opponent_missed_shots']}\n"
+                email_body += f"Defensive Events per Minute: {def_stats['defensive_events_per_minute']:.2f}\n"
+                email_body += f"Defensive Impact Score: {def_stats['total_defensive_events']:.1f}\n\n"
+        
+        if sorted_def_lineups:
+            best_def_lineup = sorted_def_lineups[0]
+            email_body += f"BEST DEFENSIVE LINEUP: {best_def_lineup[1]['total_defensive_events']:.1f} Defensive Impact Score\n"
+            email_body += f"{best_def_lineup[0]}\n\n"
+
+    # Quarter End Records
+    if st.session_state.quarter_end_history:
+        email_body += "QUARTER END RECORDS\n==================\n"
+        for quarter_end in st.session_state.quarter_end_history:
+            email_body += f"{quarter_end.get('quarter', 'Unknown')}: {quarter_end.get('final_score', '0-0')}\n"
+            email_body += f"Final Lineup: {' | '.join(quarter_end.get('final_lineup', []))}\n\n"
+
+    # Lineup History Summary
+    if st.session_state.lineup_history:
+        email_body += "LINEUP CHANGES SUMMARY\n=====================\n"
+        email_body += f"Total Lineup Events: {len(st.session_state.lineup_history)}\n"
+        actual_changes = len([lh for lh in st.session_state.lineup_history if not lh.get('is_quarter_end')])
+        quarter_snapshots = len([lh for lh in st.session_state.lineup_history if lh.get('is_quarter_end')])
+        email_body += f"Actual Lineup Changes: {actual_changes}\n"
+        email_body += f"Quarter End Snapshots: {quarter_snapshots}\n\n"
 
     email_body += "\n" + "="*50 + "\n"
     email_body += "Generated by Basketball Lineup Tracker Pro\n"
-    email_body += f"Report Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    email_body += f"Report Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+    email_body += f"Report includes: Game Summary, Shooting Stats, Individual Player Stats,\n"
+    email_body += f"Turnover Analysis, Points off Turnovers, Plus/Minus Analytics,\n"
+    email_body += f"Defensive Analytics, Quarter Records, and Lineup History"
     
     return email_subject, email_body
     
