@@ -4213,28 +4213,60 @@ with st.sidebar:
         # Instructions
         with st.expander("📖 How to Email Report"):
             st.write("""
-            **This email includes all analytics from the Analytics tab:**
+            **This email includes comprehensive analytics from the Analytics tab:**
         
-            📊 **Game Summary:** Total points, lineup changes, scoring plays, quarters completed
+            📊 **Game Summary:** 
+            • Total points, lineup changes, scoring plays, quarters completed
+            • Game identification with team names and custom game titles
         
-            📋 **Quarter End Records:** Final scores and lineups for each completed quarter
-        
-            🔄 **Complete Lineup History:** Every lineup change with timestamps and scores
-        
-            🎯 **Team Shooting Statistics:** 
+            🎯 **Complete Shooting Statistics:** 
             • Free throw, 2-point, 3-point, and total field goal percentages
-            • Makes/attempts for both home and away teams
+            • Makes/attempts breakdown for both home and away teams
+            • Team shooting efficiency comparisons
         
-            👤 **Individual Player Statistics (Home Team):**
-            • Points, shooting percentages by shot type
-            • Effective field goal percentage
-            • Turnover counts
+            👤 **Enhanced Individual Player Statistics (Home Team):**
+            • Points, minutes played, plus/minus ratings
+            • Complete shooting percentages by shot type (FT, 2PT, 3PT, FG, eFG%)
+            • Turnover counts and defensive impact metrics
+            • Opponent turnovers forced and missed shots while on court
+            • Defensive impact scores and events per minute
         
-            ➕ **Plus/Minus Analytics:**
+            🔄 **Turnover Analysis:**
+            • Team turnover counts and differential analysis
+            • Turnover advantage breakdown
+            • Individual player turnover statistics
+        
+            🎯 **Points Off Turnovers Analytics:**
+            • Team points off turnovers with efficiency ratings
+            • Lineup-specific points off turnover performance
+            • Impact percentage (what % of total points came from turnovers)
+            • Best performing lineups for capitalizing on turnovers
+        
+            ➕ **Advanced Plus/Minus Analytics:**
             • Individual player plus/minus ratings
-            • Lineup combination plus/minus ratings
-            • Best and worst performing lineups
+            • Lineup combination plus/minus with actual time played
+            • Minutes breakdown for each lineup combination
+            • Points scored by each lineup
+            • Best and worst performing lineups with context
         
+            🛡️ **Defensive Analytics:**
+            • Individual defensive impact scores and statistics
+            • Opponent turnovers forced and missed shots caused
+            • Defensive events per minute calculations
+            • Lineup defensive performance ratings
+            • Best defensive lineup identification
+        
+            📋 **Historical Records:**
+            • Quarter end records with final scores and lineups
+            • Complete lineup change summary
+            • Breakdown of actual changes vs. quarter snapshots
+        
+            **Report Format:**
+            • Professional text format suitable for email
+            • Organized sections with clear headers
+            • Statistical breakdowns with percentages and efficiency metrics
+            • Summary insights and key performance highlights
+            
             **Simply copy and paste the generated content into your email client!**
             """)
 
