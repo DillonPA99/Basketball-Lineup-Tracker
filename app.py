@@ -5493,20 +5493,20 @@ with tab2:
                     
                     # Get plus/minus
                     plus_minus = individual_plus_minus.get(player, {}).get('plus_minus', 0)
+                    
+                    # Get defensive impact
+                    def_stats = defensive_stats.get(player, {})
+                    def_impact_score = def_stats.get('weighted_defensive_events', 0)
 
                     # Calculate offensive efficiency score
                     offensive_efficiency = calculate_player_efficiency_score(player)
             
                     # Calculate defensive efficiency score (defensive events per minute * 10)
                     defensive_efficiency = 0
-                    if player in defensive_stats and minutes_played > 0:
+                    if minutes_played > 0:
                         defensive_events_per_minute = def_stats.get('defensive_events_per_minute', 0)
                         defensive_efficiency = defensive_events_per_minute * 10
-                    
-                    # Get defensive impact
-                    def_stats = defensive_stats.get(player, {})
-                    def_impact_score = def_stats.get('weighted_defensive_events', 0)
-
+                        
                     # Calculate minutes played from lineup history
                     minutes_played = calculate_player_minutes_played(player)
                     
