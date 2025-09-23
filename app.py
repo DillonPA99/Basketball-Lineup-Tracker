@@ -4843,19 +4843,44 @@ with tab1:
         if st.session_state.quarter_lineup_set and st.session_state.current_lineup:
             st.write("**Select Player:**")
             
-            # Create 5 columns for the 5 players
-            player_cols = st.columns(5)
+            if len(st.session_state.current_lineup) >= 3:
+                player_cols = st.columns(5)
             
-            # Display each player as a button
-            for i, player in enumerate(st.session_state.current_lineup):
-                with player_cols[i]:
+               # Display first 3 players
+                for i in range(3):
+                    with player_cols_top[i]:
+                        player = st.session_state.current_lineup[i]
+                        player_name = player.split('(')[0].strip()
+                        jersey = player.split('#')[1].split(')')[0] if '#' in player else ""
+                    
+                        if st.button(f"{player_name}\n#{jersey}", key=f"select_player_{i}", use_container_width=True):
+                            st.session_state.selected_home_player = player
+                            st.rerun()
+
+            # Second row: remaining 2 players (centered)
+            if len(st.session_state.current_lineup) == 5:
+                # Create 5 columns to center the 2 remaining players
+                _, player_col_4, player_col_5, _, _ = st.columns(5)
+            
+                # Display players 4 and 5 in the center columns
+                with player_col_4:
+                    player = st.session_state.current_lineup[3]
                     player_name = player.split('(')[0].strip()
                     jersey = player.split('#')[1].split(')')[0] if '#' in player else ""
-                    
-                    if st.button(f"{player_name}\n#{jersey}", key=f"select_player_{i}", use_container_width=True):
+                
+                    if st.button(f"{player_name}\n#{jersey}", key=f"select_player_3", use_container_width=True):
                         st.session_state.selected_home_player = player
                         st.rerun()
             
+                with player_col_5:
+                    player = st.session_state.current_lineup[4]
+                    player_name = player.split('(')[0].strip()
+                    jersey = player.split('#')[1].split(')')[0] if '#' in player else ""
+                
+                    if st.button(f"{player_name}\n#{jersey}", key=f"select_player_4", use_container_width=True):
+                        st.session_state.selected_home_player = player
+                        st.rerun()
+
             # Show currently selected player
             if 'selected_home_player' in st.session_state and st.session_state.selected_home_player:
                 st.info(f"Selected: {st.session_state.selected_home_player.split('(')[0].strip()}")
