@@ -5548,7 +5548,7 @@ with tab2:
                         hide_index=True
                     )
 
-                    with st.expander("ℹ️ Efficiency Score Explanations"):
+                    with st.expander("ℹ️ Advanced Metric Explanations"):
                         st.write("""
                         **Offensive Efficiency Score:**
                         - Based on True Shooting Percentage, points per minute, and turnover rate
