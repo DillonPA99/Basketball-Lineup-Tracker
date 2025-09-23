@@ -4910,7 +4910,7 @@ with tab1:
             # Quick score option and clear selection
             quick_score_col, clear_col = st.columns(2)
             with quick_score_col:
-                if st.button("Quick Score (No Player)", key="home_quick_score"):
+                if st.button("Quick Score (No Player)", key="home_quick_score_alt"):
                     st.session_state.selected_home_player = "Quick Score (No Player)"
                     st.rerun()
             
