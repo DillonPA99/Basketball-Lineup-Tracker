@@ -4843,8 +4843,8 @@ with tab1:
         if st.session_state.quarter_lineup_set and st.session_state.current_lineup:
             st.write("**Select Player:**")
             
-            if len(st.session_state.current_lineup) >= 3:
-                player_cols = st.columns(5)
+            if len(st.session_state.current_lineup) == 5:
+                player_cols_top = st.columns(5)
             
                # Display first 3 players
                 for i in range(3):
