@@ -5549,7 +5549,7 @@ with tab2:
                     )
 
                     with st.expander("ℹ️ Efficiency Score Explanations"):
-                        st.write("""
+                        st.write(""
                         **Offensive Efficiency Score:**
                         - Based on True Shooting Percentage, points per minute, and turnover rate
                         - Accounts for shot efficiency, volume, and ball security
