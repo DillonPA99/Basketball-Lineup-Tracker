@@ -4844,7 +4844,7 @@ with tab1:
             st.write("**Select Player:**")
             
             if len(st.session_state.current_lineup) == 5:
-                player_cols_top = st.columns(5)
+                player_cols_top = st.columns(3)
             
                # Display first 3 players
                 for i in range(3):
@@ -4857,13 +4857,11 @@ with tab1:
                             st.session_state.selected_home_player = player
                             st.rerun()
 
-            # Second row: remaining 2 players (centered)
-            if len(st.session_state.current_lineup) == 5:
-                # Create 5 columns to center the 2 remaining players
-                _, player_col_4, player_col_5, _, _ = st.columns(5)
+                # Second row: 2 players + quick score option
+                player_cols_bottom = st.columns(3)
             
-                # Display players 4 and 5 in the center columns
-                with player_col_4:
+                # Display player 4 in first column
+                with player_cols_bottom[0]:
                     player = st.session_state.current_lineup[3]
                     player_name = player.split('(')[0].strip()
                     jersey = player.split('#')[1].split(')')[0] if '#' in player else ""
@@ -4872,7 +4870,8 @@ with tab1:
                         st.session_state.selected_home_player = player
                         st.rerun()
             
-                with player_col_5:
+                # Display player 5 in second column
+                with player_cols_bottom[1]:
                     player = st.session_state.current_lineup[4]
                     player_name = player.split('(')[0].strip()
                     jersey = player.split('#')[1].split(')')[0] if '#' in player else ""
@@ -4880,6 +4879,29 @@ with tab1:
                     if st.button(f"{player_name}\n#{jersey}", key=f"select_player_4", use_container_width=True):
                         st.session_state.selected_home_player = player
                         st.rerun()
+            
+                # Quick Score option in third column
+                with player_cols_bottom[2]:
+                    if st.button("Quick Score\n(No Player)", key="home_quick_score", use_container_width=True, type="secondary"):
+                        st.session_state.selected_home_player = "Quick Score (No Player)"
+                        st.rerun()
+
+            else:
+                # Fallback: display all players in a single row if not exactly 5
+                player_cols = st.columns(len(st.session_state.current_lineup))
+                for i, player in enumerate(st.session_state.current_lineup):
+                    with player_cols[i]:
+                        player_name = player.split('(')[0].strip()
+                        jersey = player.split('#')[1].split(')')[0] if '#' in player else ""
+                    
+                        if st.button(f"{player_name}\n#{jersey}", key=f"select_player_{i}", use_container_width=True):
+                            st.session_state.selected_home_player = player
+                            st.rerun()
+            
+                # Quick score option below when fallback layout
+                if st.button("Quick Score (No Player)", key="home_quick_score_fallback"):
+                    st.session_state.selected_home_player = "Quick Score (No Player)"
+                    st.rerun()
 
             # Show currently selected player
             if 'selected_home_player' in st.session_state and st.session_state.selected_home_player:
