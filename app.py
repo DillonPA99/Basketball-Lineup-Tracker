@@ -4907,13 +4907,7 @@ with tab1:
             if 'selected_home_player' in st.session_state and st.session_state.selected_home_player:
                 st.info(f"Selected: {st.session_state.selected_home_player.split('(')[0].strip()}")
             
-            # Quick score option and clear selection
-            quick_score_col, clear_col = st.columns(2)
-            with quick_score_col:
-                if st.button("Quick Score (No Player)", key="home_quick_score_alt"):
-                    st.session_state.selected_home_player = "Quick Score (No Player)"
-                    st.rerun()
-            
+            clear_col = st.columns()
             with clear_col:
                 if st.button("🔄 Clear Selection", key="clear_player_selection"):
                     if 'selected_home_player' in st.session_state:
