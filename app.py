@@ -4829,9 +4829,6 @@ with tab1:
                 st.error("Cannot advance quarter further")
     st.divider()
 
-    # Enhanced Score management with faster player attribution
-    st.subheader("Score Tracking")
-
     # Check if lineup is set for current quarter
     if not st.session_state.quarter_lineup_set:
         st.warning("⚠️ Please set a starting lineup for this quarter before tracking home team player stats.")
@@ -4840,7 +4837,7 @@ with tab1:
     home_col, away_col = st.columns(2)
     
     with home_col:
-        st.markdown("### 🏠 **HOME TEAM**")
+        st.markdown("### **HOME TEAM**")
         
         # Show current players as buttons when lineup is set
         if st.session_state.quarter_lineup_set and st.session_state.current_lineup:
@@ -4861,12 +4858,12 @@ with tab1:
             
             # Show currently selected player
             if 'selected_home_player' in st.session_state and st.session_state.selected_home_player:
-                st.info(f"🎯 Selected: {st.session_state.selected_home_player.split('(')[0].strip()}")
+                st.info(f"Selected: {st.session_state.selected_home_player.split('(')[0].strip()}")
             
             # Quick score option and clear selection
             quick_score_col, clear_col = st.columns(2)
             with quick_score_col:
-                if st.button("⚡ Quick Score (No Player)", key="home_quick_score"):
+                if st.button("Quick Score (No Player)", key="home_quick_score"):
                     st.session_state.selected_home_player = "Quick Score (No Player)"
                     st.rerun()
             
@@ -4914,7 +4911,7 @@ with tab1:
                 handle_score_entry("home", 0, home_scorer, "three_pointer", False)
 
     with away_col:
-        st.markdown("### 🛣️ **AWAY TEAM**")
+        st.markdown("### **AWAY TEAM**")
         st.info("📊 Away team scoring recorded as team totals only")
         
         # Away team scoring buttons
@@ -4986,13 +4983,11 @@ with tab1:
 
         if st.button(undo_text):
             undo_last_score()
-
-    st.write("**Turnover Tracking**")
     
     turnover_col1, turnover_col2 = st.columns(2)
     
     with turnover_col1:
-        st.markdown("### 🏠 **HOME TURNOVERS**")
+        st.markdown("### **HOME TURNOVERS**")
         # Home team turnover player selection
         if st.session_state.quarter_lineup_set and st.session_state.current_lineup:
             st.write("**Select Player for Turnover:**")
@@ -5031,9 +5026,9 @@ with tab1:
             # Show currently selected player for turnovers
             if 'selected_turnover_player' in st.session_state and st.session_state.selected_turnover_player:
                 if st.session_state.selected_turnover_player == "Team Turnover":
-                    st.info("🎯 Selected: Team Turnover")
+                    st.info("Selected: Team Turnover")
                 else:
-                    st.info(f"🎯 Selected: {st.session_state.selected_turnover_player.split('(')[0].strip()}")
+                    st.info(f"Selected: {st.session_state.selected_turnover_player.split('(')[0].strip()}")
 
             # Clear turnover selection
             if st.button("🔄 Clear TO Selection", key="clear_turnover_selection"):
@@ -5048,7 +5043,7 @@ with tab1:
             home_turnover_player = "Team Turnover"
             st.info("Set lineup first to track individual player turnovers")
         
-        if st.button("📝 HOME Turnover", key="home_turnover", use_container_width=True, type="primary"):
+        if st.button("HOME Turnover", key="home_turnover", use_container_width=True, type="primary"):
             player_to_record = None if home_turnover_player == "Team Turnover" else home_turnover_player
             add_turnover("home", player_to_record)
             player_text = f" by {home_turnover_player.split('(')[0].strip()}" if home_turnover_player != "Team Turnover" else ""
@@ -5056,10 +5051,10 @@ with tab1:
             st.rerun()
     
     with turnover_col2:
-        st.markdown("### 🛣️ **AWAY TURNOVERS**")
+        st.markdown("### **AWAY TURNOVERS**")
         st.info("📊 Away team turnovers recorded as team totals only")
         # Away team turnover (team only)
-        if st.button("📝 AWAY Turnover", key="away_turnover", use_container_width=True, type="primary"):
+        if st.button("AWAY Turnover", key="away_turnover", use_container_width=True, type="primary"):
             add_turnover("away", None)
             st.success("AWAY turnover recorded")
             st.rerun()
