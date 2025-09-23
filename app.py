@@ -5490,6 +5490,9 @@ with tab2:
                     
                     # Get turnover count
                     turnovers = st.session_state.player_turnovers.get(player, 0)
+
+                    # Calculate minutes played from lineup history
+                    minutes_played = calculate_player_minutes_played(player)
                     
                     # Get plus/minus
                     plus_minus = individual_plus_minus.get(player, {}).get('plus_minus', 0)
@@ -5506,9 +5509,6 @@ with tab2:
                     if minutes_played > 0:
                         defensive_events_per_minute = def_stats.get('defensive_events_per_minute', 0)
                         defensive_efficiency = defensive_events_per_minute * 10
-                        
-                    # Calculate minutes played from lineup history
-                    minutes_played = calculate_player_minutes_played(player)
                     
                     # Calculate 2PT stats (FG - 3PT)
                     two_pt_made = stats['field_goals_made'] - stats['three_pointers_made']
