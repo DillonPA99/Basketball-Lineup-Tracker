@@ -5048,7 +5048,7 @@ with tab1:
             home_turnover_player = "Team Turnover"
             st.info("Set lineup first to track individual player turnovers")
         
-        if st.button("📝 Record HOME Turnover", key="home_turnover", use_container_width=True, type="primary"):
+        if st.button("📝 HOME Turnover", key="home_turnover", use_container_width=True, type="primary"):
             player_to_record = None if home_turnover_player == "Team Turnover" else home_turnover_player
             add_turnover("home", player_to_record)
             player_text = f" by {home_turnover_player.split('(')[0].strip()}" if home_turnover_player != "Team Turnover" else ""
