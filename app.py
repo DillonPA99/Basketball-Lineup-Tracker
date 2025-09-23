@@ -5561,9 +5561,15 @@ with tab2:
                         - Opponent turnovers are weighted 1.5x, missed shots 1x
                         - Measures impact on opponent's offensive possessions
                         - Scale: 0-10+ (2+ is above average, 5+ is excellent)
+
+                        **Defensive Impact Score:**
+                        - Raw total of weighted defensive events while player was on court
+                        - Shows cumulative defensive contribution across all minutes played
+                        - Calculated as: (Opponent Turnovers × 1.5) + (Opponent Missed Shots × 1.0)
+                        - Higher numbers indicate more defensive impact events occurred while player was on court
+                        - Examples: 15+ is excellent, 8-15 is good, 4-8 is average, <4 is below average
+                        - Note: Players with more court time naturally have higher opportunity for defensive impact
                 
-                        **Note:** Efficiency scores require meaningful playing time to be accurate.
-                        """)
                     
                     # Shooting Percentage Charts (keep existing charts unchanged)
                     st.write("**Shooting Percentage Comparison**")
