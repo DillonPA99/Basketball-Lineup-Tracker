@@ -5569,7 +5569,7 @@ with tab2:
                         - Higher numbers indicate more defensive impact events occurred while player was on court
                         - Examples: 15+ is excellent, 8-15 is good, 4-8 is average, <4 is below average
                         - Note: Players with more court time naturally have higher opportunity for defensive impact
-                
+                        """)
                     
                     # Shooting Percentage Charts (keep existing charts unchanged)
                     st.write("**Shooting Percentage Comparison**")
