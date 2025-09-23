@@ -4842,91 +4842,20 @@ with tab1:
     with home_col:
         st.markdown("### 🏠 **HOME TEAM**")
         
-        # Show current players as jersey-style buttons when lineup is set
+        # Show current players as buttons when lineup is set
         if st.session_state.quarter_lineup_set and st.session_state.current_lineup:
             st.write("**Select Player for Shot:**")
             
-            # Create jersey layout CSS styling
-            st.markdown("""
-            <style>
-            .jersey-container {
-                display: flex;
-                justify-content: space-around;
-                flex-wrap: wrap;
-                gap: 10px;
-                margin: 10px 0;
-            }
-            .jersey {
-                background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
-                border: 3px solid #0D47A1;
-                border-radius: 15px;
-                padding: 10px;
-                text-align: center;
-                min-width: 80px;
-                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-                cursor: pointer;
-                transition: all 0.3s ease;
-            }
-            .jersey:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 6px 12px rgba(0,0,0,0.3);
-            }
-            .jersey-number {
-                font-size: 28px;
-                font-weight: bold;
-                color: white;
-                text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-                line-height: 1;
-            }
-            .jersey-name {
-                font-size: 11px;
-                color: white;
-                margin-top: 4px;
-                text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-                font-weight: 600;
-            }
-            .selected-jersey {
-                background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%) !important;
-                border-color: #1B5E20 !important;
-                animation: pulse 1.5s infinite;
-            }
-            @keyframes pulse {
-                0% { box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
-                50% { box-shadow: 0 4px 20px rgba(76, 175, 80, 0.4); }
-                100% { box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
-            }
-            </style>
-            """, unsafe_allow_html=True)
+            # Create 5 columns for the 5 players
+            player_cols = st.columns(5)
             
-            # Create the jersey display
-            jersey_html = '<div class="jersey-container">'
-            
+            # Display each player as a button
             for i, player in enumerate(st.session_state.current_lineup):
-                player_name = player.split('(')[0].strip()
-                jersey_num = player.split('#')[1].split(')')[0] if '#' in player else ""
-                
-                # Check if this player is selected
-                is_selected = (st.session_state.get('selected_home_player') == player)
-                selected_class = "selected-jersey" if is_selected else ""
-                
-                jersey_html += f'''
-                <div class="jersey {selected_class}">
-                    <div class="jersey-number">#{jersey_num}</div>
-                    <div class="jersey-name">{player_name}</div>
-                </div>
-                '''
-            
-            jersey_html += '</div>'
-            
-            st.markdown(jersey_html, unsafe_allow_html=True)
-            
-            # Create individual buttons for each player (functional selection)
-            button_cols = st.columns(5)
-            for i, player in enumerate(st.session_state.current_lineup):
-                with button_cols[i]:
+                with player_cols[i]:
                     player_name = player.split('(')[0].strip()
-                    if st.button(f"Select {player_name}", key=f"select_player_{i}", 
-                               type="primary" if st.session_state.get('selected_home_player') == player else "secondary"):
+                    jersey = player.split('#')[1].split(')')[0] if '#' in player else ""
+                    
+                    if st.button(f"{player_name}\n#{jersey}", key=f"select_player_{i}", use_container_width=True):
                         st.session_state.selected_home_player = player
                         st.rerun()
             
@@ -4983,7 +4912,6 @@ with tab1:
         with home_3pt_miss:
             if st.button("❌ 3PT", key="home_3pt_miss", use_container_width=True):
                 handle_score_entry("home", 0, home_scorer, "three_pointer", False)
-
 
     with away_col:
         st.markdown("### 🛣️ **AWAY TEAM**")
