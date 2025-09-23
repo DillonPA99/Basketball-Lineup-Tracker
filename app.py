@@ -4837,11 +4837,11 @@ with tab1:
     home_col, away_col = st.columns(2)
     
     with home_col:
-        st.markdown("### **HOME TEAM**")
+        st.markdown("### **HOME TEAM Scoring**")
         
         # Show current players as buttons when lineup is set
         if st.session_state.quarter_lineup_set and st.session_state.current_lineup:
-            st.write("**Select Player for Shot:**")
+            st.write("**Select Player:**")
             
             # Create 5 columns for the 5 players
             player_cols = st.columns(5)
@@ -4911,7 +4911,7 @@ with tab1:
                 handle_score_entry("home", 0, home_scorer, "three_pointer", False)
 
     with away_col:
-        st.markdown("### **AWAY TEAM**")
+        st.markdown("### **AWAY TEAM Scoring**")
         st.info("📊 Away team scoring recorded as team totals only")
         
         # Away team scoring buttons
@@ -4987,10 +4987,10 @@ with tab1:
     turnover_col1, turnover_col2 = st.columns(2)
     
     with turnover_col1:
-        st.markdown("### **HOME TURNOVERS**")
+        st.markdown("### **HOME Turnovers**")
         # Home team turnover player selection
         if st.session_state.quarter_lineup_set and st.session_state.current_lineup:
-            st.write("**Select Player for Turnover:**")
+            st.write("**Select Player:**")
 
             # Create 5 columns for the 5 players plus team turnover
             player_to_cols = st.columns(3)  # First row: 3 players
@@ -5051,7 +5051,7 @@ with tab1:
             st.rerun()
     
     with turnover_col2:
-        st.markdown("### **AWAY TURNOVERS**")
+        st.markdown("### **AWAY Turnovers**")
         st.info("📊 Away team turnovers recorded as team totals only")
         # Away team turnover (team only)
         if st.button("AWAY Turnover", key="away_turnover", use_container_width=True, type="primary"):
