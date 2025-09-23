@@ -4836,26 +4836,52 @@ with tab1:
     if not st.session_state.quarter_lineup_set:
         st.warning("⚠️ Please set a starting lineup for this quarter before tracking home team player stats.")
 
-    # Get current players for dropdown (home team only)
-    current_players = st.session_state.current_lineup if st.session_state.quarter_lineup_set else []
-
-    # Side-by-side team scoring (eliminates need to select home/away)
+    # Side-by-side team scoring
     home_col, away_col = st.columns(2)
     
     with home_col:
         st.markdown("### 🏠 **HOME TEAM**")
         
-        # Player selection for home team
-        if st.session_state.quarter_lineup_set:
-            player_options = ["Quick Score (No Player)"] + current_players
-            home_scorer = st.selectbox(
-                "Player:",
-                player_options,
-                help="Select player for detailed stats, or use 'Quick Score' for team-only tracking",
-                key="home_scorer_select"
-            )
+        # Show current players as buttons when lineup is set
+        if st.session_state.quarter_lineup_set and st.session_state.current_lineup:
+            st.write("**Select Player for Shot:**")
+            
+            # Create 5 columns for the 5 players
+            player_cols = st.columns(5)
+            
+            # Display each player as a button
+            for i, player in enumerate(st.session_state.current_lineup):
+                with player_cols[i]:
+                    player_name = player.split('(')[0].strip()
+                    jersey = player.split('#')[1].split(')')[0] if '#' in player else ""
+                    
+                    if st.button(f"{player_name}\n#{jersey}", key=f"select_player_{i}", use_container_width=True):
+                        st.session_state.selected_home_player = player
+                        st.rerun()
+            
+            # Show currently selected player
+            if 'selected_home_player' in st.session_state and st.session_state.selected_home_player:
+                st.info(f"🎯 Selected: {st.session_state.selected_home_player.split('(')[0].strip()}")
+            
+            # Quick score option and clear selection
+            quick_score_col, clear_col = st.columns(2)
+            with quick_score_col:
+                if st.button("⚡ Quick Score (No Player)", key="home_quick_score"):
+                    st.session_state.selected_home_player = "Quick Score (No Player)"
+                    st.rerun()
+            
+            with clear_col:
+                if st.button("🔄 Clear Selection", key="clear_player_selection"):
+                    if 'selected_home_player' in st.session_state:
+                        del st.session_state.selected_home_player
+                    st.rerun()
+            
+            # Use selected player or default to quick score
+            home_scorer = st.session_state.get('selected_home_player', "Quick Score (No Player)")
+            
         else:
             home_scorer = "Quick Score (No Player)"
+            st.info("Set lineup first to track individual player stats")
 
         # Home team scoring buttons
         st.write("**Score Entry**")
@@ -4886,6 +4912,7 @@ with tab1:
         with home_3pt_miss:
             if st.button("❌ 3PT", key="home_3pt_miss", use_container_width=True):
                 handle_score_entry("home", 0, home_scorer, "three_pointer", False)
+
 
     with away_col:
         st.markdown("### 🛣️ **AWAY TEAM**")
