@@ -4841,6 +4841,8 @@ with tab1:
         
         # Show current players as buttons when lineup is set
         if st.session_state.quarter_lineup_set and st.session_state.current_lineup:
+            st.markdown('<div class="home-player-selection">', unsafe_allow_html=True)
+            
             st.write("**Select Player:**")
             
             if len(st.session_state.current_lineup) == 5:
@@ -4922,7 +4924,9 @@ with tab1:
             
             # Use selected player or default to quick score
             home_scorer = st.session_state.get('selected_home_player', "Quick Score (No Player)")
-            
+  
+            st.markdown("</div>", unsafe_allow_html=True)
+        
         else:
             home_scorer = "Quick Score (No Player)"
             st.info("Set lineup first to track individual player stats")
