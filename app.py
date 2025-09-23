@@ -5039,6 +5039,23 @@ with tab1:
         if st.session_state.quarter_lineup_set and st.session_state.current_lineup:
             st.write("**Select Player:**")
 
+            # CSS targeting buttons with specific keys
+            st.markdown("""
+            <style>
+            /* Target buttons with keys that start with select_to_player_ */
+            button[data-testid="baseButton-secondary"]:has([data-testid*="select_to_player_"]) {
+                background-color: #FFB366 !important;
+                border: 1px solid #FF9933 !important;
+                color: #333333 !important;
+                font-weight: 500 !important;
+            }
+            button[data-testid="baseButton-secondary"]:has([data-testid*="select_to_player_"]):hover {
+                background-color: #FF9933 !important;
+                border: 1px solid #FF8800 !important;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+
             # Create 5 columns for the 5 players plus team turnover
             player_to_cols = st.columns(3)  # First row: 3 players
             player_to_cols2 = st.columns(3)  # Second row: 2 players + team turnover
