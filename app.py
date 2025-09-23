@@ -4907,7 +4907,7 @@ with tab1:
             if 'selected_home_player' in st.session_state and st.session_state.selected_home_player:
                 st.info(f"Selected: {st.session_state.selected_home_player.split('(')[0].strip()}")
             
-            clear_col = st.columns(1)
+            clear_col = st.columns(1)[0]
             with clear_col:
                 if st.button("🔄 Clear Selection", key="clear_player_selection"):
                     if 'selected_home_player' in st.session_state:
