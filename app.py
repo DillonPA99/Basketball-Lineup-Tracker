@@ -5493,6 +5493,15 @@ with tab2:
                     
                     # Get plus/minus
                     plus_minus = individual_plus_minus.get(player, {}).get('plus_minus', 0)
+
+                    # Calculate offensive efficiency score
+                    offensive_efficiency = calculate_player_efficiency_score(player)
+            
+                    # Calculate defensive efficiency score (defensive events per minute * 10)
+                    defensive_efficiency = 0
+                    if player in defensive_stats and minutes_played > 0:
+                        defensive_events_per_minute = def_stats.get('defensive_events_per_minute', 0)
+                        defensive_efficiency = defensive_events_per_minute * 10
                     
                     # Get defensive impact
                     def_stats = defensive_stats.get(player, {})
@@ -5513,6 +5522,8 @@ with tab2:
                         'Player': player.split('(')[0].strip(),
                         'Minutes': f"{minutes_played:.1f}",
                         '+/-': f"+{plus_minus}" if plus_minus >= 0 else str(plus_minus),
+                        'Off. Eff.': f"{offensive_efficiency:.1f}", 
+                        'Def. Eff.': f"{defensive_efficiency:.1f}",
                         'Points': stats['points'],
                         'FT': f"{stats['free_throws_made']}/{stats['free_throws_attempted']}" if stats['free_throws_attempted'] > 0 else "0/0",
                         'FT%': f"{stats['free_throws_made']/stats['free_throws_attempted']*100:.1f}%" if stats['free_throws_attempted'] > 0 else "0.0%",
@@ -5536,6 +5547,23 @@ with tab2:
                         use_container_width=True,
                         hide_index=True
                     )
+
+                    with st.expander("ℹ️ Efficiency Score Explanations"):
+                        st.write("""
+                        **Offensive Efficiency Score:**
+                        - Based on True Shooting Percentage, points per minute, and turnover rate
+                        - Accounts for shot efficiency, volume, and ball security
+                        - Higher scores indicate better offensive performance per minute played
+                        - Scale: 0-20+ (10+ is above average, 15+ is excellent)
+                
+                        **Defensive Efficiency Score:**
+                        - Based on defensive events per minute (opponent turnovers + missed shots)
+                        - Opponent turnovers are weighted 1.5x, missed shots 1x
+                        - Measures impact on opponent's offensive possessions
+                        - Scale: 0-10+ (2+ is above average, 5+ is excellent)
+                
+                        **Note:** Efficiency scores require meaningful playing time to be accurate.
+                        """)
                     
                     # Shooting Percentage Charts (keep existing charts unchanged)
                     st.write("**Shooting Percentage Comparison**")
