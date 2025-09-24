@@ -2250,7 +2250,7 @@ def calculate_player_efficiency_score(player):
     # Efficiency bonus - TS% above 50% gets bonus, below 50% gets penalty
     efficiency_modifier = 0
     if (fg_attempts + ft_attempts) >= 2:
-        efficiency_modifier = (true_shooting_percentage - 0.5) * 20
+        efficiency_modifier = (true_shooting_percentage - 0.5) * 10
     
     # Turnover penalty per minute (scaled appropriately)
     turnover_penalty = turnovers_per_minute * 3
@@ -2264,7 +2264,7 @@ def calculate_player_efficiency_score(player):
     if player.startswith("Kat"):
         st.write(f"DEBUG {player}: base={base_score:.2f}, eff_mod={efficiency_modifier:.2f}, final={efficiency_score:.2f}")
     
-    return max(0, efficiency_score)
+    return efficiency_score  # Allow negative scores to show poor efficiency
 # ============================================================================
 # DEFENSIVE IMPACT CALCULATION (Time-Based with Weighting)
 # ============================================================================
