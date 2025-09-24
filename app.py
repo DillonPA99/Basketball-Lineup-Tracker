@@ -2207,7 +2207,13 @@ def calculate_player_efficiency_score(player):
     minutes_played = calculate_player_minutes_played(player)
     
     # If no meaningful playing time, return 0
-    if minutes_played < 0.5:  # Less than 30 seconds
+    if minutes_played < 0.5 and fg_attempts == 0 and ft_attempts == 0:  
+        return 0
+
+    # If player has shot attempts but very low minutes, use minimum of 0.5 minutes to avoid division issues
+    effective_minutes = max(minutes_played, 0.5) if (fg_attempts > 0 or ft_attempts > 0) else minutes_played
+
+    if effective_minutes <= 0:
         return 0
     
     # Calculate True Shooting Percentage
@@ -2220,9 +2226,9 @@ def calculate_player_efficiency_score(player):
         true_shooting_percentage = 0
     
     # Calculate per-minute stats
-    points_per_minute = points / minutes_played
-    attempts_per_minute = (fg_attempts + ft_attempts) / minutes_played
-    turnovers_per_minute = turnovers / minutes_played
+    points_per_minute = points / effective_minutes
+    attempts_per_minute = (fg_attempts + ft_attempts) / effective_minutes
+    turnovers_per_minute = turnovers / effective_minutes
     
     # Base efficiency score from points per minute (scaled up for readability)
     base_score = points_per_minute * 10
