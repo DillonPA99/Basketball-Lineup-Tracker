@@ -2250,7 +2250,7 @@ def calculate_player_efficiency_score(player):
     # Efficiency bonus - TS% above 50% gets bonus, below 50% gets penalty
     efficiency_modifier = 0
     if (fg_attempts + ft_attempts) >= 2:
-        efficiency_modifier = (true_shooting_percentage - 0.5) * 10
+        efficiency_modifier = (true_shooting_percentage - 0.5) * 20
     
     # Turnover penalty per minute (scaled appropriately)
     turnover_penalty = turnovers_per_minute * 3
