@@ -2193,8 +2193,6 @@ def calculate_player_minutes_played(player):
 def calculate_player_efficiency_score(player):
     """Calculate a comprehensive efficiency score for a player using per-minute metrics and True Shooting Percentage."""
     if player not in st.session_state.player_stats:
-        if player.startswith("Kat"):
-            st.write(f"DEBUG {player}: NOT FOUND in player_stats")
         return 0
     
     stats = st.session_state.player_stats[player]
@@ -2208,15 +2206,8 @@ def calculate_player_efficiency_score(player):
     # Calculate minutes played from lineup history
     minutes_played = calculate_player_minutes_played(player)
     
-    # DEBUG: Add detailed debug output
-    if player.startswith("Kat"):
-        st.write(f"DEBUG {player}: stats dict = {stats}")
-        st.write(f"DEBUG {player}: points={points}, fg_att={fg_attempts}, ft_att={ft_attempts}, min={minutes_played}")
-    
     # If no meaningful playing time AND no shot attempts, return 0
     if minutes_played < 0.5 and fg_attempts == 0 and ft_attempts == 0:
-        if player.startswith("Kat"):
-            st.write(f"DEBUG {player}: EARLY RETURN - no minutes and no attempts")
         return 0
     
     # If player has shot attempts but very low minutes, use minimum of 0.5 minutes to avoid division issues
@@ -2224,14 +2215,8 @@ def calculate_player_efficiency_score(player):
     
     # If still no effective minutes, return 0
     if effective_minutes <= 0:
-        if player.startswith("Kat"):
-            st.write(f"DEBUG {player}: EARLY RETURN - no effective minutes")
         return 0
     
-    if player.startswith("Kat"):
-        st.write(f"DEBUG {player}: effective_minutes={effective_minutes}, continuing calculation...")
-    
-    # Rest of function continues...
     # Calculate True Shooting Percentage
     true_shooting_percentage = 0
     if fg_attempts > 0 or ft_attempts > 0:
@@ -2260,9 +2245,6 @@ def calculate_player_efficiency_score(player):
     
     # Final efficiency score
     efficiency_score = base_score + efficiency_modifier + usage_bonus - turnover_penalty
-    
-    if player.startswith("Kat"):
-        st.write(f"DEBUG {player}: base={base_score:.2f}, eff_mod={efficiency_modifier:.2f}, final={efficiency_score:.2f}")
     
     return efficiency_score  # Allow negative scores to show poor efficiency
 # ============================================================================
