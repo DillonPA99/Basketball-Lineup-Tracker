@@ -1968,7 +1968,6 @@ def color_efficiency_scores(val):
     except (ValueError, TypeError):
         return ''  # No styling if can't parse
 
-
 # ------------------------------------------------------------------
 # NEW: Capture end-of-quarter snapshot in lineup history at 0:00
 # ------------------------------------------------------------------
