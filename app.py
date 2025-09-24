@@ -5623,7 +5623,7 @@ with tab2:
                     )
             
                     st.dataframe(
-                        player_shooting_df,
+                        styled_player_df,
                         use_container_width=True,
                         hide_index=True
                     )
