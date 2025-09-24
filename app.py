@@ -1876,8 +1876,12 @@ def reset_points_off_turnovers():
 
 
 def color_plus_minus(val):
-    """Color code plus/minus values with gradient."""
+    """
+    Color code plus/minus values with gradient.
+    Dark green for highly positive, dark red for highly negative.
+    """
     try:
+        # Handle string values like "+5" or "-3"
         if isinstance(val, str):
             if val.startswith('+'):
                 numeric_val = int(val[1:])
@@ -1886,58 +1890,83 @@ def color_plus_minus(val):
         else:
             numeric_val = val
         
+        # Define gradient thresholds for plus/minus
         if numeric_val >= 10:
-            return 'background-color: #2d5016; color: white'  # Dark green
+            return 'background-color: #2d5016; color: white'  # Dark green for +10 and above
         elif numeric_val >= 5:
-            return 'background-color: #228B22; color: white'  # Medium green
+            return 'background-color: #228B22; color: white'  # Medium green for +5 to +9
         elif numeric_val >= 1:
-            return 'background-color: #90EE90'  # Light green
+            return 'background-color: #90EE90'  # Light green for +1 to +4
         elif numeric_val == 0:
-            return 'background-color: #F5F5F5'  # Light gray
+            return 'background-color: #F5F5F5'  # Light gray for 0
         elif numeric_val >= -4:
-            return 'background-color: #FFB6C1'  # Light red
+            return 'background-color: #FFB6C1'  # Light red for -1 to -4
         elif numeric_val >= -9:
-            return 'background-color: #DC143C; color: white'  # Medium red
+            return 'background-color: #DC143C; color: white'  # Medium red for -5 to -9
         else:
-            return 'background-color: #8B0000; color: white'  # Dark red
+            return 'background-color: #8B0000; color: white'  # Dark red for -10 and below
     except (ValueError, TypeError):
         return ''
 
 def color_defensive_impact(val):
-    """Color code defensive impact values with gradient."""
+    """
+    Color code defensive impact values with gradient.
+    Green for high values (better), red for low values (worse).
+    """
     try:
-        numeric_val = float(val) if isinstance(val, str) else float(val)
-        
-        if numeric_val >= 15:
-            return 'background-color: #2d5016; color: white'
-        elif numeric_val >= 8:
-            return 'background-color: #90EE90'
-        elif numeric_val >= 4:
-            return 'background-color: #FFFACD'
-        elif numeric_val >= 2:
-            return 'background-color: #FFB6C1'
+        # Handle string values - extract numeric part
+        if isinstance(val, str):
+            # Remove any extra whitespace and try to convert
+            numeric_val = float(val.strip())
         else:
-            return 'background-color: #8B0000; color: white'
+            numeric_val = float(val)
+        
+        # Define thresholds for defensive impact
+        # Excellent: 15+, Good: 8-15, Average: 4-8, Below Average: <4
+        if numeric_val >= 15:
+            return 'background-color: #2d5016; color: white'  # Dark green
+        elif numeric_val >= 8:
+            return 'background-color: #90EE90'  # Light green
+        elif numeric_val >= 4:
+            return 'background-color: #FFFACD'  # Light yellow
+        elif numeric_val >= 2:
+            return 'background-color: #FFB6C1'  # Light red
+        elif numeric_val > 0:
+            return 'background-color: #FFB6C1'  # Light red for any positive but low value
+        else:
+            return 'background-color: #F5F5F5'  # Light gray for 0
     except (ValueError, TypeError):
-        return ''
+        return ''  # No styling if can't parse
 
 def color_efficiency_scores(val):
-    """Color code efficiency scores with gradient."""
+    """
+    Color code efficiency scores with gradient.
+    Green for high values (better), red for low values (worse).
+    """
     try:
-        numeric_val = float(val) if isinstance(val, str) else float(val)
-        
-        if numeric_val >= 15:
-            return 'background-color: #2d5016; color: white'
-        elif numeric_val >= 10:
-            return 'background-color: #90EE90'
-        elif numeric_val >= 5:
-            return 'background-color: #FFFACD'
-        elif numeric_val >= 2:
-            return 'background-color: #FFB6C1'
+        # Handle string values - extract numeric part
+        if isinstance(val, str):
+            # Remove any extra whitespace and try to convert
+            numeric_val = float(val.strip())
         else:
-            return 'background-color: #8B0000; color: white'
+            numeric_val = float(val)
+        
+        # Define thresholds for efficiency scores
+        # Excellent: 15+, Good: 10-15, Average: 5-10, Below Average: <5
+        if numeric_val >= 15:
+            return 'background-color: #2d5016; color: white'  # Dark green
+        elif numeric_val >= 10:
+            return 'background-color: #90EE90'  # Light green
+        elif numeric_val >= 5:
+            return 'background-color: #FFFACD'  # Light yellow
+        elif numeric_val >= 2:
+            return 'background-color: #FFB6C1'  # Light red
+        elif numeric_val >= 0:
+            return 'background-color: #FFB6C1'  # Light red for low positive values
+        else:
+            return 'background-color: #8B0000; color: white'  # Dark red for negative
     except (ValueError, TypeError):
-        return ''
+        return ''  # No styling if can't parse
 
 
 # ------------------------------------------------------------------
