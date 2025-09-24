@@ -2206,24 +2206,29 @@ def calculate_player_efficiency_score(player):
     # Calculate minutes played from lineup history
     minutes_played = calculate_player_minutes_played(player)
     
-    # If no meaningful playing time, return 0
-    if minutes_played < 0.5 and fg_attempts == 0 and ft_attempts == 0:  
+    # DEBUG: Add temporary debug output for troubleshooting
+    if player.startswith("Kat"):  # Debug for Kat specifically
+        st.write(f"DEBUG {player}: points={points}, fg_att={fg_attempts}, ft_att={ft_attempts}, min={minutes_played}")
+    
+    # If no meaningful playing time AND no shot attempts, return 0
+    if minutes_played < 0.5 and fg_attempts == 0 and ft_attempts == 0:
         return 0
-
+    
     # If player has shot attempts but very low minutes, use minimum of 0.5 minutes to avoid division issues
     effective_minutes = max(minutes_played, 0.5) if (fg_attempts > 0 or ft_attempts > 0) else minutes_played
-
+    
+    # If still no effective minutes, return 0
     if effective_minutes <= 0:
         return 0
     
     # Calculate True Shooting Percentage
     # TS% = Points / (2 * True Shooting Attempts)
     # True Shooting Attempts = FGA + 0.44 * FTA
+    true_shooting_percentage = 0
     if fg_attempts > 0 or ft_attempts > 0:
         true_shooting_attempts = fg_attempts + (0.44 * ft_attempts)
-        true_shooting_percentage = points / (2 * true_shooting_attempts) if true_shooting_attempts > 0 else 0
-    else:
-        true_shooting_percentage = 0
+        if true_shooting_attempts > 0:
+            true_shooting_percentage = points / (2 * true_shooting_attempts)
     
     # Calculate per-minute stats
     points_per_minute = points / effective_minutes
@@ -2236,7 +2241,7 @@ def calculate_player_efficiency_score(player):
     # Efficiency bonus - TS% above 50% gets bonus, below 50% gets penalty
     # Scale TS% to a reasonable range (0.5 = average, 0.6 = excellent)
     efficiency_modifier = 0
-    if (fg_attempts + ft_attempts) >= 3:  # Only apply efficiency modifier with meaningful sample
+    if (fg_attempts + ft_attempts) >= 2:  # Lowered threshold from 3 to 2
         efficiency_modifier = (true_shooting_percentage - 0.5) * 20  # 60% TS = +2, 40% TS = -2
     
     # Turnover penalty per minute (scaled appropriately)
@@ -2248,8 +2253,11 @@ def calculate_player_efficiency_score(player):
     # Final efficiency score
     efficiency_score = base_score + efficiency_modifier + usage_bonus - turnover_penalty
     
+    # DEBUG: Add temporary debug output for troubleshooting
+    if player.startswith("Kat"):  # Debug for Kat specifically
+        st.write(f"DEBUG {player}: base={base_score:.2f}, eff_mod={efficiency_modifier:.2f}, final={efficiency_score:.2f}")
+    
     return max(0, efficiency_score)  # Don't allow negative scores
-
 # ============================================================================
 # DEFENSIVE IMPACT CALCULATION (Time-Based with Weighting)
 # ============================================================================
