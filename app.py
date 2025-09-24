@@ -1876,12 +1876,8 @@ def reset_points_off_turnovers():
 
 
 def color_plus_minus(val):
-    """
-    Color code plus/minus values in dataframes.
-    Green for positive, red for negative, black for zero.
-    """
+    """Color code plus/minus values with gradient."""
     try:
-        # Handle string values like "+5" or "-3"
         if isinstance(val, str):
             if val.startswith('+'):
                 numeric_val = int(val[1:])
@@ -1890,12 +1886,56 @@ def color_plus_minus(val):
         else:
             numeric_val = val
         
-        if numeric_val > 0:
-            return 'background-color: lightgreen'
-        elif numeric_val < 0:
-            return 'background-color: lightcoral'
+        if numeric_val >= 10:
+            return 'background-color: #2d5016; color: white'  # Dark green
+        elif numeric_val >= 5:
+            return 'background-color: #228B22; color: white'  # Medium green
+        elif numeric_val >= 1:
+            return 'background-color: #90EE90'  # Light green
+        elif numeric_val == 0:
+            return 'background-color: #F5F5F5'  # Light gray
+        elif numeric_val >= -4:
+            return 'background-color: #FFB6C1'  # Light red
+        elif numeric_val >= -9:
+            return 'background-color: #DC143C; color: white'  # Medium red
         else:
-            return 'background-color: lightgray'
+            return 'background-color: #8B0000; color: white'  # Dark red
+    except (ValueError, TypeError):
+        return ''
+
+def color_defensive_impact(val):
+    """Color code defensive impact values with gradient."""
+    try:
+        numeric_val = float(val) if isinstance(val, str) else float(val)
+        
+        if numeric_val >= 15:
+            return 'background-color: #2d5016; color: white'
+        elif numeric_val >= 8:
+            return 'background-color: #90EE90'
+        elif numeric_val >= 4:
+            return 'background-color: #FFFACD'
+        elif numeric_val >= 2:
+            return 'background-color: #FFB6C1'
+        else:
+            return 'background-color: #8B0000; color: white'
+    except (ValueError, TypeError):
+        return ''
+
+def color_efficiency_scores(val):
+    """Color code efficiency scores with gradient."""
+    try:
+        numeric_val = float(val) if isinstance(val, str) else float(val)
+        
+        if numeric_val >= 15:
+            return 'background-color: #2d5016; color: white'
+        elif numeric_val >= 10:
+            return 'background-color: #90EE90'
+        elif numeric_val >= 5:
+            return 'background-color: #FFFACD'
+        elif numeric_val >= 2:
+            return 'background-color: #FFB6C1'
+        else:
+            return 'background-color: #8B0000; color: white'
     except (ValueError, TypeError):
         return ''
 
@@ -5544,7 +5584,16 @@ with tab2:
                 if player_shooting_data:
                     player_shooting_df = pd.DataFrame(player_shooting_data)
                     player_shooting_df = player_shooting_df.sort_values('Points', ascending=False)
-                    
+
+                    # Apply color styling to the dataframe
+                    styled_df = player_shooting_df.style.applymap(
+                        color_plus_minus, subset=['+/-']
+                    ).applymap(
+                        color_defensive_impact, subset=['Def Impact']
+                    ).applymap(
+                        color_efficiency_scores, subset=['Off. Eff.', 'Def. Eff.']
+                    )
+            
                     st.dataframe(
                         player_shooting_df,
                         use_container_width=True,
