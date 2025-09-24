@@ -5614,7 +5614,7 @@ with tab2:
                     player_shooting_df = player_shooting_df.sort_values('Points', ascending=False)
 
                     # Apply color styling to the dataframe
-                    styled_df = player_shooting_df.style.applymap(
+                    styled_player_df = player_shooting_df.style.applymap(
                         color_plus_minus, subset=['+/-']
                     ).applymap(
                         color_defensive_impact, subset=['Def Impact']
