@@ -5520,10 +5520,6 @@ with tab2:
                     efg_pct = 0
                     if stats['field_goals_attempted'] > 0:
                         efg_pct = ((stats['field_goals_made'] + 0.5 * stats['three_pointers_made']) / stats['field_goals_attempted']) * 100
-
-                    if player.startswith("Kat"):
-                        st.write(f"DEBUG {player}: offensive_efficiency value going to table = {offensive_efficiency}")
-
                     
                     player_shooting_data.append({
                         'Player': player.split('(')[0].strip(),
