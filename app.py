@@ -1874,7 +1874,7 @@ def reset_points_off_turnovers():
     st.session_state.lineup_points_off_turnovers = defaultdict(int)
     st.session_state.last_turnover_event = None
 
-ef color_ft_percentage(val):
+def color_ft_percentage(val):
     """Color code FT percentage with gradient (80%+ green, under 60% red)."""
     try:
         if isinstance(val, str):
