@@ -1891,8 +1891,12 @@ def color_ft_percentage(val):
             return 'background-color: #228B22; color: white'  # Medium green
         elif numeric_val >= 75:
             return 'background-color: #90EE90'  # Light green
+        elif numeric_val >= 70:
+            return 'background-color: #F5F5F5'  # Light gray
         elif numeric_val >= 65:
-            return 'background-color: #FFACD'  # Light yellow
+            return 'background-color: #F5F5F5'  # Light gray
+        elif numeric_val >= 60:
+            return 'background-color: #F5F5F5'  # Light gray
         elif numeric_val >= 55:
             return 'background-color: #FFB6C1'  # Light red
         elif numeric_val >= 50:
@@ -1920,11 +1924,11 @@ def color_2pt_percentage(val):
         elif numeric_val >= 55:
             return 'background-color: #90EE90'  # Light green
         elif numeric_val >= 50:
-            return 'background-color: #FFACD'  # Light gray
+            return 'background-color: #F5F5F5'  # Light gray
         elif numeric_val >= 45:
-            return 'background-color: #FFACD'  # Light gray
+            return 'background-color: #F5F5F5'  # Light gray
         elif numeric_val >= 40:
-            return 'background-color: #FFACD'  # Light gray
+            return 'background-color: #F5F5F5'  # Light gray
         elif numeric_val >= 35:
             return 'background-color: #FFB6C1'  # Light red
         elif numeric_val >= 30:
@@ -1952,9 +1956,9 @@ def color_3pt_percentage(val):
         elif numeric_val >= 32:
             return 'background-color: #90EE90'  # Light green
         elif numeric_val >= 31:
-            return 'background-color: #FFACD'  # Light gray
+            return 'background-color: #F5F5F5'  # Light gray
         elif numeric_val >= 30:
-            return 'background-color: #FFACD'  # Light gray
+            return 'background-color: #F5F5F5'  # Light gray
         elif numeric_val >= 28:
             return 'background-color: #FFB6C1'  # Light red
         elif numeric_val >= 25:
@@ -1981,8 +1985,12 @@ def color_fg_percentage(val):
             return 'background-color: #228B22; color: white'  # Medium green
         elif numeric_val >= 47:
             return 'background-color: #90EE90'  # Light green
+        elif numeric_val >= 45:
+            return 'background-color: #F5F5F5'  # Light gray
         elif numeric_val >= 42:
-            return 'background-color: #FFACD'  # Light yellow
+            return 'background-color: #F5F5F5'  # Light gray
+        elif numeric_val >= 40:
+            return 'background-color: #F5F5F5'  # Light gray
         elif numeric_val >= 35:
             return 'background-color: #FFB6C1'  # Light red
         elif numeric_val >= 30:
@@ -2009,8 +2017,12 @@ def color_efg_percentage(val):
             return 'background-color: #228B22; color: white'  # Medium green
         elif numeric_val >= 52:
             return 'background-color: #90EE90'  # Light green
+        elif numeric_val >= 50:
+            return 'background-color: #F5F5F5'  # Light gray
         elif numeric_val >= 47:
-            return 'background-color: #FFACD'  # Light yellow
+            return 'background-color: #F5F5F5'  # Light gray
+        elif numeric_val >= 45:
+            return 'background-color: #F5F5F5'  # Light gray
         elif numeric_val >= 42:
             return 'background-color: #FFB6C1'  # Light red
         elif numeric_val >= 38:
@@ -2037,8 +2049,12 @@ def color_2pt_percentage(val):
             return 'background-color: #228B22; color: white'  # Medium green
         elif numeric_val >= 55:
             return 'background-color: #90EE90'  # Light green
-        elif numeric_val >= 44:
-            return 'background-color: #FFACD'  # Light yellow
+        elif numeric_val >= 50:
+            return 'background-color: #F5F5F5'  # Light gray
+        elif numeric_val >= 45:
+            return 'background-color: #F5F5F5'  # Light gray
+        elif numeric_val >= 40:
+            return 'background-color: #F5F5F5'  # Light gray
         elif numeric_val >= 35:
             return 'background-color: #FFB6C1'  # Light red
         elif numeric_val >= 30:
@@ -2065,8 +2081,10 @@ def color_3pt_percentage(val):
             return 'background-color: #228B22; color: white'  # Medium green
         elif numeric_val >= 35:
             return 'background-color: #90EE90'  # Light green
+        elif numeric_val >= 32:
+            return 'background-color: #F5F5F5'  # Light gray
         elif numeric_val >= 30:
-            return 'background-color: #FFFACD'  # Light yellow
+            return 'background-color: #F5F5F5'  # Light gray
         elif numeric_val >= 28:
             return 'background-color: #FFB6C1'  # Light red
         elif numeric_val >= 25:
@@ -2076,6 +2094,81 @@ def color_3pt_percentage(val):
     except (ValueError, TypeError):
         return ''
 
+def color_fg_percentage(val):
+    """Color code overall FG percentage with gradient (50%+ green, 40% and under red)."""
+    try:
+        if isinstance(val, str):
+            if val.endswith('%'):
+                numeric_val = float(val[:-1])
+            else:
+                return ''
+        else:
+            numeric_val = float(val)
+        
+        if numeric_val >= 55:
+            return 'background-color: #006400; color: white'  # Dark green
+        elif numeric_val >= 52:
+            return 'background-color: #228B22; color: white'  # Forest green
+        elif numeric_val >= 50:
+            return 'background-color: #32CD32'  # Lime green
+        elif numeric_val >= 47:
+            return 'background-color: #90EE90'  # Light green
+        elif numeric_val >= 45:
+            return 'background-color: #FFFF99'  # Light yellow
+        elif numeric_val >= 42:
+            return 'background-color: #FFD700'  # Gold
+        elif numeric_val >= 40:
+            return 'background-color: #FFA500'  # Orange
+        elif numeric_val >= 37:
+            return 'background-color: #FF7F50'  # Coral
+        elif numeric_val >= 33:
+            return 'background-color: #FF6347'  # Tomato
+        elif numeric_val >= 30:
+            return 'background-color: #FF4500; color: white'  # Orange red
+        elif numeric_val >= 25:
+            return 'background-color: #DC143C; color: white'  # Crimson
+        else:
+            return 'background-color: #8B0000; color: white'  # Dark red
+    except (ValueError, TypeError):
+        return ''
+
+def color_efg_percentage(val):
+    """Color code eFG percentage with gradient (55%+ green, 45% and under red)."""
+    try:
+        if isinstance(val, str):
+            if val.endswith('%'):
+                numeric_val = float(val[:-1])
+            else:
+                return ''
+        else:
+            numeric_val = float(val)
+        
+        if numeric_val >= 60:
+            return 'background-color: #006400; color: white'  # Dark green
+        elif numeric_val >= 57:
+            return 'background-color: #228B22; color: white'  # Forest green
+        elif numeric_val >= 55:
+            return 'background-color: #32CD32'  # Lime green
+        elif numeric_val >= 52:
+            return 'background-color: #90EE90'  # Light green
+        elif numeric_val >= 50:
+            return 'background-color: #FFFF99'  # Light yellow
+        elif numeric_val >= 47:
+            return 'background-color: #FFD700'  # Gold
+        elif numeric_val >= 45:
+            return 'background-color: #FFA500'  # Orange
+        elif numeric_val >= 42:
+            return 'background-color: #FF7F50'  # Coral
+        elif numeric_val >= 38:
+            return 'background-color: #FF6347'  # Tomato
+        elif numeric_val >= 35:
+            return 'background-color: #FF4500; color: white'  # Orange red
+        elif numeric_val >= 30:
+            return 'background-color: #DC143C; color: white'  # Crimson
+        else:
+            return 'background-color: #8B0000; color: white'  # Dark red
+    except (ValueError, TypeError):
+        return ''
 
 def color_points(val):
     """Color code points scored with gradient."""
@@ -2145,99 +2238,6 @@ def color_turnovers(val):
             return 'background-color: #8B0000; color: white'  # Dark red for 5+
     except (ValueError, TypeError):
         return ''
-        
-def color_plus_minus(val):
-    """
-    Color code plus/minus values with gradient.
-    Dark green for highly positive, dark red for highly negative.
-    """
-    try:
-        # Handle string values like "+5" or "-3"
-        if isinstance(val, str):
-            if val.startswith('+'):
-                numeric_val = int(val[1:])
-            else:
-                numeric_val = int(val)
-        else:
-            numeric_val = val
-        
-        # Define gradient thresholds for plus/minus
-        if numeric_val >= 10:
-            return 'background-color: #2d5016; color: white'  # Dark green for +10 and above
-        elif numeric_val >= 5:
-            return 'background-color: #228B22; color: white'  # Medium green for +5 to +9
-        elif numeric_val >= 1:
-            return 'background-color: #90EE90'  # Light green for +1 to +4
-        elif numeric_val == 0:
-            return 'background-color: #FFFACD'  # Light yellow
-        elif numeric_val >= -4:
-            return 'background-color: #FFB6C1'  # Light red for -1 to -4
-        elif numeric_val >= -9:
-            return 'background-color: #DC143C; color: white'  # Medium red for -5 to -9
-        else:
-            return 'background-color: #8B0000; color: white'  # Dark red for -10 and below
-    except (ValueError, TypeError):
-        return ''
-
-def color_defensive_impact(val):
-    """
-    Color code defensive impact values with gradient.
-    Green for high values (better), red for low values (worse).
-    """
-    try:
-        # Handle string values - extract numeric part
-        if isinstance(val, str):
-            # Remove any extra whitespace and try to convert
-            numeric_val = float(val.strip())
-        else:
-            numeric_val = float(val)
-        
-        # Define thresholds for defensive impact
-        # Excellent: 15+, Good: 8-15, Average: 4-8, Below Average: <4
-        if numeric_val >= 15:
-            return 'background-color: #2d5016; color: white'  # Dark green
-        elif numeric_val >= 8:
-            return 'background-color: #90EE90'  # Light green
-        elif numeric_val >= 4:
-            return 'background-color: #FFFACD'  # Light yellow
-        elif numeric_val >= 2:
-            return 'background-color: #FFB6C1'  # Light red
-        elif numeric_val > 0:
-            return 'background-color: #FFB6C1'  # Light red for any positive but low value
-        else:
-            return 'background-color: #F5F5F5'  # Light gray for 0
-    except (ValueError, TypeError):
-        return ''  # No styling if can't parse
-
-def color_efficiency_scores(val):
-    """
-    Color code efficiency scores with gradient.
-    Green for high values (better), red for low values (worse).
-    """
-    try:
-        # Handle string values - extract numeric part
-        if isinstance(val, str):
-            # Remove any extra whitespace and try to convert
-            numeric_val = float(val.strip())
-        else:
-            numeric_val = float(val)
-        
-        # Define thresholds for efficiency scores
-        # Excellent: 15+, Good: 10-15, Average: 5-10, Below Average: <5
-        if numeric_val >= 15:
-            return 'background-color: #2d5016; color: white'  # Dark green
-        elif numeric_val >= 10:
-            return 'background-color: #90EE90'  # Light green
-        elif numeric_val >= 5:
-            return 'background-color: #FFFACD'  # Light yellow
-        elif numeric_val >= 2:
-            return 'background-color: #FFB6C1'  # Light red
-        elif numeric_val >= 0:
-            return 'background-color: #FFB6C1'  # Light red for low positive values
-        else:
-            return 'background-color: #8B0000; color: white'  # Dark red for negative
-    except (ValueError, TypeError):
-        return ''  # No styling if can't parse
 
 # ------------------------------------------------------------------
 # NEW: Capture end-of-quarter snapshot in lineup history at 0:00
