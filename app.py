@@ -1892,7 +1892,7 @@ def color_ft_percentage(val):
         elif numeric_val >= 75:
             return 'background-color: #90EE90'  # Light green
         elif numeric_val >= 65:
-            return 'background-color: #FFACD'  # Light yellow
+            return 'background-color: #F5F5F5'  # Light yellow
         elif numeric_val >= 55:
             return 'background-color: #FFB6C1'  # Light red
         elif numeric_val >= 50:
