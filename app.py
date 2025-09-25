@@ -1892,7 +1892,7 @@ def color_ft_percentage(val):
         elif numeric_val >= 75:
             return 'background-color: #90EE90'  # Light green
         elif numeric_val >= 65:
-            return 'background-color: #F5F5F5'  # Light yellow
+            return 'background-color: #FFACD'  # Light yellow
         elif numeric_val >= 55:
             return 'background-color: #FFB6C1'  # Light red
         elif numeric_val >= 50:
@@ -1920,11 +1920,11 @@ def color_2pt_percentage(val):
         elif numeric_val >= 55:
             return 'background-color: #90EE90'  # Light green
         elif numeric_val >= 50:
-            return 'background-color: #F5F5F5'  # Light gray
+            return 'background-color: #FFACD'  # Light gray
         elif numeric_val >= 45:
-            return 'background-color: #F5F5F5'  # Light gray
+            return 'background-color: #FFACD'  # Light gray
         elif numeric_val >= 40:
-            return 'background-color: #F5F5F5'  # Light gray
+            return 'background-color: #FFACD'  # Light gray
         elif numeric_val >= 35:
             return 'background-color: #FFB6C1'  # Light red
         elif numeric_val >= 30:
@@ -1952,9 +1952,9 @@ def color_3pt_percentage(val):
         elif numeric_val >= 32:
             return 'background-color: #90EE90'  # Light green
         elif numeric_val >= 31:
-            return 'background-color: #F5F5F5'  # Light gray
+            return 'background-color: #FFACD'  # Light gray
         elif numeric_val >= 30:
-            return 'background-color: #F5F5F5'  # Light gray
+            return 'background-color: #FFACD'  # Light gray
         elif numeric_val >= 28:
             return 'background-color: #FFB6C1'  # Light red
         elif numeric_val >= 25:
