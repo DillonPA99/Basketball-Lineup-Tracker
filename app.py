@@ -2054,8 +2054,29 @@ def color_plus_minus(val):
     except (ValueError, TypeError):
         return ''
 
-def color_efficiency_scores(val):
-    """Color code efficiency scores with gradient (for Off. Eff. and Def. Eff.)."""
+def color_offensive_efficiency_scores(val):
+    """Color code efficiency scores with gradient (for Off. Eff.)."""
+    try:
+        if isinstance(val, str):
+            numeric_val = float(val.strip())
+        else:
+            numeric_val = float(val)
+        
+        if numeric_val >= 13.5:
+            return 'background-color: #2d5016; color: white'  # Dark green
+        elif numeric_val >= 10.5:
+            return 'background-color: #90EE90'  # Light green
+        elif numeric_val >= 8:
+            return 'background-color: #FFFACD'  # Light yellow
+        elif numeric_val >= 6:
+            return 'background-color: #FFB6C1'  # Light red
+        else:
+            return 'background-color: #8B0000; color: white'  # Dark red
+    except (ValueError, TypeError):
+        return ''
+
+def color_defensive_efficiency_scores(val):
+    """Color code efficiency scores with gradient (for Def. Eff.)."""
     try:
         if isinstance(val, str):
             numeric_val = float(val.strip())
@@ -5773,7 +5794,9 @@ with tab2:
                     ).applymap(
                         color_defensive_impact_per_minute, subset=['Def Impact/Min']
                     ).applymap(
-                        color_efficiency_scores, subset=['Off. Eff.', 'Def. Eff.']
+                        color_offensive_efficiency_scores, subset=['Off. Eff.']
+                    ).applymap(
+                        color_defensive_efficiency_scores, subset=['Def. Eff.']
                     ).applymap(
                         color_points, subset=['Points']
                     ).applymap(
