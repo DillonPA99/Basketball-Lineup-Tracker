@@ -3353,24 +3353,8 @@ def display_defensive_analytics():
             # Sort by Total Def. Events
             lineup_def_df = lineup_def_df.sort_values('Total Def. Events', ascending=False, key=lambda x: pd.to_numeric(x, errors='coerce'))
             st.dataframe(lineup_def_df, use_container_width=True, hide_index=True)
-            
-            # Best and worst defensive lineups
-            if len(lineup_def_df) > 0:
-                col1, col2 = st.columns(2)
-                with col1:
-                    best_lineup = lineup_def_df.iloc[0]
-                    st.success(f"**Best Defensive Lineup:** {best_lineup['Def. Impact Score']} Def. Impact Score")
-                    st.write(f"_{best_lineup['Lineup']}_")
-                    st.caption(f"{best_lineup['Opp. Turnovers']} TOs + {best_lineup['Opp. Missed FGs']} misses in {best_lineup['Minutes Played']} min")
-                with col2:
-                    if len(lineup_def_df) > 1:
-                        worst_lineup = lineup_def_df.iloc[-1]
-                        st.error(f"**Worst Defensive Lineup:** {worst_lineup['Def. Impact Score']} Def. Impact Score")
-                        st.write(f"_{worst_lineup['Lineup']}_")
-                        st.caption(f"{worst_lineup['Opp. Turnovers']} TOs + {worst_lineup['Opp. Missed FGs']} misses in {worst_lineup['Minutes Played']} min")
         else:
             st.info("No lineup defensive data available yet.")
-
             
 def generate_game_report_excel():
     """Generate a comprehensive Excel report of the game data."""
