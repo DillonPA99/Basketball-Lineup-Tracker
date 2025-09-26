@@ -2555,7 +2555,7 @@ def calculate_time_on_court():
     return lineup_time_data
 
 def calculate_individual_defensive_impact():
-    """Calculate defensive impact for individual players - FIXED VERSION."""
+    """Calculate defensive impact for individual players - UPDATED VERSION."""
     player_defensive_stats = {}
     
     # Initialize stats for all players who have been on court
@@ -2607,16 +2607,17 @@ def calculate_individual_defensive_impact():
                         player_defensive_stats[player]['opponent_missed_shots'] += 1
                         player_defensive_stats[player]['weighted_defensive_events'] += 1.0  # Misses weighted 1x
     
-    # Calculate per-minute defensive metrics
+    # Calculate per-minute defensive metrics - UPDATED CALCULATION
     for player, stats in player_defensive_stats.items():
         total_minutes = stats['total_minutes_played']
         
         if total_minutes > 0:
-            stats['defensive_events_per_minute'] = stats['weighted_defensive_events'] / total_minutes
+            # CHANGED: Now divides total defensive impact by minutes played
+            stats['defensive_impact_per_minute'] = stats['weighted_defensive_events'] / total_minutes
             stats['turnovers_per_minute'] = stats['opponent_turnovers'] / total_minutes
             stats['missed_shots_per_minute'] = stats['opponent_missed_shots'] / total_minutes
         else:
-            stats['defensive_events_per_minute'] = 0
+            stats['defensive_impact_per_minute'] = 0
             stats['turnovers_per_minute'] = 0
             stats['missed_shots_per_minute'] = 0
     
@@ -2636,10 +2637,10 @@ def calculate_player_efficiency_score_with_defense(player):
     defensive_impact = 0
     
     if player in defensive_stats:
-        defensive_events_per_min = defensive_stats[player].get('defensive_events_per_minute', 0)
+        defensive_impact_per_min = defensive_stats[player].get('defensive_impact_per_minute', 0)
         # Scale defensive impact to be comparable to offensive score
         # Multiply by 5 to give defensive events per minute appropriate weight
-        defensive_impact = defensive_events_per_min * 5
+        defensive_impact = defensive_impact_per_min * 5
     
     total_efficiency = offensive_score + defensive_impact
     return total_efficiency
@@ -2732,7 +2733,7 @@ def calculate_lineup_chemistry_score(lineup):
 
 
 def recommend_best_lineup(include_defense=True):
-    """Recommend the best 5-player lineup using multiple criteria including defense."""
+    """Recommend the best 5-player lineup using multiple criteria including defense - UPDATED VERSION."""
     if len(st.session_state.roster) < 5:
         return None, "Need at least 5 players in roster"
     
@@ -2757,13 +2758,14 @@ def recommend_best_lineup(include_defense=True):
         # 1. Offensive efficiency (separate from defensive)
         offensive_efficiency = sum(calculate_player_efficiency_score(player) for player in lineup_list)
         
-        # 2. Defensive efficiency (if enabled)
+        # 2. Defensive efficiency (if enabled) - UPDATED CALCULATION
         defensive_efficiency = 0
         if include_defense:
             defensive_stats = calculate_individual_defensive_impact()
             for player in lineup_list:
                 if player in defensive_stats:
-                    defensive_efficiency += defensive_stats[player].get('defensive_events_per_minute', 0) * 5
+                    # CHANGED: Now uses defensive_impact_per_minute instead of defensive_events_per_minute
+                    defensive_efficiency += defensive_stats[player].get('defensive_impact_per_minute', 0) * 5
         
         # 3. Positional balance
         position_score = calculate_position_balance_score(lineup_list)
@@ -2896,7 +2898,7 @@ def display_lineup_recommendation():
 # Remove the old combined efficiency function since we're calculating offense and defense separately
 
 def calculate_lineup_defensive_rating():
-    """Calculate time-based defensive rating for each 5-man lineup combination - FIXED VERSION."""
+    """Calculate time-based defensive rating for each 5-man lineup combination - UPDATED VERSION."""
     lineup_defensive_ratings = {}
     
     def parse_game_time(time_str):
@@ -2983,22 +2985,23 @@ def calculate_lineup_defensive_rating():
                           lineup_defensive_ratings[current_lineup]['opponent_missed_shots'] * 1.0)
         lineup_defensive_ratings[current_lineup]['defensive_events'] = weighted_events
     
-    # Convert to final format with per-minute stats
+    # Convert to final format with per-minute stats - UPDATED CALCULATION
     final_ratings = {}
     for lineup_tuple, stats in lineup_defensive_ratings.items():
         total_minutes = stats['total_time_seconds'] / 60.0
         
         if total_minutes > 0:
-            defensive_events_per_minute = stats['defensive_events'] / total_minutes
+            # CHANGED: Now divides total defensive impact by minutes played
+            defensive_impact_per_minute = stats['defensive_events'] / total_minutes
             turnovers_per_minute = stats['opponent_turnovers'] / total_minutes
             missed_shots_per_minute = stats['opponent_missed_shots'] / total_minutes
             
-            # Defensive efficiency score (higher is better)
-            defensive_efficiency = defensive_events_per_minute * 10
+            # Defensive efficiency score (higher is better) - UPDATED
+            defensive_efficiency = defensive_impact_per_minute * 10
             
             lineup_key = " | ".join(lineup_tuple)
             final_ratings[lineup_key] = {
-                'defensive_events_per_minute': defensive_events_per_minute,
+                'defensive_impact_per_minute': defensive_impact_per_minute,  # CHANGED from defensive_events_per_minute
                 'turnovers_per_minute': turnovers_per_minute,
                 'missed_shots_per_minute': missed_shots_per_minute,
                 'defensive_efficiency': defensive_efficiency,
@@ -3012,7 +3015,7 @@ def calculate_lineup_defensive_rating():
     return final_ratings
 
 def display_defensive_analytics():
-    """Display defensive impact analytics with total defensive events stat - UPDATED VERSION."""
+    """Display defensive impact analytics - UPDATED VERSION."""
     st.subheader("🛡️ Defensive Impact Analytics")
     
     if not st.session_state.lineup_history:
@@ -3036,7 +3039,7 @@ def display_defensive_analytics():
                     'Opp. Turnovers': f"{stats['opponent_turnovers']:.0f}",
                     'Opp. Missed FGs': f"{stats['opponent_missed_shots']:.0f}",
                     'Total Def. Events': f"{total_def_events:.0f}",
-                    'Def Events/Min': f"{stats['defensive_events_per_minute']:.2f}",
+                    'Def Impact/Min': f"{stats['defensive_impact_per_minute']:.2f}",  # CHANGED from 'Def Events/Min'
                     'Def. Impact Score': f"{stats['weighted_defensive_events']:.1f}"
                     
                 })
@@ -3066,7 +3069,7 @@ def display_defensive_analytics():
                 'Opp. Turnovers': f"{stats['total_opponent_turnovers']:.0f}",
                 'Opp. Missed FGs': f"{stats['total_opponent_missed_shots']:.0f}",
                 'Total Def. Events': f"{total_lineup_def_events:.0f}",
-                'Def Events/Min': f"{stats['defensive_events_per_minute']:.2f}",
+                'Def Impact/Min': f"{stats['defensive_impact_per_minute']:.2f}",  # CHANGED from 'Def Events/Min'
                 'Def. Impact Score': f"{stats['total_defensive_events']:.1f}"
             })
         
@@ -3092,6 +3095,7 @@ def display_defensive_analytics():
                         st.caption(f"{worst_lineup['Opp. Turnovers']} TOs + {worst_lineup['Opp. Missed FGs']} misses in {worst_lineup['Minutes Played']} min")
         else:
             st.info("No lineup defensive data available yet.")
+
             
 def generate_game_report_excel():
     """Generate a comprehensive Excel report of the game data."""
@@ -3554,7 +3558,7 @@ Total Points: {total_points}
             email_body += f"  Opponent Missed Shots: {def_stats['opponent_missed_shots']}\n"
             email_body += f"  Defensive Impact Score: {def_stats['weighted_defensive_events']:.1f}\n"
             if def_stats['total_minutes_played'] > 0:
-                email_body += f"  Defensive Events per Minute: {def_stats['defensive_events_per_minute']:.2f}\n"
+                email_body += f"  Defensive Impact per Minute: {def_stats['defensive_impact_per_minute']:.2f}\n"
             email_body += "\n"
     
     # Lineup defensive performance
@@ -3575,7 +3579,7 @@ Total Points: {total_points}
                 email_body += f"Time Played: {def_stats['total_minutes']:.1f} minutes\n"
                 email_body += f"Opponent Turnovers: {def_stats['total_opponent_turnovers']}\n"
                 email_body += f"Opponent Missed Shots: {def_stats['total_opponent_missed_shots']}\n"
-                email_body += f"Defensive Events per Minute: {def_stats['defensive_events_per_minute']:.2f}\n"
+                email_body += f"Defensive Impact per Minute: {def_stats['defensive_impact_per_minute']:.2f}\n"
                 email_body += f"Defensive Impact Score: {def_stats['total_defensive_events']:.1f}\n\n"
         
         if sorted_def_lineups:
@@ -5727,8 +5731,8 @@ with tab2:
                     # Calculate defensive efficiency score (defensive events per minute * 10)
                     defensive_efficiency = 0
                     if minutes_played > 0:
-                        defensive_events_per_minute = def_stats.get('defensive_events_per_minute', 0)
-                        defensive_efficiency = defensive_events_per_minute * 10
+                        defensive_impact_per_minute = def_stats.get('defensive_impact_per_minute', 0) 
+                        defensive_efficiency = defensive_impact_per_minute * 10
                     
                     # Calculate 2PT stats (FG - 3PT)
                     two_pt_made = stats['field_goals_made'] - stats['three_pointers_made']
@@ -5755,7 +5759,8 @@ with tab2:
                         'FG%': f"{stats['field_goals_made']/stats['field_goals_attempted']*100:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%",
                         'eFG%': f"{efg_pct:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%",
                         'Turnovers': turnovers,
-                        'Def Impact': f"{def_impact_score:.1f}"                    
+                        'Def Impact': f"{def_impact_score:.1f}",
+                        'Def Impact/Min': f"{defensive_impact_per_minute:.1f}"
                     })
                 
                 if player_shooting_data:
@@ -5814,6 +5819,12 @@ with tab2:
                         - Higher numbers indicate more defensive impact events occurred while player was on court
                         - Examples: 15+ is excellent, 8-15 is good, 4-8 is average, <4 is below average
                         - Note: Players with more court time naturally have higher opportunity for defensive impact
+
+                        **Defensive Impact per Minute:**
+                        - Shows the rate of defensive impact per minute of play
+                        - Calculated as: Total Defensive Impact Score ÷ Minutes Played
+                        - Allows fair comparison between players with different playing times
+                        - Examples: 2.0+ is excellent, 1.0-2.0 is good, 0.5-1.0 is average, <0.5 is below average
                         """)
                     
                     # Shooting Percentage Charts (keep existing charts unchanged)
