@@ -1885,13 +1885,13 @@ def color_ft_percentage(val):
         else:
             numeric_val = float(val)
         
-        if numeric_val >= 85:
+        if numeric_val >= 70:
             return 'background-color: #2d5016; color: white'  # Dark green
-        elif numeric_val >= 80:
+        elif numeric_val >= 65:
             return 'background-color: #90EE90'  # Light green
-        elif numeric_val >= 70:
-            return 'background-color: #FFFACD'  # Light yellow
         elif numeric_val >= 60:
+            return 'background-color: #FFFACD'  # Light yellow
+        elif numeric_val >= 55:
             return 'background-color: #FFB6C1'  # Light red
         else:
             return 'background-color: #8B0000; color: white'  # Dark red
@@ -1909,13 +1909,13 @@ def color_2pt_percentage(val):
         else:
             numeric_val = float(val)
         
-        if numeric_val >= 65:
+        if numeric_val >= 55:
             return 'background-color: #2d5016; color: white'  # Dark green
-        elif numeric_val >= 60:
-            return 'background-color: #90EE90'  # Light green
         elif numeric_val >= 50:
+            return 'background-color: #90EE90'  # Light green
+        elif numeric_val >= 42:
             return 'background-color: #FFFACD'  # Light yellow
-        elif numeric_val >= 40:
+        elif numeric_val >= 37:
             return 'background-color: #FFB6C1'  # Light red
         else:
             return 'background-color: #8B0000; color: white'  # Dark red
@@ -1933,11 +1933,11 @@ def color_3pt_percentage(val):
         else:
             numeric_val = float(val)
         
-        if numeric_val >= 40:
+        if numeric_val >= 35:
             return 'background-color: #2d5016; color: white'  # Dark green
-        elif numeric_val >= 35:
+        elif numeric_val >= 32:
             return 'background-color: #90EE90'  # Light green
-        elif numeric_val >= 31:
+        elif numeric_val >= 29:
             return 'background-color: #FFFACD'  # Light yellow
         elif numeric_val >= 25:
             return 'background-color: #FFB6C1'  # Light red
@@ -1957,11 +1957,11 @@ def color_fg_percentage(val):
         else:
             numeric_val = float(val)
         
-        if numeric_val >= 55:
+        if numeric_val >= 50:
             return 'background-color: #2d5016; color: white'  # Dark green
-        elif numeric_val >= 50:
-            return 'background-color: #90EE90'  # Light green
         elif numeric_val >= 45:
+            return 'background-color: #90EE90'  # Light green
+        elif numeric_val >= 40:
             return 'background-color: #FFFACD'  # Light yellow
         elif numeric_val >= 35:
             return 'background-color: #FFB6C1'  # Light red
@@ -1981,11 +1981,11 @@ def color_efg_percentage(val):
         else:
             numeric_val = float(val)
         
-        if numeric_val >= 60:
+        if numeric_val >= 55:
             return 'background-color: #2d5016; color: white'  # Dark green
-        elif numeric_val >= 55:
-            return 'background-color: #90EE90'  # Light green
         elif numeric_val >= 50:
+            return 'background-color: #90EE90'  # Light green
+        elif numeric_val >= 45:
             return 'background-color: #FFFACD'  # Light yellow
         elif numeric_val >= 40:
             return 'background-color: #FFB6C1'  # Light red
@@ -1999,34 +1999,13 @@ def color_points(val):
     try:
         numeric_val = int(val)
         
-        if numeric_val >= 20:
+        if numeric_val >= 15:
             return 'background-color: #2d5016; color: white'  # Dark green
-        elif numeric_val >= 15:
+        elif numeric_val >= 12:
             return 'background-color: #90EE90'  # Light green
-        elif numeric_val >= 8:
+        elif numeric_val >= 7:
             return 'background-color: #FFFACD'  # Light yellow
         elif numeric_val >= 3:
-            return 'background-color: #FFB6C1'  # Light red
-        else:
-            return 'background-color: #8B0000; color: white'  # Dark red
-    except (ValueError, TypeError):
-        return ''
-
-def color_minutes_played(val):
-    """Color code minutes played with gradient."""
-    try:
-        if isinstance(val, str):
-            numeric_val = float(val)
-        else:
-            numeric_val = float(val)
-        
-        if numeric_val >= 30:
-            return 'background-color: #2d5016; color: white'  # Dark green
-        elif numeric_val >= 20:
-            return 'background-color: #90EE90'  # Light green
-        elif numeric_val >= 12:
-            return 'background-color: #FFFACD'  # Light yellow
-        elif numeric_val >= 5:
             return 'background-color: #FFB6C1'  # Light red
         else:
             return 'background-color: #8B0000; color: white'  # Dark red
@@ -2083,13 +2062,13 @@ def color_efficiency_scores(val):
         else:
             numeric_val = float(val)
         
-        if numeric_val >= 15:
+        if numeric_val >= 14.5:
             return 'background-color: #2d5016; color: white'  # Dark green
-        elif numeric_val >= 10:
+        elif numeric_val >= 12:
             return 'background-color: #90EE90'  # Light green
-        elif numeric_val >= 5:
+        elif numeric_val >= 10:
             return 'background-color: #FFFACD'  # Light yellow
-        elif numeric_val >= 0:
+        elif numeric_val >= 0.75:
             return 'background-color: #FFB6C1'  # Light red
         else:
             return 'background-color: #8B0000; color: white'  # Dark red
@@ -5797,8 +5776,6 @@ with tab2:
                         color_efficiency_scores, subset=['Off. Eff.', 'Def. Eff.']
                     ).applymap(
                         color_points, subset=['Points']
-                    ).applymap(
-                        color_minutes_played, subset=['Minutes']
                     ).applymap(
                         color_ft_percentage, subset=['FT%']
                     ).applymap(
