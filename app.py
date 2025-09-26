@@ -6270,9 +6270,19 @@ with tab2:
                 with perf_col2:
                     # Best Defensive Lineup  
                     best_defense = lineup_df.sort_values("numeric_def_eff", ascending=False).iloc[0]
+                    # Get detailed defensive stats for this lineup
+                    best_def_lineup_key = best_defense['Lineup']
+                    def_details = lineup_defensive_efficiency.get(best_def_lineup_key, {})
+    
                     st.info("🛡️ **Best Defensive Lineup**")
                     st.write(f"**{best_defense['Def. Eff.']}** Def. Efficiency")
-                    st.caption(f"{best_defense['Minutes']} minutes played")
+    
+                    # Enhanced caption with detailed defensive stats
+                    opp_tos = def_details.get('total_opponent_turnovers', 0)
+                    opp_misses = def_details.get('total_opponent_missed_shots', 0)
+                    def_impact_per_min = def_details.get('defensive_impact_per_minute', 0)
+    
+                    st.caption(f"{best_defense['Minutes']} min | {opp_tos} Opp. TOs | {opp_misses} Opp. missed FGs | {def_impact_per_min:.2f} Def impact/min")
                     st.write(f"_{best_defense['Lineup']}_")
                 
                 with perf_col3:
