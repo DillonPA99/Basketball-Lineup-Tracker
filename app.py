@@ -6284,14 +6284,6 @@ with tab2:
     
                     st.caption(f"{best_defense['Minutes']} min | {opp_tos} Opp. TOs | {opp_misses} Opp. missed FGs | {def_impact_per_min:.2f} Def impact/min")
                     st.write(f"_{best_defense['Lineup']}_")
-                
-                with perf_col3:
-                    # Best Plus/Minus Lineup
-                    best_plus_minus = lineup_df.sort_values("numeric_plus_minus", ascending=False).iloc[0]
-                    st.info("📈 **Best Plus/Minus Lineup**")
-                    st.write(f"**{best_plus_minus['Plus/Minus']}** Plus/Minus")
-                    st.caption(f"{best_plus_minus['Minutes']} minutes played")
-                    st.write(f"_{best_plus_minus['Lineup']}_")
 
                 # Show detailed breakdown in expandable section
                 with st.expander("📊 Detailed Efficiency Breakdown"):
