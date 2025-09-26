@@ -1999,11 +1999,11 @@ def color_points(val):
     try:
         numeric_val = int(val)
         
-        if numeric_val >= 15:
+        if numeric_val >= 12:
             return 'background-color: #2d5016; color: white'  # Dark green
-        elif numeric_val >= 12:
+        elif numeric_val >= 9.5:
             return 'background-color: #90EE90'  # Light green
-        elif numeric_val >= 7:
+        elif numeric_val >= 6:
             return 'background-color: #FFFACD'  # Light yellow
         elif numeric_val >= 3:
             return 'background-color: #FFB6C1'  # Light red
