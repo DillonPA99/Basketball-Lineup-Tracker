@@ -6333,8 +6333,6 @@ with tab2:
                     use_container_width=True,
                     hide_index=True
                 )
-           else:
-                st.info("No lineup shooting data available yet.")
                 
                 # Enhanced Best and Worst Lineups
                 if len(lineup_df) > 0:
