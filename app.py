@@ -6206,7 +6206,7 @@ with tab2:
                 lineup_df = lineup_df.sort_values('numeric_plus_minus', ascending=False)
 
                 # Display main columns
-                main_columns = ["Lineup", "Appearances", "Minutes", "Off. Eff.", "Def. Eff.", "Plus/Minus", "Total Points", "Points off TO"]
+                main_columns = ["Lineup", "Appearances", "Minutes", "Off. Eff.", "Def. Eff.", "Plus/Minus", "Total Points", "TS%", "Points off TO", "TO Rate" ]
                 
                 st.dataframe(
                     lineup_df[main_columns].style.applymap(
