@@ -2106,9 +2106,9 @@ def color_defensive_impact(val):
         
         if numeric_val >= 45:
             return 'background-color: #2d5016; color: white'  # Dark green
-        elif numeric_val >= 38:
+        elif numeric_val >= 36:
             return 'background-color: #90EE90'  # Light green
-        elif numeric_val >= 32:
+        elif numeric_val >= 30:
             return 'background-color: #FFFACD'  # Light yellow
         elif numeric_val >= 20:
             return 'background-color: #FFB6C1'  # Light red
