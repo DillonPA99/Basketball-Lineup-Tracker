@@ -2117,6 +2117,27 @@ def color_defensive_impact(val):
     except (ValueError, TypeError):
         return ''
 
+def color_defensive_impact_per_minute(val):
+    """Color code defensive impact per minute values with gradient."""
+    try:
+        if isinstance(val, str):
+            numeric_val = float(val.strip())
+        else:
+            numeric_val = float(val)
+        
+        if numeric_val >= 2.00:
+            return 'background-color: #2d5016; color: white'  # Dark green
+        elif numeric_val >= 1.35:
+            return 'background-color: #90EE90'  # Light green
+        elif numeric_val >= 1.00:
+            return 'background-color: #FFFACD'  # Light yellow
+        elif numeric_val >= 0.75:
+            return 'background-color: #FFB6C1'  # Light red
+        else:
+            return 'background-color: #8B0000; color: white'  # Dark red
+    except (ValueError, TypeError):
+        return ''
+
 # ------------------------------------------------------------------
 # NEW: Capture end-of-quarter snapshot in lineup history at 0:00
 # ------------------------------------------------------------------
@@ -3039,7 +3060,7 @@ def display_defensive_analytics():
                     'Opp. Turnovers': f"{stats['opponent_turnovers']:.0f}",
                     'Opp. Missed FGs': f"{stats['opponent_missed_shots']:.0f}",
                     'Total Def. Events': f"{total_def_events:.0f}",
-                    'Def Impact/Min': f"{stats['defensive_impact_per_minute']:.9f}",
+                    'Def Impact/Min': f"{stats['defensive_impact_per_minute']:.2f}",
                     'Def. Impact Score': f"{stats['weighted_defensive_events']:.1f}"
                     
                 })
@@ -3069,7 +3090,7 @@ def display_defensive_analytics():
                 'Opp. Turnovers': f"{stats['total_opponent_turnovers']:.0f}",
                 'Opp. Missed FGs': f"{stats['total_opponent_missed_shots']:.0f}",
                 'Total Def. Events': f"{total_lineup_def_events:.0f}",
-                'Def Impact/Min': f"{stats['defensive_impact_per_minute']:.2f}",  # CHANGED from 'Def Events/Min'
+                'Def Impact/Min': f"{stats['defensive_impact_per_minute']:.2f}", 
                 'Def. Impact Score': f"{stats['total_defensive_events']:.1f}"
             })
         
@@ -5759,8 +5780,8 @@ with tab2:
                         'FG%': f"{stats['field_goals_made']/stats['field_goals_attempted']*100:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%",
                         'eFG%': f"{efg_pct:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%",
                         'Turnovers': turnovers,
-                        'Def Impact': f"{def_impact_score:.1f}",
-                        'Def Impact/Min': f"{defensive_impact_per_minute:.1f}"
+                        'Def Impact/Min': f"{defensive_impact_per_minute:.2f}",
+                        'Def Impact': f"{def_impact_score:.1f}"
                     })
                 
                 if player_shooting_data:
@@ -5772,6 +5793,8 @@ with tab2:
                         color_plus_minus, subset=['+/-']
                     ).applymap(
                         color_defensive_impact, subset=['Def Impact']
+                    ).applymap(
+                        color_defensive_impact_per_minute, subset=['Def Impact/Min']
                     ).applymap(
                         color_efficiency_scores, subset=['Off. Eff.', 'Def. Eff.']
                     ).applymap(
