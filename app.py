@@ -3039,7 +3039,7 @@ def display_defensive_analytics():
                     'Opp. Turnovers': f"{stats['opponent_turnovers']:.0f}",
                     'Opp. Missed FGs': f"{stats['opponent_missed_shots']:.0f}",
                     'Total Def. Events': f"{total_def_events:.0f}",
-                    'Def Impact/Min': f"{stats['defensive_impact_per_minute']:.2f}",  # CHANGED from 'Def Events/Min'
+                    'Def Impact/Min': f"{stats['defensive_impact_per_minute']:.9f}",
                     'Def. Impact Score': f"{stats['weighted_defensive_events']:.1f}"
                     
                 })
