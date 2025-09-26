@@ -6192,7 +6192,6 @@ with tab2:
                 def_stats = lineup_defensive_efficiency.get(lineup, {})
                 defensive_efficiency = def_stats.get('defensive_efficiency', 0)
                 
-
                 
                 # Get points off turnovers for this lineup
                 lineup_pot_points = lineup_pot.get(lineup, 0)
@@ -6212,14 +6211,16 @@ with tab2:
                     "Points off TO": lineup_pot_points,
                     "TS%": f"{off_stats.get('true_shooting_percentage', 0):.1f}%" if off_stats.get('true_shooting_percentage', 0) > 0 else "0.0%",
                     "TO Rate": f"{off_stats.get('turnover_rate', 0):.2f}" if off_stats.get('turnover_rate', 0) > 0 else "0.00",
-                    "+/-": stats['plus_minus'],
-                    "Off Eff": offensive_efficiency,
-                    "Def Eff": defensive_efficiency
+                    "numeric_plus_minus": stats['plus_minus'],
+                    "numeric_off_eff": offensive_efficiency,
+                    "numeric_def_eff": defensive_efficiency
                 })
             
             if lineup_plus_minus_data:
                 lineup_df = pd.DataFrame(lineup_plus_minus_data)
-                
+
+                lineup_df = lineup_df.sort_values('numeric_plus_minus', ascending=False)
+
                 # Display main columns
                 main_columns = ["Lineup", "Appearances", "Minutes", "Off. Eff.", "Def. Eff.", "Plus/Minus", "Total Points", "Points off TO"]
                 
