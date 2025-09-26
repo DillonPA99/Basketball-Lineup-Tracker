@@ -1894,7 +1894,7 @@ def color_ft_percentage(val):
         elif numeric_val >= 55:
             return 'background-color: #FFB6C1'  # Light red
         else:
-            return 'background-color: #8B0000; color: white'  # Dark red
+            return 'background-color: #FF0000; color: white'  # Dark red
     except (ValueError, TypeError):
         return ''
 
@@ -1918,7 +1918,7 @@ def color_2pt_percentage(val):
         elif numeric_val >= 37:
             return 'background-color: #FFB6C1'  # Light red
         else:
-            return 'background-color: #8B0000; color: white'  # Dark red
+            return 'background-color: #FF0000; color: white'  # Dark red
     except (ValueError, TypeError):
         return ''
 
@@ -1942,7 +1942,7 @@ def color_3pt_percentage(val):
         elif numeric_val >= 25:
             return 'background-color: #FFB6C1'  # Light red
         else:
-            return 'background-color: #8B0000; color: white'  # Dark red
+            return 'background-color: #FF0000; color: white'  # Dark red
     except (ValueError, TypeError):
         return ''
 
@@ -1966,7 +1966,7 @@ def color_fg_percentage(val):
         elif numeric_val >= 35:
             return 'background-color: #FFB6C1'  # Light red
         else:
-            return 'background-color: #8B0000; color: white'  # Dark red
+            return 'background-color: #FF0000; color: white'  # Dark red
     except (ValueError, TypeError):
         return ''
 
@@ -1990,7 +1990,7 @@ def color_efg_percentage(val):
         elif numeric_val >= 40:
             return 'background-color: #FFB6C1'  # Light red
         else:
-            return 'background-color: #8B0000; color: white'  # Dark red
+            return 'background-color: #FF0000; color: white'  # Dark red
     except (ValueError, TypeError):
         return ''
 
@@ -2008,7 +2008,7 @@ def color_points(val):
         elif numeric_val >= 3:
             return 'background-color: #FFB6C1'  # Light red
         else:
-            return 'background-color: #8B0000; color: white'  # Dark red
+            return 'background-color: #FF0000; color: white'  # Dark red
     except (ValueError, TypeError):
         return ''
 
@@ -2026,7 +2026,7 @@ def color_turnovers(val):
         elif numeric_val <= 3:
             return 'background-color: #FFB6C1'  # Light red
         else:
-            return 'background-color: #8B0000; color: white'  # Dark red
+            return 'background-color: #FF0000; color: white'  # Dark red
     except (ValueError, TypeError):
         return ''
 
@@ -2050,7 +2050,7 @@ def color_plus_minus(val):
         elif numeric_val >= -5:
             return 'background-color: #FFB6C1'  # Light red
         else:
-            return 'background-color: #8B0000; color: white'  # Dark red
+            return 'background-color: #FF0000; color: white'  # Dark red
     except (ValueError, TypeError):
         return ''
 
@@ -2071,7 +2071,7 @@ def color_offensive_efficiency_scores(val):
         elif numeric_val >= 6:
             return 'background-color: #FFB6C1'  # Light red
         else:
-            return 'background-color: #8B0000; color: white'  # Dark red
+            return 'background-color: #FF0000; color: white'  # Dark red
     except (ValueError, TypeError):
         return ''
 
@@ -2092,7 +2092,7 @@ def color_defensive_efficiency_scores(val):
         elif numeric_val >= 0.75:
             return 'background-color: #FFB6C1'  # Light red
         else:
-            return 'background-color: #8B0000; color: white'  # Dark red
+            return 'background-color: #FF0000; color: white'  # Dark red
     except (ValueError, TypeError):
         return ''
 
@@ -2113,7 +2113,7 @@ def color_defensive_impact(val):
         elif numeric_val >= 20:
             return 'background-color: #FFB6C1'  # Light red
         else:
-            return 'background-color: #8B0000; color: white'  # Dark red
+            return 'background-color: #FF0000; color: white'  # Dark red
     except (ValueError, TypeError):
         return ''
 
@@ -2134,7 +2134,7 @@ def color_defensive_impact_per_minute(val):
         elif numeric_val >= 0.75:
             return 'background-color: #FFB6C1'  # Light red
         else:
-            return 'background-color: #8B0000; color: white'  # Dark red
+            return 'background-color: #FF0000; color: white'  # Dark red
     except (ValueError, TypeError):
         return ''
 
