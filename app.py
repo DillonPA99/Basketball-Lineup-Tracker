@@ -6257,13 +6257,27 @@ with tab2:
                 def_stats = lineup_defensive_efficiency.get(lineup, {})
                 defensive_efficiency = def_stats.get('defensive_efficiency', 0)
                 
-                
                 # Get points off turnovers for this lineup
                 lineup_pot_points = lineup_pot.get(lineup, 0)
                 
                 # Get total points scored by this lineup
                 total_points = stats.get('points_scored', 0)
                 minutes_played = stats['minutes']
+
+                # Get detailed shooting stats from offensive efficiency calculation
+                fg_made = off_stats.get('field_goals_made', 0)
+                fg_attempted = off_stats.get('field_goals_attempted', 0)
+                fg_percentage = off_stats.get('fg_percentage', 0)
+        
+                two_pt_made = off_stats.get('two_pt_made', 0)
+                two_pt_attempted = off_stats.get('two_pt_attempted', 0)
+                two_pt_percentage = off_stats.get('two_pt_percentage', 0)
+        
+                three_pt_made = off_stats.get('three_pointers_made', 0)
+                three_pt_attempted = off_stats.get('three_pointers_attempted', 0)
+                three_pt_percentage = off_stats.get('three_pt_percentage', 0)
+        
+                efg_percentage = off_stats.get('efg_percentage', 0)
                 
                 lineup_plus_minus_data.append({
                     "Lineup": lineup,
@@ -6274,6 +6288,13 @@ with tab2:
                     "Off. Eff.": f"{offensive_efficiency:.1f}",
                     "Def. Eff.": f"{defensive_efficiency:.1f}", 
                     "Points off TO": lineup_pot_points,
+                    "FG": f"{fg_made}/{fg_attempted}" if fg_attempted > 0 else "0/0",
+                    "FG%": f"{fg_percentage:.1f}%" if fg_attempted > 0 else "0.0%",
+                    "2FG": f"{two_pt_made}/{two_pt_attempted}" if two_pt_attempted > 0 else "0/0",
+                    "2FG%": f"{two_pt_percentage:.1f}%" if two_pt_attempted > 0 else "0.0%",
+                    "3FG": f"{three_pt_made}/{three_pt_attempted}" if three_pt_attempted > 0 else "0/0",
+                    "3FG%": f"{three_pt_percentage:.1f}%" if three_pt_attempted > 0 else "0.0%",
+                    "eFG%": f"{efg_percentage:.1f}%" if fg_attempted > 0 else "0.0%",
                     "TS%": f"{off_stats.get('true_shooting_percentage', 0):.1f}%" if off_stats.get('true_shooting_percentage', 0) > 0 else "0.0%",
                     "TO Rate": f"{off_stats.get('turnover_rate', 0):.2f}" if off_stats.get('turnover_rate', 0) > 0 else "0.00",
                     "numeric_plus_minus": stats['plus_minus'],
@@ -6287,7 +6308,7 @@ with tab2:
                 lineup_df = lineup_df.sort_values('numeric_plus_minus', ascending=False)
 
                 # Display main columns
-                main_columns = ["Lineup", "Appearances", "Minutes", "Off. Eff.", "Def. Eff.", "Plus/Minus", "Total Points", "TS%", "Points off TO", "TO Rate" ]
+                main_columns = ["Lineup", "Appearances", "Minutes", "Off. Eff.", "Def. Eff.", "Plus/Minus", "Total Points", "FG", "FG%", "2FG", "2FG%", "3FG", "3FG%", "eFG%", "TS%", "Points off TO", "TO Rate"]
                 
                 st.dataframe(
                     lineup_df[main_columns].style.applymap(
@@ -6298,10 +6319,22 @@ with tab2:
                         color_offensive_efficiency_scores, subset=["Off. Eff."]
                     ).applymap(
                         color_defensive_efficiency_scores, subset=["Def. Eff."]
+                    ).applymap(
+                        color_fg_percentage, subset=["FG%"]
+                    ).applymap(
+                        color_2pt_percentage, subset=["2FG%"]
+                    ).applymap(
+                        color_3pt_percentage, subset=["3FG%"]
+                    ).applymap(
+                        color_efg_percentage, subset=["eFG%"]
+                    ).applymap(
+                        color_ts_percentage, subset=["TS%"]
                     ),
                     use_container_width=True,
                     hide_index=True
                 )
+           else:
+                st.info("No lineup shooting data available yet.")
                 
                 # Enhanced Best and Worst Lineups
                 if len(lineup_df) > 0:
