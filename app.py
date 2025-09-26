@@ -2125,13 +2125,13 @@ def color_defensive_impact_per_minute(val):
         else:
             numeric_val = float(val)
         
-        if numeric_val >= 1.30:
+        if numeric_val >= 1.40:
             return 'background-color: #2d5016; color: white'  # Dark green
-        elif numeric_val >= 1.00:
+        elif numeric_val >= 1.150:
             return 'background-color: #90EE90'  # Light green
-        elif numeric_val >= 0.75:
+        elif numeric_val >= 1.00:
             return 'background-color: #FFFACD'  # Light yellow
-        elif numeric_val >= 0.50:
+        elif numeric_val >= 0.75:
             return 'background-color: #FFB6C1'  # Light red
         else:
             return 'background-color: #8B0000; color: white'  # Dark red
