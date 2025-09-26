@@ -3097,7 +3097,11 @@ def calculate_lineup_offensive_efficiency():
         if current_lineup not in lineup_offensive_stats:
             lineup_offensive_stats[current_lineup] = {
                 'points_scored': 0,
+                'field_goals_made': 0,
                 'field_goals_attempted': 0,
+                'three_pointers_made': 0,
+                'three_pointers_attempted': 0,
+                'free_throws_made': 0,
                 'free_throws_attempted': 0,
                 'turnovers': 0,
                 'total_time_seconds': 0
@@ -3142,15 +3146,26 @@ def calculate_lineup_offensive_efficiency():
                 # Add points
                 lineup_offensive_stats[current_lineup]['points_scored'] += score_event.get('points', 0)
                 
-                # Count shot attempts
+                # Count shot attempts and makes
                 shot_type = score_event.get('shot_type')
                 attempted = score_event.get('attempted', True)
+                made = score_event.get('made', True)
                 
                 if attempted:
                     if shot_type == 'free_throw':
                         lineup_offensive_stats[current_lineup]['free_throws_attempted'] += 1
-                    elif shot_type in ['field_goal', 'three_pointer']:
+                        if made:
+                            lineup_offensive_stats[current_lineup]['free_throws_made'] += 1
+                    elif shot_type == 'field_goal':
                         lineup_offensive_stats[current_lineup]['field_goals_attempted'] += 1
+                        if made:
+                            lineup_offensive_stats[current_lineup]['field_goals_made'] += 1
+                    elif shot_type == 'three_pointer':
+                        lineup_offensive_stats[current_lineup]['three_pointers_attempted'] += 1
+                        lineup_offensive_stats[current_lineup]['field_goals_attempted'] += 1
+                        if made:
+                            lineup_offensive_stats[current_lineup]['three_pointers_made'] += 1
+                            lineup_offensive_stats[current_lineup]['field_goals_made'] += 1
         
         # Count home team turnovers with this exact lineup
         for turnover_event in st.session_state.turnover_history:
@@ -3166,6 +3181,21 @@ def calculate_lineup_offensive_efficiency():
         total_minutes = stats['total_time_seconds'] / 60.0
         
         if total_minutes > 0:
+            # Calculate shooting percentages
+            fg_percentage = (stats['field_goals_made'] / stats['field_goals_attempted'] * 100) if stats['field_goals_attempted'] > 0 else 0
+            three_pt_percentage = (stats['three_pointers_made'] / stats['three_pointers_attempted'] * 100) if stats['three_pointers_attempted'] > 0 else 0
+            ft_percentage = (stats['free_throws_made'] / stats['free_throws_attempted'] * 100) if stats['free_throws_attempted'] > 0 else 0
+            
+            # Calculate 2-point stats
+            two_pt_made = stats['field_goals_made'] - stats['three_pointers_made']
+            two_pt_attempted = stats['field_goals_attempted'] - stats['three_pointers_attempted']
+            two_pt_percentage = (two_pt_made / two_pt_attempted * 100) if two_pt_attempted > 0 else 0
+            
+            # Calculate Effective Field Goal Percentage
+            efg_percentage = 0
+            if stats['field_goals_attempted'] > 0:
+                efg_percentage = ((stats['field_goals_made'] + 0.5 * stats['three_pointers_made']) / stats['field_goals_attempted']) * 100
+            
             # Calculate True Shooting Percentage
             true_shooting_percentage = 0
             fg_attempts = stats['field_goals_attempted']
@@ -3195,6 +3225,19 @@ def calculate_lineup_offensive_efficiency():
             final_offensive_stats[lineup_key] = {
                 'offensive_efficiency': offensive_efficiency,
                 'true_shooting_percentage': true_shooting_percentage * 100,
+                'fg_percentage': fg_percentage,
+                'two_pt_percentage': two_pt_percentage,
+                'three_pt_percentage': three_pt_percentage,
+                'ft_percentage': ft_percentage,
+                'efg_percentage': efg_percentage,
+                'field_goals_made': stats['field_goals_made'],
+                'field_goals_attempted': stats['field_goals_attempted'],
+                'two_pt_made': two_pt_made,
+                'two_pt_attempted': two_pt_attempted,
+                'three_pointers_made': stats['three_pointers_made'],
+                'three_pointers_attempted': stats['three_pointers_attempted'],
+                'free_throws_made': stats['free_throws_made'],
+                'free_throws_attempted': stats['free_throws_attempted'],
                 'usage_rate': usage_rate,
                 'turnover_rate': turnover_rate,
                 'points_per_minute': points / total_minutes,
