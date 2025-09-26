@@ -5954,6 +5954,10 @@ with tab2:
                 st.dataframe(
                     lineup_df[["Lineup", "Appearances", "Plus/Minus", "Minutes", "Total Points", "Points off TO", "Def. Impact"]].style.applymap(
                         color_plus_minus, subset=["Plus/Minus"]
+                    ).applymap(
+                        color_points, subset=["Total Points"]
+                    ).applymap(
+                        color_defensive_efficiency_scores, subset=["Def. Impact"]
                     ),
                     use_container_width=True,
                     hide_index=True
