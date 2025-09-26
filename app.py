@@ -6257,7 +6257,7 @@ with tab2:
                 # Top performers by category
                 st.write("**Top Performers by Category:**")
                 
-                perf_col1, perf_col2, perf_col3 = st.columns(3)
+                perf_col1, perf_col2 = st.columns(2)
                 
                 with perf_col1:
                     # Best Offensive Lineup
