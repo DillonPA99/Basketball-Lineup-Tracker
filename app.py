@@ -2429,7 +2429,7 @@ def calculate_player_minutes_played(player):
 # ============================================================================
 
 def calculate_player_efficiency_score(player):
-    """Calculate a comprehensive efficiency score for a player using per-minute metrics and True Shooting Percentage."""
+    """Calculate a comprehensive efficiency score for a player using Traditional Basketball Efficiency approach."""
     if player not in st.session_state.player_stats:
         return 0
     
@@ -2462,29 +2462,27 @@ def calculate_player_efficiency_score(player):
         if true_shooting_attempts > 0:
             true_shooting_percentage = points / (2 * true_shooting_attempts)
     
-    # Calculate per-minute stats
-    points_per_minute = points / effective_minutes
-    attempts_per_minute = (fg_attempts + ft_attempts) / effective_minutes
-    turnovers_per_minute = turnovers / effective_minutes
+    # Traditional Basketball Efficiency Formula:
+    # Efficiency = (TS% × 15) + (Usage × 3) - (Turnover Rate × 5)
     
-    # Base efficiency score from points per minute (scaled up for readability)
-    base_score = points_per_minute * 10
+    # 1. True Shooting % component (primary factor - weighted 15x)
+    ts_component = true_shooting_percentage * 15
     
-    # Efficiency bonus - TS% above 50% gets bonus, below 50% gets penalty
-    efficiency_modifier = 0
-    if (fg_attempts + ft_attempts) >= 2:
-        efficiency_modifier = (true_shooting_percentage - 0.5) * 10
+    # 2. Usage component (moderate weight - shot attempts per minute × 3)
+    total_attempts = fg_attempts + ft_attempts
+    usage_rate = total_attempts / effective_minutes if effective_minutes > 0 else 0
+    usage_component = usage_rate * 3
     
-    # Turnover penalty per minute (scaled appropriately)
-    turnover_penalty = turnovers_per_minute * 3
-    
-    # Usage consideration - players taking more shots per minute get slight bonus for being featured
-    usage_bonus = min(attempts_per_minute * 0.5, 2)
+    # 3. Turnover rate penalty (turnovers per minute × 5)
+    turnover_rate = turnovers / effective_minutes if effective_minutes > 0 else 0
+    turnover_penalty = turnover_rate * 5
     
     # Final efficiency score
-    efficiency_score = base_score + efficiency_modifier + usage_bonus - turnover_penalty
+    efficiency_score = ts_component + usage_component - turnover_penalty
     
-    return efficiency_score  # Allow negative scores to show poor efficiency
+    # Ensure minimum of 0 (no negative efficiency scores)
+    return max(0, efficiency_score)
+    
 # ============================================================================
 # DEFENSIVE IMPACT CALCULATION (Time-Based with Weighting)
 # ============================================================================
