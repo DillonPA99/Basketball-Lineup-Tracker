@@ -6260,7 +6260,7 @@ with tab2:
                 
                 with perf_col1:
                     # Best Offensive Lineup
-                    best_offense = lineup_df.sort_values("Raw Off Eff", ascending=False).iloc[0]
+                    best_offense = lineup_df.sort_values("Off. Eff.", ascending=False).iloc[0]
                     st.info("🔥 **Best Offensive Lineup**")
                     st.write(f"**{best_offense['Off. Eff.']}** Off. Efficiency")
                     st.caption(f"{best_offense['TS%']} TS% | {best_offense['TO Rate']} TO/min")
@@ -6268,7 +6268,7 @@ with tab2:
                 
                 with perf_col2:
                     # Best Defensive Lineup  
-                    best_defense = lineup_df.sort_values("Raw Def Eff", ascending=False).iloc[0]
+                    best_defense = lineup_df.sort_values("Def. Eff.", ascending=False).iloc[0]
                     st.info("🛡️ **Best Defensive Lineup**")
                     st.write(f"**{best_defense['Def. Eff.']}** Def. Efficiency")
                     st.caption(f"{best_defense['Minutes']} minutes played")
@@ -6276,7 +6276,7 @@ with tab2:
                 
                 with perf_col3:
                     # Best Plus/Minus Lineup
-                    best_plus_minus = lineup_df.sort_values("Raw +/-", ascending=False).iloc[0]
+                    best_plus_minus = lineup_df.sort_values("Plus/Minus", ascending=False).iloc[0]
                     st.info("📈 **Best Plus/Minus Lineup**")
                     st.write(f"**{best_plus_minus['Plus/Minus']}** Plus/Minus")
                     st.caption(f"{best_plus_minus['Minutes']} minutes played")
