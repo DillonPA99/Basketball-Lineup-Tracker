@@ -6000,6 +6000,12 @@ with tab2:
                     efg_pct = 0
                     if stats['field_goals_attempted'] > 0:
                         efg_pct = ((stats['field_goals_made'] + 0.5 * stats['three_pointers_made']) / stats['field_goals_attempted']) * 100
+
+                    ts_pct = 0
+                    if stats['field_goals_attempted'] > 0 or stats['free_throws_attempted'] > 0:
+                        true_shooting_attempts = stats['field_goals_attempted'] + (0.44 * stats['free_throws_attempted'])
+                        if true_shooting_attempts > 0:
+                            ts_pct = (stats['points'] / (2 * true_shooting_attempts)) * 100
                     
                     player_shooting_data.append({
                         'Player': player.split('(')[0].strip(),
@@ -6017,6 +6023,7 @@ with tab2:
                         'FG': f"{stats['field_goals_made']}/{stats['field_goals_attempted']}" if stats['field_goals_attempted'] > 0 else "0/0",
                         'FG%': f"{stats['field_goals_made']/stats['field_goals_attempted']*100:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%",
                         'eFG%': f"{efg_pct:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%",
+                        'TS%': f"{ts_pct:.1f}%" if (stats['field_goals_attempted'] > 0 or stats['free_throws_attempted'] > 0) else "0.0%",
                         'Turnovers': turnovers,
                         'Def Impact/Min': f"{defensive_impact_per_minute:.2f}",
                         'Def Impact': f"{def_impact_score:.1f}"
@@ -6050,6 +6057,8 @@ with tab2:
                     ).applymap(
                         color_efg_percentage, subset=['eFG%']
                     ).applymap(
+                        color_efg_percentage, subset=['TS%']
+                    ).applymap(
                         color_turnovers, subset=['Turnovers']
                     )
 
@@ -6066,6 +6075,11 @@ with tab2:
                         - Accounts for shot efficiency, volume, and ball security
                         - Higher scores indicate better offensive performance per minute played
                         - Scale: 0-20+ (10+ is above average, 15+ is excellent)
+
+                        **True Shooting % (TS%):**
+                        - Accounts for 2PT, 3PT, and FT efficiency in one metric
+                        - Formula: Points / (2 × (FGA + 0.44 × FTA))
+                        - More accurate than FG% because it weights 3-pointers and free throws properly
                 
                         **Defensive Efficiency Score:**
                         - Based on defensive events per minute (opponent turnovers + missed shots)
@@ -6297,11 +6311,6 @@ with tab2:
                     - Formula: Defensive Impact per Minute × 5
                     - Defensive Impact = (Opponent Turnovers × 1.5) + (Opponent Missed Shots × 1.0)
                     - Measures how well the lineup disrupts opponent offense per minute
-                    
-                    **True Shooting % (TS%):**
-                    - Accounts for 2PT, 3PT, and FT efficiency in one metric
-                    - Formula: Points / (2 × (FGA + 0.44 × FTA))
-                    - More accurate than FG% because it weights 3-pointers and free throws properly
                     
                     **Turnover Rate (TO Rate):**
                     - Turnovers per minute of play
