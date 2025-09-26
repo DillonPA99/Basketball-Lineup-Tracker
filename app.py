@@ -2104,13 +2104,13 @@ def color_defensive_impact(val):
         else:
             numeric_val = float(val)
         
-        if numeric_val >= 20:
+        if numeric_val >= 45:
             return 'background-color: #2d5016; color: white'  # Dark green
-        elif numeric_val >= 12:
+        elif numeric_val >= 25:
             return 'background-color: #90EE90'  # Light green
-        elif numeric_val >= 6:
+        elif numeric_val >= 15:
             return 'background-color: #FFFACD'  # Light yellow
-        elif numeric_val >= 2:
+        elif numeric_val >= 10:
             return 'background-color: #FFB6C1'  # Light red
         else:
             return 'background-color: #8B0000; color: white'  # Dark red
