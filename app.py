@@ -2012,6 +2012,24 @@ def color_points(val):
     except (ValueError, TypeError):
         return ''
 
+def color_lineup_points(val):
+    """Color code points scored with gradient."""
+    try:
+        numeric_val = int(val)
+        
+        if numeric_val >= 36:
+            return 'background-color: #2d5016; color: white'  # Dark green
+        elif numeric_val >= 12:
+            return 'background-color: #90EE90'  # Light green
+        elif numeric_val >= 6:
+            return 'background-color: #FFFACD'  # Light yellow
+        elif numeric_val >= 3:
+            return 'background-color: #FFB6C1'  # Light red
+        else:
+            return 'background-color: #FF0000; color: white'  # Dark red
+    except (ValueError, TypeError):
+        return ''
+
 def color_turnovers(val):
     """Color code turnovers (lower is better)."""
     try:
@@ -5955,7 +5973,7 @@ with tab2:
                     lineup_df[["Lineup", "Appearances", "Plus/Minus", "Minutes", "Total Points", "Points off TO", "Def. Impact"]].style.applymap(
                         color_plus_minus, subset=["Plus/Minus"]
                     ).applymap(
-                        color_points, subset=["Total Points"]
+                        color_lineup_points, subset=["Total Points"]
                     ).applymap(
                         color_defensive_efficiency_scores, subset=["Def. Impact"]
                     ),
