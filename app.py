@@ -6219,7 +6219,6 @@ with tab2:
             
             if lineup_plus_minus_data:
                 lineup_df = pd.DataFrame(lineup_plus_minus_data)
-                lineup_df = lineup_df.sort_values("Raw +/-", ascending=False)
                 
                 # Display main columns
                 main_columns = ["Lineup", "Appearances", "Minutes", "Off. Eff.", "Def. Eff.", "Plus/Minus", "Total Points", "Points off TO"]
