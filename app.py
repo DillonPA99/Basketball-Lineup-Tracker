@@ -1994,6 +1994,30 @@ def color_efg_percentage(val):
     except (ValueError, TypeError):
         return ''
 
+def color_ts_percentage(val):
+    """Color code TS percentage with gradient (60%+ green, 50% and under red)."""
+    try:
+        if isinstance(val, str):
+            if val.endswith('%'):
+                numeric_val = float(val[:-1])
+            else:
+                return ''
+        else:
+            numeric_val = float(val)
+        
+        if numeric_val >= 60:
+            return 'background-color: #2d5016; color: white'  # Dark green
+        elif numeric_val >= 55:
+            return 'background-color: #90EE90'  # Light green
+        elif numeric_val >= 50:
+            return 'background-color: #FFFACD'  # Light yellow
+        elif numeric_val >= 45:
+            return 'background-color: #FFB6C1'  # Light red
+        else:
+            return 'background-color: #FF0000; color: white'  # Dark red
+    except (ValueError, TypeError):
+        return ''
+
 def color_points(val):
     """Color code points scored with gradient."""
     try:
@@ -6057,7 +6081,7 @@ with tab2:
                     ).applymap(
                         color_efg_percentage, subset=['eFG%']
                     ).applymap(
-                        color_efg_percentage, subset=['TS%']
+                        color_ts_percentage, subset=['TS%']
                     ).applymap(
                         color_turnovers, subset=['Turnovers']
                     )
