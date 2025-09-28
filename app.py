@@ -6301,8 +6301,16 @@ with tab2:
                 three_pt_made = off_stats.get('three_pointers_made', 0)
                 three_pt_attempted = off_stats.get('three_pointers_attempted', 0)
                 three_pt_percentage = off_stats.get('three_pt_percentage', 0)
+
+                ft_made = off_stats.get('free_throws_made', 0)
+                ft_attempted = off_stats.get('free_throws_attempted', 0)
+                ft_percentage = off_stats.get('ft_percentage', 0)
         
                 efg_percentage = off_stats.get('efg_percentage', 0)
+
+                total_turnovers = off_stats.get('total_turnovers', 0)
+                defensive_impact_per_minute = def_stats.get('defensive_impact_per_minute', 0)
+                total_defensive_impact = def_stats.get('total_defensive_events', 0)
                 
                 lineup_plus_minus_data.append({
                     "Lineup": lineup,
@@ -6313,7 +6321,8 @@ with tab2:
                     "Off. Eff.": f"{offensive_efficiency:.1f}",
                     "Def. Eff.": f"{defensive_efficiency:.1f}",
                     "Points/Min": f"{total_points / minutes_played:.2f}" if minutes_played > 0 else "0.0",
-                    "Points off TO": lineup_pot_points,
+                    "FT": f"{ft_made}/{ft_attempted}" if ft_attempted > 0 else "0/0",
+                    "FT%": f"{ft_percentage:.1f}%" if ft_attempted > 0 else "0.0%",
                     "FG": f"{fg_made}/{fg_attempted}" if fg_attempted > 0 else "0/0",
                     "FG%": f"{fg_percentage:.1f}%" if fg_attempted > 0 else "0.0%",
                     "2FG": f"{two_pt_made}/{two_pt_attempted}" if two_pt_attempted > 0 else "0/0",
@@ -6322,7 +6331,10 @@ with tab2:
                     "3FG%": f"{three_pt_percentage:.1f}%" if three_pt_attempted > 0 else "0.0%",
                     "eFG%": f"{efg_percentage:.1f}%" if fg_attempted > 0 else "0.0%",
                     "TS%": f"{off_stats.get('true_shooting_percentage', 0):.1f}%" if off_stats.get('true_shooting_percentage', 0) > 0 else "0.0%",
+                    "Total TOs": total_turnovers,
                     "TO Rate": f"{off_stats.get('turnover_rate', 0):.2f}" if off_stats.get('turnover_rate', 0) > 0 else "0.00",
+                    "Def Impact/Min": f"{defensive_impact_per_minute:.2f}",
+                    "Total Def Impact": f"{total_defensive_impact:.1f}",
                     "numeric_plus_minus": stats['plus_minus'],
                     "numeric_off_eff": offensive_efficiency,
                     "numeric_def_eff": defensive_efficiency
@@ -6334,7 +6346,7 @@ with tab2:
                 lineup_df = lineup_df.sort_values('numeric_plus_minus', ascending=False)
 
                 # Display main columns
-                main_columns = ["Lineup", "Appearances", "Minutes", "Off. Eff.", "Def. Eff.", "Points/Min", "Plus/Minus", "Total Points", "FG", "FG%", "2FG", "2FG%", "3FG", "3FG%", "eFG%", "TS%", "Points off TO", "TO Rate"]
+                main_columns = ["Lineup", "Appearances", "Minutes", "Off. Eff.", "Def. Eff.", "Points/Min", "Plus/Minus", "Total Points", "FT", "FT%", "FG", "FG%", "2FG", "2FG%", "3FG", "3FG%", "eFG%", "TS%", "Points off TO", "Total TOs" ,"TO Rate", "Def Impact/Min", "Total Def Impact"]
                 
                 st.dataframe(
                     lineup_df[main_columns].style.applymap(
@@ -6406,7 +6418,7 @@ with tab2:
                     opp_misses = def_details.get('total_opponent_missed_shots', 0)
                     def_impact_per_min = def_details.get('defensive_impact_per_minute', 0)
     
-                    st.caption(f"{best_defense['Minutes']} min | {opp_tos} Opp. TOs | {opp_misses} Opp. missed FGs | {def_impact_per_min:.2f} Def impact/min")
+                    st.caption(f"{best_defense['Minutes']} min | {best_defense['Def Impact/Min']} Def/min | {best_defense['Total Def Impact']} Total Def")
                     st.write(f"_{best_defense['Lineup']}_")
 
                 # Efficiency explanation
