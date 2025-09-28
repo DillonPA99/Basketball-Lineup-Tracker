@@ -2054,6 +2054,24 @@ def color_lineup_points(val):
     except (ValueError, TypeError):
         return ''
 
+def color_lineup_points_per_minute(val):
+    """Color code points scored with gradient."""
+    try:
+        numeric_val = int(val)
+        
+        if numeric_val >= 1.875:
+            return 'background-color: #2d5016; color: white'  # Dark green
+        elif numeric_val >= 1.625:
+            return 'background-color: #90EE90'  # Light green
+        elif numeric_val >= 1.4:
+            return 'background-color: #FFFACD'  # Light yellow
+        elif numeric_val >= 1.15:
+            return 'background-color: #FFB6C1'  # Light red
+        else:
+            return 'background-color: #FF0000; color: white'  # Dark red
+    except (ValueError, TypeError):
+        return ''
+
 def color_turnovers(val):
     """Color code turnovers (lower is better)."""
     try:
@@ -6286,7 +6304,8 @@ with tab2:
                     "Minutes": f"{stats['minutes']:.1f}",
                     "Total Points": total_points,
                     "Off. Eff.": f"{offensive_efficiency:.1f}",
-                    "Def. Eff.": f"{defensive_efficiency:.1f}", 
+                    "Def. Eff.": f"{defensive_efficiency:.1f}",
+                    "Points/Min": f"{total_points / minutes_played:.1f}" if minutes_played > 0 else "0.0",
                     "Points off TO": lineup_pot_points,
                     "FG": f"{fg_made}/{fg_attempted}" if fg_attempted > 0 else "0/0",
                     "FG%": f"{fg_percentage:.1f}%" if fg_attempted > 0 else "0.0%",
@@ -6308,7 +6327,7 @@ with tab2:
                 lineup_df = lineup_df.sort_values('numeric_plus_minus', ascending=False)
 
                 # Display main columns
-                main_columns = ["Lineup", "Appearances", "Minutes", "Off. Eff.", "Def. Eff.", "Plus/Minus", "Total Points", "FG", "FG%", "2FG", "2FG%", "3FG", "3FG%", "eFG%", "TS%", "Points off TO", "TO Rate"]
+                main_columns = ["Lineup", "Appearances", "Minutes", "Off. Eff.", "Def. Eff.", "Points/Min", "Plus/Minus", "Total Points", "FG", "FG%", "2FG", "2FG%", "3FG", "3FG%", "eFG%", "TS%", "Points off TO", "TO Rate"]
                 
                 st.dataframe(
                     lineup_df[main_columns].style.applymap(
@@ -6319,6 +6338,8 @@ with tab2:
                         color_offensive_efficiency_scores, subset=["Off. Eff."]
                     ).applymap(
                         color_defensive_efficiency_scores, subset=["Def. Eff."]
+                    ).applymap(
+                        color_lineup_points_per_minute, subset=["Points/Min"]
                     ).applymap(
                         color_fg_percentage, subset=["FG%"]
                     ).applymap(
