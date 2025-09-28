@@ -2184,6 +2184,27 @@ def color_defensive_impact(val):
     except (ValueError, TypeError):
         return ''
 
+def color_lineup_defensive_impact(val):
+    """Color code defensive impact values with gradient."""
+    try:
+        if isinstance(val, str):
+            numeric_val = float(val.strip())
+        else:
+            numeric_val = float(val)
+        
+        if numeric_val >= 25:
+            return 'background-color: #2d5016; color: white'  # Dark green
+        elif numeric_val >= 18:
+            return 'background-color: #90EE90'  # Light green
+        elif numeric_val >= 12:
+            return 'background-color: #FFFACD'  # Light yellow
+        elif numeric_val >= 8:
+            return 'background-color: #FFB6C1'  # Light red
+        else:
+            return 'background-color: #FF0000; color: white'  # Dark red
+    except (ValueError, TypeError):
+        return ''
+
 def color_defensive_impact_per_minute(val):
     """Color code defensive impact per minute values with gradient."""
     try:
@@ -2199,6 +2220,27 @@ def color_defensive_impact_per_minute(val):
         elif numeric_val >= 1.00:
             return 'background-color: #FFFACD'  # Light yellow
         elif numeric_val >= 0.75:
+            return 'background-color: #FFB6C1'  # Light red
+        else:
+            return 'background-color: #FF0000; color: white'  # Dark red
+    except (ValueError, TypeError):
+        return ''
+
+def color_lineup_defensive_impact_per_minute(val):
+    """Color code defensive impact per minute values with gradient."""
+    try:
+        if isinstance(val, str):
+            numeric_val = float(val.strip())
+        else:
+            numeric_val = float(val)
+        
+        if numeric_val >= 2.9:
+            return 'background-color: #2d5016; color: white'  # Dark green
+        elif numeric_val >= 2.4:
+            return 'background-color: #90EE90'  # Light green
+        elif numeric_val >= 2.0:
+            return 'background-color: #FFFACD'  # Light yellow
+        elif numeric_val >= 1.5:
             return 'background-color: #FFB6C1'  # Light red
         else:
             return 'background-color: #FF0000; color: white'  # Dark red
@@ -6353,6 +6395,8 @@ with tab2:
                     ).applymap(
                         color_lineup_points_per_minute, subset=["Points/Min"]
                     ).applymap(
+                        color_ft_percentage, subset=['FT%']
+                    ).applymap(
                         color_fg_percentage, subset=["FG%"]
                     ).applymap(
                         color_2pt_percentage, subset=["2FG%"]
@@ -6365,9 +6409,9 @@ with tab2:
                     ).applymap(
                         color_turnovers, subset=["Total TOs"]  # NEW: Turnover color coding
                     ).applymap(
-                        color_defensive_impact_per_minute, subset=["Def Impact/Min"]  # NEW: Def impact/min color coding
+                        color_lineup_defensive_impact_per_minute, subset=["Def Impact/Min"]  # NEW: Def impact/min color coding
                     ).applymap(
-                        color_defensive_impact, subset=["Total Def Impact"]  # NEW: Total def impact color coding
+                        color_lineup_defensive_impact, subset=["Total Def Impact"]  # NEW: Total def impact color coding
                     ),
                     use_container_width=True,
                     hide_index=True
