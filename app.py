@@ -6268,10 +6268,6 @@ with tab2:
             lineup_offensive_efficiency = calculate_lineup_offensive_efficiency()
             lineup_defensive_efficiency = calculate_lineup_defensive_efficiency()
             
-            # Get points off turnovers data
-            pot_stats = get_points_off_turnovers_stats()
-            lineup_pot = pot_stats['lineup_stats']
-            
             lineup_plus_minus_data = []
             for lineup, stats in lineup_stats.items():
                 # Get offensive efficiency (using same methodology as individual players)
