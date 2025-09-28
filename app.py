@@ -6369,6 +6369,12 @@ with tab2:
                         color_efg_percentage, subset=["eFG%"]
                     ).applymap(
                         color_ts_percentage, subset=["TS%"]
+                    ).applymap(
+                        color_turnovers, subset=["Total TOs"]  # NEW: Turnover color coding
+                    ).applymap(
+                        color_defensive_impact_per_minute, subset=["Def Impact/Min"]  # NEW: Def impact/min color coding
+                    ).applymap(
+                        color_defensive_impact, subset=["Total Def Impact"]  # NEW: Total def impact color coding
                     ),
                     use_container_width=True,
                     hide_index=True
