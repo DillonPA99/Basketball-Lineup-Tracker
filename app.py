@@ -2055,9 +2055,15 @@ def color_lineup_points(val):
         return ''
 
 def color_lineup_points_per_minute(val):
-    """Color code points scored with gradient."""
+    """Color code points per minute with gradient."""
     try:
-        numeric_val = int(val)
+        # Debug: print the value being processed
+        print(f"Processing Points/Min value: {val} (type: {type(val)})")
+        
+        if isinstance(val, str):
+            numeric_val = float(val)
+        else:
+            numeric_val = float(val)
         
         if numeric_val >= 1.875:
             return 'background-color: #2d5016; color: white'  # Dark green
@@ -2069,7 +2075,8 @@ def color_lineup_points_per_minute(val):
             return 'background-color: #FFB6C1'  # Light red
         else:
             return 'background-color: #FF0000; color: white'  # Dark red
-    except (ValueError, TypeError):
+    except (ValueError, TypeError) as e:
+        print(f"Error processing Points/Min value {val}: {e}")
         return ''
 
 def color_turnovers(val):
