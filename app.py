@@ -6408,19 +6408,6 @@ with tab2:
     
                     st.caption(f"{best_defense['Minutes']} min | {opp_tos} Opp. TOs | {opp_misses} Opp. missed FGs | {def_impact_per_min:.2f} Def impact/min")
                     st.write(f"_{best_defense['Lineup']}_")
-
-                # Show detailed breakdown in expandable section
-                with st.expander("📊 Detailed Efficiency Breakdown"):
-                    detail_columns = ["Lineup", "Minutes", "Off. Eff.", "TS%", "TO Rate", "Def. Eff."]
-                    
-                    st.dataframe(
-                        lineup_df[detail_columns].style.applymap(
-                            color_offensive_efficiency_scores, subset=["Off. Eff."]
-                        ).applymap(
-                            color_defensive_efficiency_scores, subset=["Def. Eff."]
-                        ),
-                        use_container_width=True,
-                        hide_index=True
                     )
 
                 # Efficiency explanation
