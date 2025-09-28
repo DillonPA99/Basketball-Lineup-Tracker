@@ -6408,7 +6408,6 @@ with tab2:
     
                     st.caption(f"{best_defense['Minutes']} min | {opp_tos} Opp. TOs | {opp_misses} Opp. missed FGs | {def_impact_per_min:.2f} Def impact/min")
                     st.write(f"_{best_defense['Lineup']}_")
-                    )
 
                 # Efficiency explanation
                 with st.expander("ℹ️ Consistent Lineup Efficiency Metrics"):
