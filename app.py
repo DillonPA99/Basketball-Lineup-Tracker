@@ -6260,7 +6260,7 @@ with tab2:
                 st.info("No individual player statistics available yet.")
 
         # Lineup Plus/Minus
-        st.write("**Lineup Plus/Minus**")
+        st.write("**Home Team Lineup Statistics**")
         lineup_stats = calculate_lineup_plus_minus_with_time()
         
         if lineup_stats:
@@ -6312,7 +6312,7 @@ with tab2:
                     "Total Points": total_points,
                     "Off. Eff.": f"{offensive_efficiency:.1f}",
                     "Def. Eff.": f"{defensive_efficiency:.1f}",
-                    "Points/Min": f"{total_points / minutes_played:.1f}" if minutes_played > 0 else "0.0",
+                    "Points/Min": f"{total_points / minutes_played:.2f}" if minutes_played > 0 else "0.0",
                     "Points off TO": lineup_pot_points,
                     "FG": f"{fg_made}/{fg_attempted}" if fg_attempted > 0 else "0/0",
                     "FG%": f"{fg_percentage:.1f}%" if fg_attempted > 0 else "0.0%",
