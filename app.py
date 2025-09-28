@@ -6282,9 +6282,6 @@ with tab2:
                 def_stats = lineup_defensive_efficiency.get(lineup, {})
                 defensive_efficiency = def_stats.get('defensive_efficiency', 0)
                 
-                # Get points off turnovers for this lineup
-                lineup_pot_points = lineup_pot.get(lineup, 0)
-                
                 # Get total points scored by this lineup
                 total_points = stats.get('points_scored', 0)
                 minutes_played = stats['minutes']
