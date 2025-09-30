@@ -4011,7 +4011,7 @@ Total Points: {total_points}
 # If user is not logged in, show login/register interface.
 
 if not st.session_state.authenticated:
-    st.title("🏀 Lineup InSite - Login")
+    st.title("Lineup InSite")
 
     tab1, tab2 = st.tabs(["Login", "Register"])
 
