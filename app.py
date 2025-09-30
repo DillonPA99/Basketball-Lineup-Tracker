@@ -2057,11 +2057,11 @@ def color_ft_percentage(val):
         elif numeric_val >= 65:
             return 'background-color: #90EE90'  # Light green
         elif numeric_val >= 60:
-            return 'background-color: #FFFACD'  # Light yellow
+            return 'background-color: #FFFACD; color: black'  # Light yellow
         elif numeric_val >= 55:
-            return 'background-color: #FFB6C1'  # Light red
+            return 'background-color: #FFB6C1; color: black'  # Light red
         else:
-            return 'background-color: #FF0000; color: white'  # Dark red
+            return 'background-color: #FF0000'  # Dark red
     except (ValueError, TypeError):
         return ''
 
