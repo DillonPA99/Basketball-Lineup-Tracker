@@ -24,18 +24,6 @@ from google.cloud.firestore_v1.base_query import FieldFilter
 import warnings
 import logging
 
-# Add after your imports
-st.write("DEBUG INFO:")
-cred_data = load_firebase_credentials()
-if cred_data:
-    if hasattr(cred_data, '_asdict'):
-        cred_dict = dict(cred_data._asdict())
-    else:
-        cred_dict = dict(cred_data)
-    st.write(f"Project ID from secrets: {cred_dict.get('project_id')}")
-    st.write(f"Client email: {cred_dict.get('client_email')}")
-else:
-    st.write("No credentials loaded!")
 
 warnings.filterwarnings("ignore")
 os.environ.setdefault('GOOGLE_CLOUD_DISABLE_GRPC', '1')
@@ -4259,6 +4247,26 @@ if not st.session_state.authenticated:
 
     # Important: Stop execution here if not authenticated
     st.stop()
+
+# Temporary debug - remove after fixing
+if st.session_state.authenticated:
+    with st.expander("🔍 Firebase Debug Info (click to expand)"):
+        cred_data = load_firebase_credentials()
+        if cred_data:
+            if hasattr(cred_data, '_asdict'):
+                cred_dict = dict(cred_data._asdict())
+            else:
+                cred_dict = dict(cred_data)
+            st.write(f"**Project ID from secrets:** {cred_dict.get('project_id')}")
+            st.write(f"**Client email:** {cred_dict.get('client_email')}")
+            
+            # Check if they match
+            if 'basketball-lineup-tracker' in cred_dict.get('project_id', ''):
+                st.success("✅ Project ID looks correct")
+            else:
+                st.error("❌ Project ID doesn't match expected value")
+        else:
+            st.error("❌ No credentials loaded!")
 
 # ------------------------------------------------------------------
 # Roster Setup Gate (REPLACE THE EXISTING ROSTER SETUP SECTION)
