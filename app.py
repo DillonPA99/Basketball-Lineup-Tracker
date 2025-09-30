@@ -7343,7 +7343,7 @@ with tab4:
                     'Appearances': stats['total_appearances'],
                     'Minutes': f"{stats['total_minutes']:.1f}",
                     'Total Points': stats['total_points'],
-                    'Points/App': f"{stats['total_points'] / stats['total_appearances']:.1f}",
+                    'Points/Min': f"{stats['total_points'] / stats['total_minutes']:.2f}",
                     'Plus/Minus': f"+{stats['total_plus_minus']}" if stats['total_plus_minus'] >= 0 else str(stats['total_plus_minus']),
                     'FT': f"{stats['total_ft_made']}/{stats['total_ft_attempted']}",
                     'FT%': f"{ft_pct:.1f}%",
