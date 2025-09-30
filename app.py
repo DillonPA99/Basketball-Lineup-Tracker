@@ -7254,7 +7254,13 @@ with tab4:
             game_lineup_times = calculate_lineup_times_for_game(game)
             
             # Calculate plus/minus AND points for lineups in this game
-            game_lineup_stats = defaultdict(lambda: {'plus_minus': 0, 'points': 0})
+            game_lineup_stats = defaultdict(lambda: {
+                'plus_minus': 0, 
+                'points': 0,
+                'opp_turnovers': 0,
+                'opp_missed_shots': 0,
+                'def_impact': 0
+            })
             
             for i in range(len(game.get('lineup_history', []))):
                 lineup_event = game['lineup_history'][i]
@@ -7276,6 +7282,26 @@ with tab4:
                 
                 game_lineup_stats[lineup_key]['plus_minus'] += score_change
                 game_lineup_stats[lineup_key]['points'] += home_points
+                
+                # Count defensive events for this lineup period
+                lineup_quarter = lineup_event.get('quarter')
+                lineup_players = lineup_event.get('new_lineup', [])
+                
+                for turnover_event in game.get('turnover_history', []):
+                    if (turnover_event.get('team') == 'away' and
+                        turnover_event.get('quarter') == lineup_quarter and
+                        turnover_event.get('lineup') == lineup_players):
+                        game_lineup_stats[lineup_key]['opp_turnovers'] += 1
+                        game_lineup_stats[lineup_key]['def_impact'] += 1.5
+                
+                for score_event in game.get('score_history', []):
+                    if (score_event.get('team') == 'away' and
+                        not score_event.get('made', True) and
+                        score_event.get('shot_type') in ['field_goal', 'three_pointer'] and
+                        score_event.get('quarter') == lineup_quarter and
+                        score_event.get('lineup') == lineup_players):
+                        game_lineup_stats[lineup_key]['opp_missed_shots'] += 1
+                        game_lineup_stats[lineup_key]['def_impact'] += 1.0
 
             processed_lineups_this_game = set()
             
@@ -7287,7 +7313,7 @@ with tab4:
                 season_lineup_stats[lineup_key]['total_appearances'] += 1
                 season_lineup_stats[lineup_key]['games_appeared'].add(game_idx)
                 
-                # Add minutes, plus/minus, and points (only once per lineup per game)
+                # Add minutes, plus/minus, points, and defensive stats (only once per lineup per game)
                 if lineup_key not in processed_lineups_this_game:
                     if lineup_key in game_lineup_times:
                         season_lineup_stats[lineup_key]['total_minutes'] += game_lineup_times[lineup_key]
@@ -7295,6 +7321,7 @@ with tab4:
                     # Add the aggregated stats from this game
                     season_lineup_stats[lineup_key]['total_plus_minus'] += game_lineup_stats[lineup_key]['plus_minus']
                     season_lineup_stats[lineup_key]['total_points'] += game_lineup_stats[lineup_key]['points']
+                    season_lineup_stats[lineup_key]['total_def_impact'] += game_lineup_stats[lineup_key]['def_impact']
                     
                     processed_lineups_this_game.add(lineup_key)
                 
@@ -7351,13 +7378,30 @@ with tab4:
                     if tsa > 0:
                         ts_pct = (stats['total_points'] / (2 * tsa)) * 100
                 
+                # Calculate offensive efficiency (same formula as Tab 2)
+                total_minutes = stats['total_minutes']
+                usage_rate = (stats['total_fg_attempted'] + stats['total_ft_attempted']) / total_minutes if total_minutes > 0 else 0
+                turnover_rate = stats['total_turnovers'] / total_minutes if total_minutes > 0 else 0
+                
+                ts_component = (ts_pct / 100) * 15
+                usage_component = usage_rate * 3
+                turnover_penalty = turnover_rate * 5
+                
+                offensive_efficiency = max(0, ts_component + usage_component - turnover_penalty)
+                
+                # Calculate defensive efficiency (same formula as Tab 2)
+                def_impact_per_min = stats['total_def_impact'] / total_minutes if total_minutes > 0 else 0
+                defensive_efficiency = def_impact_per_min * 5
+                
                 lineup_season_data.append({
                     'Lineup': lineup,
                     'Games': games_appeared,
                     'Appearances': stats['total_appearances'],
                     'Minutes': f"{stats['total_minutes']:.1f}",
+                    'Off. Eff.': f"{offensive_efficiency:.1f}",
+                    'Def. Eff.': f"{defensive_efficiency:.1f}",
                     'Total Points': stats['total_points'],
-                    'Points/Min': f"{stats['total_points'] / stats['total_minutes']:.2f}",
+                    'Points/Min': f"{stats['total_points'] / stats['total_minutes']:.2f}" if stats['total_minutes'] > 0 else "0.00",
                     'Plus/Minus': f"+{stats['total_plus_minus']}" if stats['total_plus_minus'] >= 0 else str(stats['total_plus_minus']),
                     'FT': f"{stats['total_ft_made']}/{stats['total_ft_attempted']}",
                     'FT%': f"{ft_pct:.1f}%",
@@ -7369,21 +7413,29 @@ with tab4:
                     '3FG%': f"{three_pct:.1f}%",
                     'eFG%': f"{efg_pct:.1f}%",
                     'TS%': f"{ts_pct:.1f}%",
-                    'numeric_points': stats['total_points']
+                    'Def Impact/Min': f"{def_impact_per_min:.2f}",
+                    'Total Def Impact': f"{stats['total_def_impact']:.1f}",
+                    'numeric_points': stats['total_points'],
+                    'numeric_off_eff': offensive_efficiency,
+                    'numeric_def_eff': defensive_efficiency
                 })
             
             if lineup_season_data:
                 lineup_season_df = pd.DataFrame(lineup_season_data)
                 lineup_season_df = lineup_season_df.sort_values('numeric_points', ascending=False)
                 
-                display_cols = ['Lineup', 'Games', 'Appearances', 'Minutes', 'Total Points', 'Points/Min', 'Plus/Minus', 'FT', 'FT%', 'FG', 'FG%', '2FG', '2FG%', '3FG', '3FG%', 'eFG%', 'TS%']
+                display_cols = ['Lineup', 'Games', 'Appearances', 'Minutes', 'Off. Eff.', 'Def. Eff.', 'Total Points', 'Points/Min', 'Plus/Minus', 'FT', 'FT%', 'FG', 'FG%', '2FG', '2FG%', '3FG', '3FG%', 'eFG%', 'TS%', 'Def Impact/Min', 'Total Def Impact']
                 
-                # Apply same styling as Tab 2
+                # Apply styling
                 st.dataframe(
                     lineup_season_df[display_cols].style.applymap(
                         color_plus_minus, subset=['Plus/Minus']
                     ).applymap(
                         color_lineup_points, subset=['Total Points']
+                    ).applymap(
+                        color_offensive_efficiency_scores, subset=['Off. Eff.']
+                    ).applymap(
+                        color_defensive_efficiency_scores, subset=['Def. Eff.']
                     ).applymap(
                         color_ft_percentage, subset=['FT%']
                     ).applymap(
@@ -7396,6 +7448,10 @@ with tab4:
                         color_efg_percentage, subset=['eFG%']
                     ).applymap(
                         color_ts_percentage, subset=['TS%']
+                    ).applymap(
+                        color_lineup_defensive_impact_per_minute, subset=['Def Impact/Min']
+                    ).applymap(
+                        color_lineup_defensive_impact, subset=['Total Def Impact']
                     ),
                     use_container_width=True,
                     hide_index=True
