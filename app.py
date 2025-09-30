@@ -2081,7 +2081,7 @@ def color_2pt_percentage(val):
         elif numeric_val >= 50:
             return 'background-color: #90EE90'  # Light green
         elif numeric_val >= 42:
-            return 'background-color: #FFFACD'  # Light yellow
+            return 'background-color: #FFFACD; color: black'  # Light yellow
         elif numeric_val >= 37:
             return 'background-color: #FFB6C1'  # Light red
         else:
@@ -2105,7 +2105,7 @@ def color_3pt_percentage(val):
         elif numeric_val >= 32:
             return 'background-color: #90EE90'  # Light green
         elif numeric_val >= 29:
-            return 'background-color: #FFFACD'  # Light yellow
+            return 'background-color: #FFFACD; color: black'  # Light yellow
         elif numeric_val >= 25:
             return 'background-color: #FFB6C1'  # Light red
         else:
@@ -2129,7 +2129,7 @@ def color_fg_percentage(val):
         elif numeric_val >= 45:
             return 'background-color: #90EE90'  # Light green
         elif numeric_val >= 40:
-            return 'background-color: #FFFACD'  # Light yellow
+            return 'background-color: #FFFACD; color: black'  # Light yellow
         elif numeric_val >= 35:
             return 'background-color: #FFB6C1'  # Light red
         else:
@@ -2153,7 +2153,7 @@ def color_efg_percentage(val):
         elif numeric_val >= 50:
             return 'background-color: #90EE90'  # Light green
         elif numeric_val >= 45:
-            return 'background-color: #FFFACD'  # Light yellow
+            return 'background-color: #FFFACD; color: black'  # Light yellow
         elif numeric_val >= 40:
             return 'background-color: #FFB6C1'  # Light red
         else:
@@ -2177,7 +2177,7 @@ def color_ts_percentage(val):
         elif numeric_val >= 55:
             return 'background-color: #90EE90'  # Light green
         elif numeric_val >= 50:
-            return 'background-color: #FFFACD'  # Light yellow
+            return 'background-color: #FFFACD; color: black'  # Light yellow
         elif numeric_val >= 45:
             return 'background-color: #FFB6C1'  # Light red
         else:
@@ -2195,7 +2195,7 @@ def color_points(val):
         elif numeric_val >= 9.5:
             return 'background-color: #90EE90'  # Light green
         elif numeric_val >= 6:
-            return 'background-color: #FFFACD'  # Light yellow
+            return 'background-color: #FFFACD; color: black'  # Light yellow
         elif numeric_val >= 3:
             return 'background-color: #FFB6C1'  # Light red
         else:
@@ -2213,7 +2213,7 @@ def color_lineup_points(val):
         elif numeric_val >= 12:
             return 'background-color: #90EE90'  # Light green
         elif numeric_val >= 6:
-            return 'background-color: #FFFACD'  # Light yellow
+            return 'background-color: #FFFACD; color: black'  # Light yellow
         elif numeric_val >= 3:
             return 'background-color: #FFB6C1'  # Light red
         else:
@@ -2237,7 +2237,7 @@ def color_lineup_points_per_minute(val):
         elif numeric_val >= 1.625:
             return 'background-color: #90EE90'  # Light green
         elif numeric_val >= 1.4:
-            return 'background-color: #FFFACD'  # Light yellow
+            return 'background-color: #FFFACD; color: black'  # Light yellow
         elif numeric_val >= 1.15:
             return 'background-color: #FFB6C1'  # Light red
         else:
@@ -2256,7 +2256,7 @@ def color_turnovers(val):
         elif numeric_val == 1:
             return 'background-color: #90EE90'  # Light green
         elif numeric_val == 2:
-            return 'background-color: #FFFACD'  # Light yellow
+            return 'background-color: #FFFACD; color: black'  # Light yellow
         elif numeric_val <= 3:
             return 'background-color: #FFB6C1'  # Light red
         else:
@@ -2280,7 +2280,7 @@ def color_plus_minus(val):
         elif numeric_val >= 5:
             return 'background-color: #90EE90'  # Light green
         elif numeric_val >= 0:
-            return 'background-color: #FFFACD'  # Light yellow
+            return 'background-color: #FFFACD; color: black'  # Light yellow
         elif numeric_val >= -5:
             return 'background-color: #FFB6C1'  # Light red
         else:
@@ -2301,7 +2301,7 @@ def color_offensive_efficiency_scores(val):
         elif numeric_val >= 10.5:
             return 'background-color: #90EE90'  # Light green
         elif numeric_val >= 8:
-            return 'background-color: #FFFACD'  # Light yellow
+            return 'background-color: #FFFACD; color: black'  # Light yellow
         elif numeric_val >= 6:
             return 'background-color: #FFB6C1'  # Light red
         else:
@@ -2322,7 +2322,7 @@ def color_defensive_efficiency_scores(val):
         elif numeric_val >= 12:
             return 'background-color: #90EE90'  # Light green
         elif numeric_val >= 10:
-            return 'background-color: #FFFACD'  # Light yellow
+            return 'background-color: #FFFACD; color: black'  # Light yellow
         elif numeric_val >= 0.75:
             return 'background-color: #FFB6C1'  # Light red
         else:
@@ -2343,7 +2343,7 @@ def color_defensive_impact(val):
         elif numeric_val >= 36:
             return 'background-color: #90EE90'  # Light green
         elif numeric_val >= 30:
-            return 'background-color: #FFFACD'  # Light yellow
+            return 'background-color: #FFFACD; color: black'  # Light yellow
         elif numeric_val >= 20:
             return 'background-color: #FFB6C1'  # Light red
         else:
@@ -2364,7 +2364,7 @@ def color_lineup_defensive_impact(val):
         elif numeric_val >= 18:
             return 'background-color: #90EE90'  # Light green
         elif numeric_val >= 12:
-            return 'background-color: #FFFACD'  # Light yellow
+            return 'background-color: #FFFACD; color: black'  # Light yellow
         elif numeric_val >= 8:
             return 'background-color: #FFB6C1'  # Light red
         else:
@@ -2385,7 +2385,7 @@ def color_defensive_impact_per_minute(val):
         elif numeric_val >= 1.20:
             return 'background-color: #90EE90'  # Light green
         elif numeric_val >= 1.00:
-            return 'background-color: #FFFACD'  # Light yellow
+            return 'background-color: #FFFACD; color: black'  # Light yellow
         elif numeric_val >= 0.75:
             return 'background-color: #FFB6C1'  # Light red
         else:
@@ -2406,7 +2406,7 @@ def color_lineup_defensive_impact_per_minute(val):
         elif numeric_val >= 2.4:
             return 'background-color: #90EE90'  # Light green
         elif numeric_val >= 2.0:
-            return 'background-color: #FFFACD'  # Light yellow
+            return 'background-color: #FFFACD; color: black'  # Light yellow
         elif numeric_val >= 1.5:
             return 'background-color: #FFB6C1'  # Light red
         else:
