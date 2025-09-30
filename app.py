@@ -6416,9 +6416,9 @@ with tab2:
                         'FG': f"{stats['field_goals_made']}/{stats['field_goals_attempted']}" if stats['field_goals_attempted'] > 0 else "0/0",
                         'FG%': f"{stats['field_goals_made']/stats['field_goals_attempted']*100:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%",
                         'eFG%': f"{efg_pct:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%",
-                        'TS%': f"{ts_pct:.1f}%" if (stats['field_goals_attempted'] > 0 or stats['free_throws_attempted'] > 0) else "0.0%",
-                        'Turnovers': turnovers,
-                        "TO/Min": f"{total_turnovers / stats['minutes']:.2f}" if stats['minutes'] > 0 else "0.00",
+                        "TS%": f"{off_stats.get('true_shooting_percentage', 0):.1f}%" if off_stats.get('true_shooting_percentage', 0) > 0 else "0.0%",
+                        "Total TOs": off_stats.get('total_turnovers', 0),
+                        "TO/Min": f"{off_stats.get('total_turnovers', 0) / stats['minutes']:.2f}" if stats['minutes'] > 0 else "0.00",
                         'Def Impact/Min': f"{defensive_impact_per_minute:.2f}",
                         'Def Impact': f"{def_impact_score:.1f}"
                     })
