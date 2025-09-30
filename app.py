@@ -7291,6 +7291,38 @@ with tab4:
         
         st.divider()
 
+        # Game log
+        st.subheader("Game Log")
+
+        game_log_data = []
+        for game in season_games:
+            # Get the completion date or fall back to created/updated date
+            date_obj = game.get('completed_at') or game.get('updated_at') or game.get('created_at')
+    
+            # Format the date
+            if date_obj:
+                if hasattr(date_obj, 'timestamp'):
+                    # Firebase Timestamp object
+                    date_str = datetime.fromtimestamp(date_obj.timestamp(), tz=timezone.utc).strftime('%Y-%m-%d')
+                elif isinstance(date_obj, datetime):
+                    # Already a datetime object
+                    date_str = date_obj.strftime('%Y-%m-%d')
+                else:
+                    date_str = 'Unknown'
+            else:
+                date_str = 'Unknown'
+    
+            game_log_data.append({
+                'Date': date_str,
+                'Opponent': game.get('away_team_name', 'Unknown'),
+                'Result': 'W' if game.get('home_score', 0) > game.get('away_score', 0) else 'L',
+                'Score': f"{game.get('home_score', 0)}-{game.get('away_score', 0)}",
+                'Game Name': game.get('session_name', 'Unnamed Game')
+            })
+
+        if game_log_data:
+            game_log_df = pd.DataFrame(game_log_data)
+            st.dataframe(game_log_df, use_container_width=True, hide_index=True)
 
 check_auto_save()
 
