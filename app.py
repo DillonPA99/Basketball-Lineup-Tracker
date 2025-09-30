@@ -7183,6 +7183,7 @@ with tab4:
                     'Def. Eff.': f"{def_eff:.1f}",
                     'Points': stats['total_points'],
                     'PPG': f"{ppg:.1f}",
+                    'Points/Min': f"{stats['total_points'] / stats['total_minutes']:.2f}" if stats['total_minutes'] > 0 else "0.00",
                     'FT': f"{stats['total_ft_made']}/{stats['total_ft_attempted']}",
                     'FT%': f"{ft_pct:.1f}%",
                     '2PT': f"{two_pt_made}/{two_pt_attempted}",
