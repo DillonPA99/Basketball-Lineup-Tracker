@@ -7290,29 +7290,7 @@ with tab4:
                 )
         
         st.divider()
-        
-        # Game log at the bottom
-        st.subheader("Game Log")
-        
-        game_log_data = []
-        for game in season_games:
-            completed_date = game.get('completed_at')
-            if completed_date and hasattr(completed_date, 'strftime'):
-                date_str = completed_date.strftime('%Y-%m-%d')
-            else:
-                date_str = 'Unknown'
-            
-            game_log_data.append({
-                'Date': date_str,
-                'Opponent': game.get('away_team_name', 'Unknown'),
-                'Result': 'W' if game.get('home_score', 0) > game.get('away_score', 0) else 'L',
-                'Score': f"{game.get('home_score', 0)}-{game.get('away_score', 0)}",
-                'Game Name': game.get('session_name', 'Unnamed Game')
-            })
-        
-        if game_log_data:
-            game_log_df = pd.DataFrame(game_log_data)
-            st.dataframe(game_log_df, use_container_width=True, hide_index=True)
+
 
 check_auto_save()
 
