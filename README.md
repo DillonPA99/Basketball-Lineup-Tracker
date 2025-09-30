@@ -1,2 +1,2 @@
-# Basketball-Lineup-Tracker
+# Lineup Insite
 Basketball team lineup and analytics tracker
