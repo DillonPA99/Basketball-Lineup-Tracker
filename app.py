@@ -938,14 +938,12 @@ def debug_game_save(game_data):
 # SEASON STATISTICS AGGREGATION
 # ============================================================================
 
-def load_all_user_games_for_season_stats(user_id):
-    """Load all completed games for season statistics."""
+def load_all_user_games_for_season_stats(user_id, selected_game_ids=None):
+    """Load games for season statistics with optional filtering."""
     try:
-        # Get all completed games
+        # Get ALL games for this user (completed or not)
         games = db.collection('game_sessions').where(
             filter=FieldFilter('user_id', '==', user_id)
-        ).where(
-            filter=FieldFilter('is_completed', '==', True)
         ).get()
         
         games_data = []
@@ -953,6 +951,10 @@ def load_all_user_games_for_season_stats(user_id):
             try:
                 game_data = game_doc.to_dict()
                 game_data['id'] = game_doc.id
+                
+                # If filtering by specific games, skip games not in the list
+                if selected_game_ids and game_doc.id not in selected_game_ids:
+                    continue
                 
                 # Decode serialized data
                 fields_to_decode = ['lineup_history', 'score_history', 'quarter_end_history', 
@@ -991,7 +993,7 @@ def load_all_user_games_for_season_stats(user_id):
     except Exception as e:
         st.error(f"Error loading season games: {str(e)}")
         return []
-
+        
 def aggregate_season_player_stats(games_data):
     """Aggregate player statistics across all games."""
     season_stats = defaultdict(lambda: {
@@ -6759,16 +6761,81 @@ with tab3:
 with tab4:
     st.header("🏆 Season Statistics")
     
-    st.info("Season stats aggregate data from all your completed games")
+    st.info("Season stats aggregate data from your saved games")
     
-    # Load all completed games
-    with st.spinner("Loading season data..."):
-        season_games = load_all_user_games_for_season_stats(st.session_state.user_info['id'])
+    # Load ALL games first to show in filter
+    with st.spinner("Loading your games..."):
+        all_available_games = get_user_game_sessions(st.session_state.user_info['id'], include_completed=True)
     
-    if not season_games:
-        st.warning("No completed games found. Complete and mark games as finished to see season stats.")
-        st.info("💡 Tip: Use the '🏁 Mark Complete' button in the sidebar for games you want to include in season stats.")
+    if not all_available_games:
+        st.warning("No saved games found. Save and track games to see season statistics.")
+        st.info("💡 Tip: Games are automatically saved when you start tracking. Use 'My Saved Games' in the sidebar to manage them.")
     else:
+        # Game selection filter
+        st.subheader("Select Games to Include")
+        
+        # Create game options with useful info
+        game_options = {}
+        for game in all_available_games:
+            game_id = game['id']
+            game_name = game.get('session_name', 'Unnamed Game')
+            home_score = game.get('home_score', 0)
+            away_score = game.get('away_score', 0)
+            updated = game.get('updated_at')
+            
+            if updated and hasattr(updated, 'strftime'):
+                date_str = updated.strftime('%m/%d/%y')
+            else:
+                date_str = 'Unknown date'
+            
+            result = 'W' if home_score > away_score else 'L'
+            display_text = f"{game_name} - {result} {home_score}-{away_score} ({date_str})"
+            game_options[display_text] = game_id
+        
+        # Multi-select with all games selected by default
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            selected_game_labels = st.multiselect(
+                "Choose which games to include in season stats:",
+                options=list(game_options.keys()),
+                default=list(game_options.keys()),
+                help="Select one or more games to analyze. All games selected by default."
+            )
+        
+        with col2:
+            st.write("")  # Spacing
+            st.write("")  # Spacing
+            if st.button("Select All"):
+                selected_game_labels = list(game_options.keys())
+                st.rerun()
+            if st.button("Clear All"):
+                selected_game_labels = []
+                st.rerun()
+        
+        # Convert selected labels to game IDs
+        selected_game_ids = [game_options[label] for label in selected_game_labels]
+        
+        if not selected_game_ids:
+            st.warning("⚠️ Please select at least one game to view season statistics.")
+            st.stop()
+        
+        # Load the selected games with full data
+        with st.spinner("Calculating season statistics..."):
+            season_games = load_all_user_games_for_season_stats(
+                st.session_state.user_info['id'], 
+                selected_game_ids=selected_game_ids
+            )
+        
+        if not season_games:
+            st.error("Error loading selected games. Please try again.")
+            st.stop()
+        
+        # Show selection summary
+        st.caption(f"📊 Analyzing {len(season_games)} selected game(s)")
+        
+        st.divider()
+        
         # Season overview
         st.subheader("Season Overview")
         
@@ -6792,7 +6859,7 @@ with tab4:
         with overview_col4:
             win_pct = (wins / len(season_games) * 100) if season_games else 0
             st.metric("Win %", f"{win_pct:.1f}%")
-        
+                
         st.divider()
         
         # Aggregate shooting statistics (same as Tab 2)
