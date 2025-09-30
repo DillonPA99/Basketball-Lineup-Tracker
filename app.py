@@ -6626,7 +6626,7 @@ with tab2:
                     "eFG%": f"{efg_percentage:.1f}%" if fg_attempted > 0 else "0.0%",
                     "TS%": f"{off_stats.get('true_shooting_percentage', 0):.1f}%" if off_stats.get('true_shooting_percentage', 0) > 0 else "0.0%",
                     "Total TOs": total_turnovers,
-                    "TO/Min": f"{total_turnovers}/{stats['minutes']:.1f}" if {total_turnovers > 0 else "0.0%",
+                    "TO/Min": f"{total_turnovers / stats['minutes']:.2f}" if stats['minutes'] > 0 else "0.00",
                     "Def Impact/Min": f"{defensive_impact_per_minute:.2f}",
                     "Total Def Impact": f"{total_defensive_impact:.1f}",
                     "numeric_plus_minus": stats['plus_minus'],
