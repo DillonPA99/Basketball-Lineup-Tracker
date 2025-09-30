@@ -6394,6 +6394,8 @@ with tab2:
                     if stats['field_goals_attempted'] > 0:
                         efg_pct = ((stats['field_goals_made'] + 0.5 * stats['three_pointers_made']) / stats['field_goals_attempted']) * 100
 
+                    turnovers = st.session_state.player_turnovers.get(player, 0)
+
                     ts_pct = 0
                     if stats['field_goals_attempted'] > 0 or stats['free_throws_attempted'] > 0:
                         true_shooting_attempts = stats['field_goals_attempted'] + (0.44 * stats['free_throws_attempted'])
@@ -6417,8 +6419,8 @@ with tab2:
                         'FG%': f"{stats['field_goals_made']/stats['field_goals_attempted']*100:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%",
                         'eFG%': f"{efg_pct:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%",
                         'TS%': f"{ts_pct:.1f}%",
-                        "Total TOs": off_stats.get('total_turnovers', 0),
-                        "TO/Min": f"{off_stats.get('total_turnovers', 0) / stats['minutes']:.2f}" if stats['minutes'] > 0 else "0.00",
+                        'Total TOs': turnovers,
+                        'TO/Min': f"{turnovers / minutes_played:.2f}" if minutes_played > 0 else "0.00",
                         'Def Impact/Min': f"{defensive_impact_per_minute:.2f}",
                         'Def Impact': f"{def_impact_score:.1f}"
                     })
