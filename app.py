@@ -7196,6 +7196,7 @@ with tab4:
                     'Turnovers': stats['total_turnovers'],
                     'TO/G': f"{stats['total_turnovers'] / gp:.1f}",
                     'Def Impact/Min': f"{def_impact_per_min:.2f}",
+                    'Def Impact/G': f"{stats['total_def_impact'] / gp:.1f}" if gp > 0 else "0.0",
                     'Def Impact': f"{stats['total_def_impact']:.1f}"
                 })
             
