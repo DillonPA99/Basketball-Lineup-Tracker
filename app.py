@@ -6418,6 +6418,7 @@ with tab2:
                         'eFG%': f"{efg_pct:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%",
                         'TS%': f"{ts_pct:.1f}%" if (stats['field_goals_attempted'] > 0 or stats['free_throws_attempted'] > 0) else "0.0%",
                         'Turnovers': turnovers,
+                        "TO/Min": f"{total_turnovers / stats['minutes']:.2f}" if stats['minutes'] > 0 else "0.00",
                         'Def Impact/Min': f"{defensive_impact_per_minute:.2f}",
                         'Def Impact': f"{def_impact_score:.1f}"
                     })
@@ -6702,7 +6703,7 @@ with tab2:
                     best_offense = lineup_df.sort_values("numeric_off_eff", ascending=False).iloc[0]
                     st.info("🔥 **Best Offensive Lineup**")
                     st.write(f"**{best_offense['Off. Eff.']}** Off. Efficiency")
-                    st.caption(f"{best_offense['TS%']} TS% | {best_offense['TO Rate']} TO/min")
+                    st.caption(f"{best_offense['TS%']} TS% | {best_offense['TO/Min']} TO/min")
                     st.write(f"_{best_offense['Lineup']}_")
                 
                 with perf_col2:
