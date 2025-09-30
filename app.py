@@ -7268,6 +7268,8 @@ with tab4:
                                   (game.get('away_score', 0) - lineup_event['away_score'])
                 
                 game_lineup_plus_minus[lineup_key] += score_change
+
+            processed_lineups_this_game = set()
             
             for lineup_event in game.get('lineup_history', []):
                 lineup_key = " | ".join(sorted(lineup_event.get('new_lineup', [])))
@@ -7277,9 +7279,10 @@ with tab4:
                 season_lineup_stats[lineup_key]['total_appearances'] += 1
                 season_lineup_stats[lineup_key]['games_appeared'].add(game_idx)
                 
-                # Add minutes and plus/minus for this appearance
-                if lineup_key in game_lineup_times:
-                    season_lineup_stats[lineup_key]['total_minutes'] += game_lineup_times[lineup_key]
+                if lineup_key not in processed_lineups_this_game:
+                    if lineup_key in game_lineup_times:
+                        season_lineup_stats[lineup_key]['total_minutes'] += game_lineup_times[lineup_key]
+                    processed_lineups_this_game.add(lineup_key)
                 
                 if lineup_key in game_lineup_plus_minus:
                     season_lineup_stats[lineup_key]['total_plus_minus'] += game_lineup_plus_minus[lineup_key]
