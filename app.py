@@ -7248,26 +7248,34 @@ with tab4:
             'games_appeared': set()
         })
         
-        # Aggregate lineup stats from all games
+# Aggregate lineup stats from all games
         for game_idx, game in enumerate(season_games):
             # Calculate time for each lineup in this game
             game_lineup_times = calculate_lineup_times_for_game(game)
             
-            # Calculate plus/minus for lineups in this game
-            game_lineup_plus_minus = defaultdict(int)
+            # Calculate plus/minus AND points for lineups in this game
+            game_lineup_stats = defaultdict(lambda: {'plus_minus': 0, 'points': 0})
+            
             for i in range(len(game.get('lineup_history', []))):
                 lineup_event = game['lineup_history'][i]
                 lineup_key = " | ".join(sorted(lineup_event.get('new_lineup', [])))
                 
+                if not lineup_key:
+                    continue
+                
+                # Calculate score changes during this lineup period
                 if i < len(game['lineup_history']) - 1:
                     next_event = game['lineup_history'][i + 1]
-                    score_change = (next_event['home_score'] - lineup_event['home_score']) - \
-                                  (next_event['away_score'] - lineup_event['away_score'])
+                    home_points = next_event['home_score'] - lineup_event['home_score']
+                    away_points = next_event['away_score'] - lineup_event['away_score']
                 else:
-                    score_change = (game.get('home_score', 0) - lineup_event['home_score']) - \
-                                  (game.get('away_score', 0) - lineup_event['away_score'])
+                    home_points = game.get('home_score', 0) - lineup_event['home_score']
+                    away_points = game.get('away_score', 0) - lineup_event['away_score']
                 
-                game_lineup_plus_minus[lineup_key] += score_change
+                score_change = home_points - away_points
+                
+                game_lineup_stats[lineup_key]['plus_minus'] += score_change
+                game_lineup_stats[lineup_key]['points'] += home_points
 
             processed_lineups_this_game = set()
             
@@ -7279,23 +7287,26 @@ with tab4:
                 season_lineup_stats[lineup_key]['total_appearances'] += 1
                 season_lineup_stats[lineup_key]['games_appeared'].add(game_idx)
                 
+                # Add minutes, plus/minus, and points (only once per lineup per game)
                 if lineup_key not in processed_lineups_this_game:
                     if lineup_key in game_lineup_times:
                         season_lineup_stats[lineup_key]['total_minutes'] += game_lineup_times[lineup_key]
+                    
+                    # Add the aggregated stats from this game
+                    season_lineup_stats[lineup_key]['total_plus_minus'] += game_lineup_stats[lineup_key]['plus_minus']
+                    season_lineup_stats[lineup_key]['total_points'] += game_lineup_stats[lineup_key]['points']
+                    
                     processed_lineups_this_game.add(lineup_key)
                 
-                if lineup_key in game_lineup_plus_minus:
-                    season_lineup_stats[lineup_key]['total_plus_minus'] += game_lineup_plus_minus[lineup_key]
-                
-                # Aggregate shooting for this lineup (from score history)
+                # Aggregate shooting stats for this lineup
                 for score_event in game.get('score_history', []):
-                    if score_event.get('team') == 'home' and score_event.get('lineup') == lineup_event.get('new_lineup'):
+                    if (score_event.get('team') == 'home' and 
+                        score_event.get('lineup') == lineup_event.get('new_lineup') and
+                        score_event.get('quarter') == lineup_event.get('quarter')):
+                        
                         shot_type = score_event.get('shot_type')
                         made = score_event.get('made', True)
                         attempted = score_event.get('attempted', True)
-                        points = score_event.get('points', 0)
-                        
-                        season_lineup_stats[lineup_key]['total_points'] += points
                         
                         if attempted:
                             if shot_type == 'free_throw':
