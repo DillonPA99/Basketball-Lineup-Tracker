@@ -6626,6 +6626,7 @@ with tab2:
                     "eFG%": f"{efg_percentage:.1f}%" if fg_attempted > 0 else "0.0%",
                     "TS%": f"{off_stats.get('true_shooting_percentage', 0):.1f}%" if off_stats.get('true_shooting_percentage', 0) > 0 else "0.0%",
                     "Total TOs": total_turnovers,
+                    "TO/Min": f"{total_turnovers}/{stats['minutes']:.1f}" if {total_turnovers > 0 else "0.0%",
                     "Def Impact/Min": f"{defensive_impact_per_minute:.2f}",
                     "Total Def Impact": f"{total_defensive_impact:.1f}",
                     "numeric_plus_minus": stats['plus_minus'],
@@ -6639,7 +6640,7 @@ with tab2:
                 lineup_df = lineup_df.sort_values('numeric_plus_minus', ascending=False)
 
                 # Display main columns
-                main_columns = ["Lineup", "Appearances", "Minutes", "Off. Eff.", "Def. Eff.", "Points/Min", "Plus/Minus", "Total Points", "FT", "FT%", "FG", "FG%", "2FG", "2FG%", "3FG", "3FG%", "eFG%", "TS%", "Total TOs" , "Def Impact/Min", "Total Def Impact"]
+                main_columns = ["Lineup", "Appearances", "Minutes", "Off. Eff.", "Def. Eff.", "Points/Min", "Plus/Minus", "Total Points", "FT", "FT%", "FG", "FG%", "2FG", "2FG%", "3FG", "3FG%", "eFG%", "TS%", "Total TOs", "TO/Min" , "Def Impact/Min", "Total Def Impact"]
                 
                 st.dataframe(
                     lineup_df[main_columns].style.applymap(
