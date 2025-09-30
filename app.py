@@ -6948,10 +6948,11 @@ with tab4:
         
         with overview_col2:
             avg_points = total_home_score / len(season_games) if season_games else 0
-            st.metric("Avg Points/Game", f"{avg_points:.1f}")
+            st.metric("Points/Game", f"{avg_points:.1f}")
         
         with overview_col3:
-            st.metric("Record", f"{wins}-{losses}")
+            opp_avg_points = total_away_score / len(season_games) if season_games else 0
+            st.metric("Opp Points/Game", f"{opp_avg_points:.1f}")
         
         with overview_col4:
             win_pct = (wins / len(season_games) * 100) if season_games else 0
