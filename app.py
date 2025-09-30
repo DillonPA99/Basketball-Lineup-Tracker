@@ -4248,25 +4248,31 @@ if not st.session_state.authenticated:
     # Important: Stop execution here if not authenticated
     st.stop()
 
-# Temporary debug - remove after fixing
+# === ADD THIS DEBUG SECTION ===
 if st.session_state.authenticated:
-    with st.expander("🔍 Firebase Debug Info (click to expand)"):
-        cred_data = load_firebase_credentials()
-        if cred_data:
-            if hasattr(cred_data, '_asdict'):
-                cred_dict = dict(cred_data._asdict())
-            else:
-                cred_dict = dict(cred_data)
-            st.write(f"**Project ID from secrets:** {cred_dict.get('project_id')}")
-            st.write(f"**Client email:** {cred_dict.get('client_email')}")
+    with st.expander("🔍 Firebase Connection Debug"):
+        st.write(f"**Database object exists:** {st.session_state.db is not None}")
+        
+        if st.session_state.db:
+            st.success("✅ Database connection established")
             
-            # Check if they match
-            if 'basketball-lineup-tracker' in cred_dict.get('project_id', ''):
-                st.success("✅ Project ID looks correct")
-            else:
-                st.error("❌ Project ID doesn't match expected value")
+            # Try a simple test query
+            try:
+                test_docs = st.session_state.db.collection('users').limit(1).get()
+                st.success(f"✅ Successfully queried database - found {len(test_docs)} test docs")
+            except Exception as e:
+                st.error(f"❌ Database query failed: {str(e)}")
+                st.code(f"Error type: {type(e).__name__}")
         else:
-            st.error("❌ No credentials loaded!")
+            st.error("❌ Database connection is None - Firebase didn't initialize")
+            
+            # Check if Firebase app exists
+            if firebase_admin._apps:
+                st.warning("Firebase app exists but no database connection")
+            else:
+                st.error("No Firebase app initialized at all")
+# === END DEBUG SECTION ===
+
 
 # ------------------------------------------------------------------
 # Roster Setup Gate (REPLACE THE EXISTING ROSTER SETUP SECTION)
