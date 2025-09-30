@@ -2414,6 +2414,72 @@ def color_lineup_defensive_impact_per_minute(val):
     except (ValueError, TypeError):
         return ''
 
+# ============================================================================
+# SEASON STATISTICS HELPER FUNCTIONS
+# ============================================================================
+
+def calculate_individual_plus_minus_for_game(game):
+    """Calculate plus/minus for each player in a single game."""
+    player_stats = defaultdict(lambda: {'plus_minus': 0})
+    
+    for i in range(len(game.get('lineup_history', []))):
+        lineup_event = game['lineup_history'][i]
+        current_lineup = lineup_event['new_lineup']
+        
+        # Get score changes during this lineup period
+        if i < len(game['lineup_history']) - 1:
+            next_event = game['lineup_history'][i + 1]
+            score_change = (next_event['home_score'] - lineup_event['home_score']) - \
+                          (next_event['away_score'] - lineup_event['away_score'])
+        else:
+            score_change = (game.get('home_score', 0) - lineup_event['home_score']) - \
+                          (game.get('away_score', 0) - lineup_event['away_score'])
+        
+        for player in current_lineup:
+            player_stats[player]['plus_minus'] += score_change
+    
+    return dict(player_stats)
+
+def calculate_lineup_times_for_game(game):
+    """Calculate minutes played for each lineup in a single game."""
+    lineup_times = defaultdict(float)
+    
+    def parse_game_time(time_str):
+        try:
+            if ':' in time_str:
+                minutes, seconds = map(int, time_str.split(':'))
+                return minutes * 60 + seconds
+            return 0
+        except:
+            return 0
+    
+    for i in range(len(game.get('lineup_history', []))):
+        lineup_event = game['lineup_history'][i]
+        lineup_key = " | ".join(sorted(lineup_event['new_lineup']))
+        
+        lineup_start_seconds = parse_game_time(lineup_event.get('game_time', '0:00'))
+        
+        if i < len(game['lineup_history']) - 1:
+            next_event = game['lineup_history'][i + 1]
+            lineup_end_seconds = parse_game_time(next_event.get('game_time', '0:00'))
+            same_quarter = lineup_event.get('quarter') == next_event.get('quarter')
+            
+            time_elapsed = lineup_start_seconds - lineup_end_seconds if same_quarter else lineup_start_seconds
+        else:
+            current_quarter = game.get('current_quarter')
+            lineup_quarter = lineup_event.get('quarter')
+            
+            if current_quarter == lineup_quarter:
+                current_game_time_seconds = parse_game_time(game.get('current_game_time', '0:00'))
+                time_elapsed = lineup_start_seconds - current_game_time_seconds
+            else:
+                time_elapsed = lineup_start_seconds
+        
+        time_elapsed = max(0, time_elapsed)
+        lineup_times[lineup_key] += time_elapsed / 60.0
+    
+    return dict(lineup_times)
+
 # ------------------------------------------------------------------
 # NEW: Capture end-of-quarter snapshot in lineup history at 0:00
 # ------------------------------------------------------------------
@@ -7032,6 +7098,12 @@ with tab4:
                     season_player_stats[player]['total_3pt_attempted'] += stats.get('three_pointers_attempted', 0)
                     season_player_stats[player]['total_ft_made'] += stats.get('free_throws_made', 0)
                     season_player_stats[player]['total_ft_attempted'] += stats.get('free_throws_attempted', 0)
+
+            # Plus/minus calculation for this game
+            game_plus_minus = calculate_individual_plus_minus_for_game(game)
+            for player, pm_stats in game_plus_minus.items():
+                if player in season_player_stats:
+                    season_player_stats[player]['total_plus_minus'] += pm_stats.get('plus_minus', 0)
             
             # Turnovers
             for player, to_count in game.get('player_turnovers', {}).items():
@@ -7178,6 +7250,25 @@ with tab4:
         
         # Aggregate lineup stats from all games
         for game_idx, game in enumerate(season_games):
+            # Calculate time for each lineup in this game
+            game_lineup_times = calculate_lineup_times_for_game(game)
+            
+            # Calculate plus/minus for lineups in this game
+            game_lineup_plus_minus = defaultdict(int)
+            for i in range(len(game.get('lineup_history', []))):
+                lineup_event = game['lineup_history'][i]
+                lineup_key = " | ".join(sorted(lineup_event.get('new_lineup', [])))
+                
+                if i < len(game['lineup_history']) - 1:
+                    next_event = game['lineup_history'][i + 1]
+                    score_change = (next_event['home_score'] - lineup_event['home_score']) - \
+                                  (next_event['away_score'] - lineup_event['away_score'])
+                else:
+                    score_change = (game.get('home_score', 0) - lineup_event['home_score']) - \
+                                  (game.get('away_score', 0) - lineup_event['away_score'])
+                
+                game_lineup_plus_minus[lineup_key] += score_change
+            
             for lineup_event in game.get('lineup_history', []):
                 lineup_key = " | ".join(sorted(lineup_event.get('new_lineup', [])))
                 if not lineup_key:
@@ -7185,6 +7276,13 @@ with tab4:
                 
                 season_lineup_stats[lineup_key]['total_appearances'] += 1
                 season_lineup_stats[lineup_key]['games_appeared'].add(game_idx)
+                
+                # Add minutes and plus/minus for this appearance
+                if lineup_key in game_lineup_times:
+                    season_lineup_stats[lineup_key]['total_minutes'] += game_lineup_times[lineup_key]
+                
+                if lineup_key in game_lineup_plus_minus:
+                    season_lineup_stats[lineup_key]['total_plus_minus'] += game_lineup_plus_minus[lineup_key]
                 
                 # Aggregate shooting for this lineup (from score history)
                 for score_event in game.get('score_history', []):
