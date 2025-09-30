@@ -6573,11 +6573,11 @@ with tab2:
             lineup_plus_minus_data = []
             for lineup, stats in lineup_stats.items():
                 # Get offensive efficiency (using same methodology as individual players)
-                off_stats = lineup_offensive_efficiency.get(lineup, {})
+                off_stats = lineup_offensive_efficiency.get(lineup, {}) or {}
                 offensive_efficiency = off_stats.get('offensive_efficiency', 0)
                 
                 # Get defensive efficiency (using same methodology as individual players) 
-                def_stats = lineup_defensive_efficiency.get(lineup, {})
+                def_stats = lineup_defensive_efficiency.get(lineup, {}) or {}
                 defensive_efficiency = def_stats.get('defensive_efficiency', 0)
                 
                 # Get total points scored by this lineup
@@ -6625,7 +6625,7 @@ with tab2:
                     "3FG": f"{three_pt_made}/{three_pt_attempted}" if three_pt_attempted > 0 else "0/0",
                     "3FG%": f"{three_pt_percentage:.1f}%" if three_pt_attempted > 0 else "0.0%",
                     "eFG%": f"{efg_percentage:.1f}%" if fg_attempted > 0 else "0.0%",
-                    "TS%": f"{off_stats.get('true_shooting_percentage', 0):.1f}%" if off_stats.get('true_shooting_percentage', 0) > 0 else "0.0%",
+                    "TS%": f"{off_stats.get('true_shooting_percentage', 0):.1f}%" if (off_stats and off_stats.get('true_shooting_percentage', 0) > 0) else "0.0%",
                     "Total TOs": total_turnovers,
                     "TO/Min": f"{total_turnovers / stats['minutes']:.2f}" if stats['minutes'] > 0 else "0.00",
                     "Def Impact/Min": f"{defensive_impact_per_minute:.2f}",
