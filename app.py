@@ -6859,7 +6859,7 @@ with tab4:
     
     # Load ALL games first to show in filter
     with st.spinner("Loading your games..."):
-        all_available_games = get_user_game_sessions(st.session_state.user_info['id'], include_completed=True)
+        all_available_games = get_user_game_sessions(st.session_state.user_info['id'], include_completed=False)
     
     if not all_available_games:
         st.warning("No saved games found. Save and track games to see season statistics.")
