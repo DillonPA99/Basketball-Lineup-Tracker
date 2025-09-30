@@ -932,6 +932,169 @@ def debug_game_save(game_data):
         except Exception as e:
             st.error(f"❌ {key}: Serialization failed - {e}")
 
+# Add these functions after your existing analytics functions (around line 1500-2000)
+
+# ============================================================================
+# SEASON STATISTICS AGGREGATION
+# ============================================================================
+
+def load_all_user_games_for_season_stats(user_id):
+    """Load all completed games for season statistics."""
+    try:
+        # Get all completed games
+        games = db.collection('game_sessions').where(
+            filter=FieldFilter('user_id', '==', user_id)
+        ).where(
+            filter=FieldFilter('is_completed', '==', True)
+        ).get()
+        
+        games_data = []
+        for game_doc in games:
+            try:
+                game_data = game_doc.to_dict()
+                game_data['id'] = game_doc.id
+                
+                # Decode serialized data
+                fields_to_decode = ['lineup_history', 'score_history', 'quarter_end_history', 
+                                  'player_stats', 'turnover_history', 'player_turnovers', 
+                                  'lineup_points_off_turnovers']
+                
+                for field in fields_to_decode:
+                    if field in game_data and game_data[field]:
+                        try:
+                            decoded = pickle.loads(base64.b64decode(game_data[field]))
+                            if field == 'player_stats':
+                                game_data[field] = defaultdict(lambda: {
+                                    'points': 0, 'field_goals_made': 0, 'field_goals_attempted': 0,
+                                    'three_pointers_made': 0, 'three_pointers_attempted': 0,
+                                    'free_throws_made': 0, 'free_throws_attempted': 0, 'minutes_played': 0
+                                }, decoded)
+                            elif field in ['player_turnovers', 'lineup_points_off_turnovers']:
+                                game_data[field] = defaultdict(int, decoded)
+                            else:
+                                game_data[field] = decoded
+                        except:
+                            game_data[field] = [] if field != 'player_stats' else defaultdict(lambda: {
+                                'points': 0, 'field_goals_made': 0, 'field_goals_attempted': 0,
+                                'three_pointers_made': 0, 'three_pointers_attempted': 0,
+                                'free_throws_made': 0, 'free_throws_attempted': 0, 'minutes_played': 0
+                            })
+                
+                games_data.append(game_data)
+                
+            except Exception as e:
+                st.warning(f"Skipped game {game_doc.id}: {str(e)}")
+                continue
+        
+        return games_data
+        
+    except Exception as e:
+        st.error(f"Error loading season games: {str(e)}")
+        return []
+
+def aggregate_season_player_stats(games_data):
+    """Aggregate player statistics across all games."""
+    season_stats = defaultdict(lambda: {
+        'games_played': 0,
+        'total_points': 0,
+        'total_minutes': 0,
+        'total_fg_made': 0,
+        'total_fg_attempted': 0,
+        'total_3pt_made': 0,
+        'total_3pt_attempted': 0,
+        'total_ft_made': 0,
+        'total_ft_attempted': 0,
+        'total_turnovers': 0,
+        'total_plus_minus': 0,
+        'total_def_impact': 0
+    })
+    
+    for game in games_data:
+        # Track which players played in this game
+        players_in_game = set()
+        
+        # Aggregate shooting stats
+        for player, stats in game.get('player_stats', {}).items():
+            if stats.get('points', 0) > 0 or stats.get('field_goals_attempted', 0) > 0:
+                players_in_game.add(player)
+                season_stats[player]['total_points'] += stats.get('points', 0)
+                season_stats[player]['total_minutes'] += stats.get('minutes_played', 0)
+                season_stats[player]['total_fg_made'] += stats.get('field_goals_made', 0)
+                season_stats[player]['total_fg_attempted'] += stats.get('field_goals_attempted', 0)
+                season_stats[player]['total_3pt_made'] += stats.get('three_pointers_made', 0)
+                season_stats[player]['total_3pt_attempted'] += stats.get('three_pointers_attempted', 0)
+                season_stats[player]['total_ft_made'] += stats.get('free_throws_made', 0)
+                season_stats[player]['total_ft_attempted'] += stats.get('free_throws_attempted', 0)
+        
+        # Aggregate turnovers
+        for player, to_count in game.get('player_turnovers', {}).items():
+            if to_count > 0:
+                players_in_game.add(player)
+                season_stats[player]['total_turnovers'] += to_count
+        
+        # Aggregate defensive stats (reconstruct from game data)
+        for lineup_event in game.get('lineup_history', []):
+            for player in lineup_event.get('new_lineup', []):
+                players_in_game.add(player)
+        
+        # Calculate per-game plus/minus and defensive impact for this game
+        # (This is simplified - you might want to use your existing calculation functions)
+        for turnover_event in game.get('turnover_history', []):
+            if turnover_event.get('team') == 'away':
+                for player in turnover_event.get('lineup', []):
+                    season_stats[player]['total_def_impact'] += 1.5
+        
+        for score_event in game.get('score_history', []):
+            if score_event.get('team') == 'away' and not score_event.get('made', True):
+                for player in score_event.get('lineup', []):
+                    season_stats[player]['total_def_impact'] += 1.0
+        
+        # Increment games played for all players who participated
+        for player in players_in_game:
+            season_stats[player]['games_played'] += 1
+    
+    return dict(season_stats)
+
+def aggregate_season_lineup_stats(games_data):
+    """Aggregate lineup statistics across all games."""
+    season_lineup_stats = defaultdict(lambda: {
+        'games_appeared': 0,
+        'total_minutes': 0,
+        'total_points': 0,
+        'total_plus_minus': 0,
+        'total_appearances': 0,
+        'total_fg_made': 0,
+        'total_fg_attempted': 0,
+        'total_3pt_made': 0,
+        'total_3pt_attempted': 0,
+        'total_ft_made': 0,
+        'total_ft_attempted': 0,
+        'total_turnovers': 0,
+        'total_def_impact': 0
+    })
+    
+    for game in games_data:
+        game_lineups_seen = set()
+        
+        # Process lineup history for this game
+        for i, lineup_event in enumerate(game.get('lineup_history', [])):
+            lineup_key = " | ".join(sorted(lineup_event.get('new_lineup', [])))
+            
+            if not lineup_key:
+                continue
+            
+            # Track which game this lineup appeared in
+            if lineup_key not in game_lineups_seen:
+                season_lineup_stats[lineup_key]['games_appeared'] += 1
+                game_lineups_seen.add(lineup_key)
+            
+            season_lineup_stats[lineup_key]['total_appearances'] += 1
+            
+            # Calculate minutes and stats for this lineup period (similar to existing logic)
+            # ... (you can reuse calculation logic from calculate_lineup_plus_minus_with_time)
+    
+    return dict(season_lineup_stats)
+
 # ============================================================================
 # ADMIN FUNCTIONS (FIREBASE VERSION)
 # ============================================================================
@@ -5419,7 +5582,7 @@ st.divider()
 # Main content area: Tabs
 # ------------------------------------------------------------------
 
-tab1, tab2, tab3 = st.tabs(["🏀 Live Game", "📊 Analytics", "📝 Event Log"])
+tab1, tab2, tab3, tab4 = st.tabs(["🏀 Live Game", "📊 Analytics", "📝 Event Log", "🏆 Season Stats"])
 
 # ------------------------------------------------------------------
 # Tab 1: Live Game - FIXED VERSION
@@ -6590,8 +6753,472 @@ with tab3:
             st.write(f"**Details:** {event['details']}")
             st.divider()
 
-# Before the footer section
-# Auto-save check
+# ------------------------------------------------------------------
+# Tab 4: Season Statistics
+# ------------------------------------------------------------------
+with tab4:
+    st.header("🏆 Season Statistics")
+    
+    st.info("Season stats aggregate data from all your completed games")
+    
+    # Load all completed games
+    with st.spinner("Loading season data..."):
+        season_games = load_all_user_games_for_season_stats(st.session_state.user_info['id'])
+    
+    if not season_games:
+        st.warning("No completed games found. Complete and mark games as finished to see season stats.")
+        st.info("💡 Tip: Use the '🏁 Mark Complete' button in the sidebar for games you want to include in season stats.")
+    else:
+        # Season overview
+        st.subheader("Season Overview")
+        
+        overview_col1, overview_col2, overview_col3, overview_col4 = st.columns(4)
+        
+        total_home_score = sum(g.get('home_score', 0) for g in season_games)
+        total_away_score = sum(g.get('away_score', 0) for g in season_games)
+        wins = sum(1 for g in season_games if g.get('home_score', 0) > g.get('away_score', 0))
+        losses = len(season_games) - wins
+        
+        with overview_col1:
+            st.metric("Games Played", len(season_games))
+        
+        with overview_col2:
+            avg_points = total_home_score / len(season_games) if season_games else 0
+            st.metric("Avg Points/Game", f"{avg_points:.1f}")
+        
+        with overview_col3:
+            st.metric("Record", f"{wins}-{losses}")
+        
+        with overview_col4:
+            win_pct = (wins / len(season_games) * 100) if season_games else 0
+            st.metric("Win %", f"{win_pct:.1f}%")
+        
+        st.divider()
+        
+        # Aggregate shooting statistics (same as Tab 2)
+        st.subheader("Season Shooting Statistics")
+        
+        season_home_shooting = {
+            'free_throws_made': 0, 'free_throws_attempted': 0,
+            'field_goals_made': 0, 'field_goals_attempted': 0,
+            'three_pointers_made': 0, 'three_pointers_attempted': 0,
+            'total_points': 0
+        }
+        
+        season_away_shooting = {
+            'free_throws_made': 0, 'free_throws_attempted': 0,
+            'field_goals_made': 0, 'field_goals_attempted': 0,
+            'three_pointers_made': 0, 'three_pointers_attempted': 0,
+            'total_points': 0
+        }
+        
+        total_home_pot = 0
+        total_away_pot = 0
+        
+        # Aggregate shooting stats from all games
+        for game in season_games:
+            for score_event in game.get('score_history', []):
+                team = score_event.get('team')
+                if team not in ['home', 'away']:
+                    continue
+                
+                stats = season_home_shooting if team == 'home' else season_away_shooting
+                shot_type = score_event.get('shot_type', 'field_goal')
+                made = score_event.get('made', True)
+                attempted = score_event.get('attempted', True)
+                points = score_event.get('points', 0)
+                
+                stats['total_points'] += points
+                
+                if attempted:
+                    if shot_type == 'free_throw':
+                        stats['free_throws_attempted'] += 1
+                        if made:
+                            stats['free_throws_made'] += 1
+                    elif shot_type == 'field_goal':
+                        stats['field_goals_attempted'] += 1
+                        if made:
+                            stats['field_goals_made'] += 1
+                    elif shot_type == 'three_pointer':
+                        stats['three_pointers_attempted'] += 1
+                        stats['field_goals_attempted'] += 1
+                        if made:
+                            stats['three_pointers_made'] += 1
+                            stats['field_goals_made'] += 1
+                
+                # Track points off turnovers
+                if score_event.get('is_points_off_turnover', False):
+                    if team == 'home':
+                        total_home_pot += points
+                    else:
+                        total_away_pot += points
+        
+        # Display team shooting comparison (same format as Tab 2)
+        st.write("**Team Shooting Comparison**")
+        
+        team_col1, team_col2 = st.columns(2)
+        
+        with team_col1:
+            st.markdown("### Home Team (Season Totals)")
+            
+            st.metric("Total Points", season_home_shooting['total_points'])
+            
+            fg_pct = (season_home_shooting['field_goals_made'] / season_home_shooting['field_goals_attempted'] * 100) if season_home_shooting['field_goals_attempted'] > 0 else 0
+            st.metric("Total FG", f"{season_home_shooting['field_goals_made']}/{season_home_shooting['field_goals_attempted']}", f"{fg_pct:.1f}%")
+            
+            two_pt_made = season_home_shooting['field_goals_made'] - season_home_shooting['three_pointers_made']
+            two_pt_attempted = season_home_shooting['field_goals_attempted'] - season_home_shooting['three_pointers_attempted']
+            two_pt_pct = (two_pt_made / two_pt_attempted * 100) if two_pt_attempted > 0 else 0
+            st.metric("2-Point FG", f"{two_pt_made}/{two_pt_attempted}", f"{two_pt_pct:.1f}%")
+            
+            three_pt_pct = (season_home_shooting['three_pointers_made'] / season_home_shooting['three_pointers_attempted'] * 100) if season_home_shooting['three_pointers_attempted'] > 0 else 0
+            st.metric("3-Point FG", f"{season_home_shooting['three_pointers_made']}/{season_home_shooting['three_pointers_attempted']}", f"{three_pt_pct:.1f}%")
+            
+            ft_pct = (season_home_shooting['free_throws_made'] / season_home_shooting['free_throws_attempted'] * 100) if season_home_shooting['free_throws_attempted'] > 0 else 0
+            st.metric("Free Throws", f"{season_home_shooting['free_throws_made']}/{season_home_shooting['free_throws_attempted']}", f"{ft_pct:.1f}%")
+            
+            st.metric("Points off Turnovers", total_home_pot)
+            
+            home_pot_pct = (total_home_pot / season_home_shooting['total_points'] * 100) if season_home_shooting['total_points'] > 0 else 0
+            st.metric("Points off TO %", f"{home_pot_pct:.1f}%")
+        
+        with team_col2:
+            st.markdown("### Away Team (Season Totals)")
+            
+            st.metric("Total Points", season_away_shooting['total_points'])
+            
+            away_fg_pct = (season_away_shooting['field_goals_made'] / season_away_shooting['field_goals_attempted'] * 100) if season_away_shooting['field_goals_attempted'] > 0 else 0
+            st.metric("Total FG", f"{season_away_shooting['field_goals_made']}/{season_away_shooting['field_goals_attempted']}", f"{away_fg_pct:.1f}%")
+            
+            away_two_pt_made = season_away_shooting['field_goals_made'] - season_away_shooting['three_pointers_made']
+            away_two_pt_attempted = season_away_shooting['field_goals_attempted'] - season_away_shooting['three_pointers_attempted']
+            away_two_pt_pct = (away_two_pt_made / away_two_pt_attempted * 100) if away_two_pt_attempted > 0 else 0
+            st.metric("2-Point FG", f"{away_two_pt_made}/{away_two_pt_attempted}", f"{away_two_pt_pct:.1f}%")
+            
+            away_three_pt_pct = (season_away_shooting['three_pointers_made'] / season_away_shooting['three_pointers_attempted'] * 100) if season_away_shooting['three_pointers_attempted'] > 0 else 0
+            st.metric("3-Point FG", f"{season_away_shooting['three_pointers_made']}/{season_away_shooting['three_pointers_attempted']}", f"{away_three_pt_pct:.1f}%")
+            
+            away_ft_pct = (season_away_shooting['free_throws_made'] / season_away_shooting['free_throws_attempted'] * 100) if season_away_shooting['free_throws_attempted'] > 0 else 0
+            st.metric("Free Throws", f"{season_away_shooting['free_throws_made']}/{season_away_shooting['free_throws_attempted']}", f"{away_ft_pct:.1f}%")
+            
+            st.metric("Points off Turnovers", total_away_pot)
+            
+            away_pot_pct = (total_away_pot / season_away_shooting['total_points'] * 100) if season_away_shooting['total_points'] > 0 else 0
+            st.metric("Points off TO %", f"{away_pot_pct:.1f}%")
+        
+        st.divider()
+        
+        # Individual Player Statistics (exact same table as Tab 2)
+        st.write("**Home Team Individual Player Statistics (Season Totals & Averages)**")
+        
+        season_player_stats = defaultdict(lambda: {
+            'games_played': 0, 'total_points': 0, 'total_minutes': 0,
+            'total_fg_made': 0, 'total_fg_attempted': 0,
+            'total_3pt_made': 0, 'total_3pt_attempted': 0,
+            'total_ft_made': 0, 'total_ft_attempted': 0,
+            'total_turnovers': 0, 'total_plus_minus': 0,
+            'total_opp_turnovers': 0, 'total_opp_missed_shots': 0,
+            'total_def_impact': 0
+        })
+        
+        # Aggregate all player stats
+        for game in season_games:
+            players_in_game = set()
+            
+            # Shooting stats
+            for player, stats in game.get('player_stats', {}).items():
+                if stats.get('points', 0) > 0 or stats.get('field_goals_attempted', 0) > 0:
+                    players_in_game.add(player)
+                    season_player_stats[player]['total_points'] += stats.get('points', 0)
+                    season_player_stats[player]['total_minutes'] += stats.get('minutes_played', 0)
+                    season_player_stats[player]['total_fg_made'] += stats.get('field_goals_made', 0)
+                    season_player_stats[player]['total_fg_attempted'] += stats.get('field_goals_attempted', 0)
+                    season_player_stats[player]['total_3pt_made'] += stats.get('three_pointers_made', 0)
+                    season_player_stats[player]['total_3pt_attempted'] += stats.get('three_pointers_attempted', 0)
+                    season_player_stats[player]['total_ft_made'] += stats.get('free_throws_made', 0)
+                    season_player_stats[player]['total_ft_attempted'] += stats.get('free_throws_attempted', 0)
+            
+            # Turnovers
+            for player, to_count in game.get('player_turnovers', {}).items():
+                if to_count > 0:
+                    players_in_game.add(player)
+                    season_player_stats[player]['total_turnovers'] += to_count
+            
+            # Defensive stats
+            for turnover_event in game.get('turnover_history', []):
+                if turnover_event.get('team') == 'away':
+                    for player in turnover_event.get('lineup', []):
+                        players_in_game.add(player)
+                        season_player_stats[player]['total_opp_turnovers'] += 1
+                        season_player_stats[player]['total_def_impact'] += 1.5
+            
+            for score_event in game.get('score_history', []):
+                if score_event.get('team') == 'away' and not score_event.get('made', True):
+                    shot_type = score_event.get('shot_type')
+                    if shot_type in ['field_goal', 'three_pointer']:
+                        for player in score_event.get('lineup', []):
+                            players_in_game.add(player)
+                            season_player_stats[player]['total_opp_missed_shots'] += 1
+                            season_player_stats[player]['total_def_impact'] += 1.0
+            
+            # Plus/minus (simplified calculation per game)
+            for lineup_event in game.get('lineup_history', []):
+                for player in lineup_event.get('new_lineup', []):
+                    players_in_game.add(player)
+            
+            # Increment games played
+            for player in players_in_game:
+                season_player_stats[player]['games_played'] += 1
+        
+        # Build player data table (exact same columns as Tab 2)
+        if season_player_stats:
+            player_season_data = []
+            
+            for player, stats in season_player_stats.items():
+                gp = stats['games_played']
+                if gp == 0:
+                    continue
+                
+                # Calculate per-game averages
+                ppg = stats['total_points'] / gp
+                mpg = stats['total_minutes'] / gp
+                
+                # Calculate percentages
+                fg_pct = (stats['total_fg_made'] / stats['total_fg_attempted'] * 100) if stats['total_fg_attempted'] > 0 else 0
+                three_pct = (stats['total_3pt_made'] / stats['total_3pt_attempted'] * 100) if stats['total_3pt_attempted'] > 0 else 0
+                ft_pct = (stats['total_ft_made'] / stats['total_ft_attempted'] * 100) if stats['total_ft_attempted'] > 0 else 0
+                
+                two_pt_made = stats['total_fg_made'] - stats['total_3pt_made']
+                two_pt_attempted = stats['total_fg_attempted'] - stats['total_3pt_attempted']
+                two_pct = (two_pt_made / two_pt_attempted * 100) if two_pt_attempted > 0 else 0
+                
+                efg_pct = ((stats['total_fg_made'] + 0.5 * stats['total_3pt_made']) / stats['total_fg_attempted'] * 100) if stats['total_fg_attempted'] > 0 else 0
+                
+                ts_pct = 0
+                if stats['total_fg_attempted'] > 0 or stats['total_ft_attempted'] > 0:
+                    tsa = stats['total_fg_attempted'] + (0.44 * stats['total_ft_attempted'])
+                    if tsa > 0:
+                        ts_pct = (stats['total_points'] / (2 * tsa)) * 100
+                
+                # Calculate efficiency scores (season averages)
+                off_eff = (ts_pct / 100 * 15) + ((stats['total_fg_attempted'] + stats['total_ft_attempted']) / stats['total_minutes'] * 3) - (stats['total_turnovers'] / stats['total_minutes'] * 5) if stats['total_minutes'] > 0 else 0
+                
+                def_impact_per_min = stats['total_def_impact'] / stats['total_minutes'] if stats['total_minutes'] > 0 else 0
+                def_eff = def_impact_per_min * 10
+                
+                player_season_data.append({
+                    'Player': player.split('(')[0].strip(),
+                    'GP': gp,
+                    'Minutes': f"{stats['total_minutes']:.1f}",
+                    'MPG': f"{mpg:.1f}",
+                    '+/-': f"+{stats['total_plus_minus']}" if stats['total_plus_minus'] >= 0 else str(stats['total_plus_minus']),
+                    'Off. Eff.': f"{off_eff:.1f}",
+                    'Def. Eff.': f"{def_eff:.1f}",
+                    'Points': stats['total_points'],
+                    'PPG': f"{ppg:.1f}",
+                    'FT': f"{stats['total_ft_made']}/{stats['total_ft_attempted']}",
+                    'FT%': f"{ft_pct:.1f}%",
+                    '2PT': f"{two_pt_made}/{two_pt_attempted}",
+                    '2PT%': f"{two_pct:.1f}%",
+                    '3PT': f"{stats['total_3pt_made']}/{stats['total_3pt_attempted']}",
+                    '3PT%': f"{three_pct:.1f}%",
+                    'FG': f"{stats['total_fg_made']}/{stats['total_fg_attempted']}",
+                    'FG%': f"{fg_pct:.1f}%",
+                    'eFG%': f"{efg_pct:.1f}%",
+                    'TS%': f"{ts_pct:.1f}%",
+                    'Turnovers': stats['total_turnovers'],
+                    'TO/G': f"{stats['total_turnovers'] / gp:.1f}",
+                    'Def Impact/Min': f"{def_impact_per_min:.2f}",
+                    'Def Impact': f"{stats['total_def_impact']:.1f}"
+                })
+            
+            if player_season_data:
+                player_season_df = pd.DataFrame(player_season_data)
+                player_season_df = player_season_df.sort_values('Points', ascending=False)
+                
+                # Apply same styling as Tab 2
+                styled_season_player_df = player_season_df.style.applymap(
+                    color_plus_minus, subset=['+/-']
+                ).applymap(
+                    color_defensive_impact, subset=['Def Impact']
+                ).applymap(
+                    color_defensive_impact_per_minute, subset=['Def Impact/Min']
+                ).applymap(
+                    color_offensive_efficiency_scores, subset=['Off. Eff.']
+                ).applymap(
+                    color_defensive_efficiency_scores, subset=['Def. Eff.']
+                ).applymap(
+                    color_points, subset=['Points']
+                ).applymap(
+                    color_ft_percentage, subset=['FT%']
+                ).applymap(
+                    color_2pt_percentage, subset=['2PT%']
+                ).applymap(
+                    color_3pt_percentage, subset=['3PT%']
+                ).applymap(
+                    color_fg_percentage, subset=['FG%']
+                ).applymap(
+                    color_efg_percentage, subset=['eFG%']
+                ).applymap(
+                    color_ts_percentage, subset=['TS%']
+                ).applymap(
+                    color_turnovers, subset=['Turnovers']
+                )
+                
+                st.dataframe(styled_season_player_df, use_container_width=True, hide_index=True)
+        
+        st.divider()
+        
+        # Lineup Statistics (exact same table as Tab 2)
+        st.write("**Home Team Lineup Statistics (Season Totals & Averages)**")
+        
+        season_lineup_stats = defaultdict(lambda: {
+            'total_appearances': 0, 'total_minutes': 0, 'total_points': 0,
+            'total_plus_minus': 0, 'total_fg_made': 0, 'total_fg_attempted': 0,
+            'total_3pt_made': 0, 'total_3pt_attempted': 0,
+            'total_ft_made': 0, 'total_ft_attempted': 0,
+            'total_turnovers': 0, 'total_def_impact': 0,
+            'games_appeared': set()
+        })
+        
+        # Aggregate lineup stats from all games
+        for game_idx, game in enumerate(season_games):
+            for lineup_event in game.get('lineup_history', []):
+                lineup_key = " | ".join(sorted(lineup_event.get('new_lineup', [])))
+                if not lineup_key:
+                    continue
+                
+                season_lineup_stats[lineup_key]['total_appearances'] += 1
+                season_lineup_stats[lineup_key]['games_appeared'].add(game_idx)
+                
+                # Aggregate shooting for this lineup (from score history)
+                for score_event in game.get('score_history', []):
+                    if score_event.get('team') == 'home' and score_event.get('lineup') == lineup_event.get('new_lineup'):
+                        shot_type = score_event.get('shot_type')
+                        made = score_event.get('made', True)
+                        attempted = score_event.get('attempted', True)
+                        points = score_event.get('points', 0)
+                        
+                        season_lineup_stats[lineup_key]['total_points'] += points
+                        
+                        if attempted:
+                            if shot_type == 'free_throw':
+                                season_lineup_stats[lineup_key]['total_ft_attempted'] += 1
+                                if made:
+                                    season_lineup_stats[lineup_key]['total_ft_made'] += 1
+                            elif shot_type == 'field_goal':
+                                season_lineup_stats[lineup_key]['total_fg_attempted'] += 1
+                                if made:
+                                    season_lineup_stats[lineup_key]['total_fg_made'] += 1
+                            elif shot_type == 'three_pointer':
+                                season_lineup_stats[lineup_key]['total_3pt_attempted'] += 1
+                                season_lineup_stats[lineup_key]['total_fg_attempted'] += 1
+                                if made:
+                                    season_lineup_stats[lineup_key]['total_3pt_made'] += 1
+                                    season_lineup_stats[lineup_key]['total_fg_made'] += 1
+        
+        # Build lineup data table
+        if season_lineup_stats:
+            lineup_season_data = []
+            
+            for lineup, stats in season_lineup_stats.items():
+                games_appeared = len(stats['games_appeared'])
+                
+                if stats['total_appearances'] == 0:
+                    continue
+                
+                # Calculate percentages
+                fg_pct = (stats['total_fg_made'] / stats['total_fg_attempted'] * 100) if stats['total_fg_attempted'] > 0 else 0
+                three_pct = (stats['total_3pt_made'] / stats['total_3pt_attempted'] * 100) if stats['total_3pt_attempted'] > 0 else 0
+                ft_pct = (stats['total_ft_made'] / stats['total_ft_attempted'] * 100) if stats['total_ft_attempted'] > 0 else 0
+                
+                two_pt_made = stats['total_fg_made'] - stats['total_3pt_made']
+                two_pt_attempted = stats['total_fg_attempted'] - stats['total_3pt_attempted']
+                two_pct = (two_pt_made / two_pt_attempted * 100) if two_pt_attempted > 0 else 0
+                
+                efg_pct = ((stats['total_fg_made'] + 0.5 * stats['total_3pt_made']) / stats['total_fg_attempted'] * 100) if stats['total_fg_attempted'] > 0 else 0
+                
+                ts_pct = 0
+                if stats['total_fg_attempted'] > 0 or stats['total_ft_attempted'] > 0:
+                    tsa = stats['total_fg_attempted'] + (0.44 * stats['total_ft_attempted'])
+                    if tsa > 0:
+                        ts_pct = (stats['total_points'] / (2 * tsa)) * 100
+                
+                lineup_season_data.append({
+                    'Lineup': lineup,
+                    'Games': games_appeared,
+                    'Appearances': stats['total_appearances'],
+                    'Minutes': f"{stats['total_minutes']:.1f}",
+                    'Total Points': stats['total_points'],
+                    'Points/App': f"{stats['total_points'] / stats['total_appearances']:.1f}",
+                    'Plus/Minus': f"+{stats['total_plus_minus']}" if stats['total_plus_minus'] >= 0 else str(stats['total_plus_minus']),
+                    'FT': f"{stats['total_ft_made']}/{stats['total_ft_attempted']}",
+                    'FT%': f"{ft_pct:.1f}%",
+                    'FG': f"{stats['total_fg_made']}/{stats['total_fg_attempted']}",
+                    'FG%': f"{fg_pct:.1f}%",
+                    '2FG': f"{two_pt_made}/{two_pt_attempted}",
+                    '2FG%': f"{two_pct:.1f}%",
+                    '3FG': f"{stats['total_3pt_made']}/{stats['total_3pt_attempted']}",
+                    '3FG%': f"{three_pct:.1f}%",
+                    'eFG%': f"{efg_pct:.1f}%",
+                    'TS%': f"{ts_pct:.1f}%",
+                    'numeric_points': stats['total_points']
+                })
+            
+            if lineup_season_data:
+                lineup_season_df = pd.DataFrame(lineup_season_data)
+                lineup_season_df = lineup_season_df.sort_values('numeric_points', ascending=False)
+                
+                display_cols = ['Lineup', 'Games', 'Appearances', 'Minutes', 'Total Points', 'Points/App', 'Plus/Minus', 'FT', 'FT%', 'FG', 'FG%', '2FG', '2FG%', '3FG', '3FG%', 'eFG%', 'TS%']
+                
+                # Apply same styling as Tab 2
+                st.dataframe(
+                    lineup_season_df[display_cols].style.applymap(
+                        color_plus_minus, subset=['Plus/Minus']
+                    ).applymap(
+                        color_lineup_points, subset=['Total Points']
+                    ).applymap(
+                        color_ft_percentage, subset=['FT%']
+                    ).applymap(
+                        color_fg_percentage, subset=['FG%']
+                    ).applymap(
+                        color_2pt_percentage, subset=['2FG%']
+                    ).applymap(
+                        color_3pt_percentage, subset=['3FG%']
+                    ).applymap(
+                        color_efg_percentage, subset=['eFG%']
+                    ).applymap(
+                        color_ts_percentage, subset=['TS%']
+                    ),
+                    use_container_width=True,
+                    hide_index=True
+                )
+        
+        st.divider()
+        
+        # Game log at the bottom
+        st.subheader("Game Log")
+        
+        game_log_data = []
+        for game in season_games:
+            completed_date = game.get('completed_at')
+            if completed_date and hasattr(completed_date, 'strftime'):
+                date_str = completed_date.strftime('%Y-%m-%d')
+            else:
+                date_str = 'Unknown'
+            
+            game_log_data.append({
+                'Date': date_str,
+                'Opponent': game.get('away_team_name', 'Unknown'),
+                'Result': 'W' if game.get('home_score', 0) > game.get('away_score', 0) else 'L',
+                'Score': f"{game.get('home_score', 0)}-{game.get('away_score', 0)}",
+                'Game Name': game.get('session_name', 'Unnamed Game')
+            })
+        
+        if game_log_data:
+            game_log_df = pd.DataFrame(game_log_data)
+            st.dataframe(game_log_df, use_container_width=True, hide_index=True)
+
 check_auto_save()
 
 # ------------------------------------------------------------------
