@@ -7398,9 +7398,11 @@ with tab4:
                     'Games': games_appeared,
                     'Appearances': stats['total_appearances'],
                     'Minutes': f"{stats['total_minutes']:.1f}",
+                    'MPG': f"{stats['total_minutes'] / games_appeared:.1f}" if games_appeared > 0 else "0.0",
                     'Off. Eff.': f"{offensive_efficiency:.1f}",
                     'Def. Eff.': f"{defensive_efficiency:.1f}",
                     'Total Points': stats['total_points'],
+                    'PPG': f"{stats['total_points'] / games_appeared:.1f}" if games_appeared > 0 else "0.0",
                     'Points/Min': f"{stats['total_points'] / stats['total_minutes']:.2f}" if stats['total_minutes'] > 0 else "0.00",
                     'Plus/Minus': f"+{stats['total_plus_minus']}" if stats['total_plus_minus'] >= 0 else str(stats['total_plus_minus']),
                     'FT': f"{stats['total_ft_made']}/{stats['total_ft_attempted']}",
@@ -7414,6 +7416,7 @@ with tab4:
                     'eFG%': f"{efg_pct:.1f}%",
                     'TS%': f"{ts_pct:.1f}%",
                     'Def Impact/Min': f"{def_impact_per_min:.2f}",
+                    'Def Impact/G': f"{stats['total_def_impact'] / games_appeared:.1f}" if games_appeared > 0 else "0.0",
                     'Total Def Impact': f"{stats['total_def_impact']:.1f}",
                     'numeric_points': stats['total_points'],
                     'numeric_off_eff': offensive_efficiency,
@@ -7424,7 +7427,7 @@ with tab4:
                 lineup_season_df = pd.DataFrame(lineup_season_data)
                 lineup_season_df = lineup_season_df.sort_values('numeric_points', ascending=False)
                 
-                display_cols = ['Lineup', 'Games', 'Appearances', 'Minutes', 'Off. Eff.', 'Def. Eff.', 'Total Points', 'Points/Min', 'Plus/Minus', 'FT', 'FT%', 'FG', 'FG%', '2FG', '2FG%', '3FG', '3FG%', 'eFG%', 'TS%', 'Def Impact/Min', 'Total Def Impact']
+                display_cols = ['Lineup', 'Games', 'Appearances', 'Minutes', 'MPG', 'Off. Eff.', 'Def. Eff.', 'Total Points', 'PPG', 'Points/Min', 'Plus/Minus', 'FT', 'FT%', 'FG', 'FG%', '2FG', '2FG%', '3FG', '3FG%', 'eFG%', 'TS%', 'Def Impact/Min', 'Def Impact/G', 'Total Def Impact']
                 
                 # Apply styling
                 st.dataframe(
