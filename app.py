@@ -7362,7 +7362,7 @@ with tab4:
                 lineup_season_df = pd.DataFrame(lineup_season_data)
                 lineup_season_df = lineup_season_df.sort_values('numeric_points', ascending=False)
                 
-                display_cols = ['Lineup', 'Games', 'Appearances', 'Minutes', 'Total Points', 'Points/App', 'Plus/Minus', 'FT', 'FT%', 'FG', 'FG%', '2FG', '2FG%', '3FG', '3FG%', 'eFG%', 'TS%']
+                display_cols = ['Lineup', 'Games', 'Appearances', 'Minutes', 'Total Points', 'Points/Min', 'Plus/Minus', 'FT', 'FT%', 'FG', 'FG%', '2FG', '2FG%', '3FG', '3FG%', 'eFG%', 'TS%']
                 
                 # Apply same styling as Tab 2
                 st.dataframe(
