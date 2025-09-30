@@ -1369,6 +1369,9 @@ if "roster" not in st.session_state:
 if "roster_set" not in st.session_state:
     st.session_state.roster_set = False
 
+if "confirm_bulk_delete" not in st.session_state:
+    st.session_state.confirm_bulk_delete = False
+
 if "home_team_name" not in st.session_state:
     st.session_state.home_team_name = "HOME"
 
@@ -4978,6 +4981,63 @@ with st.sidebar:
                 
         except Exception as e:
             st.error(f"Error loading saved games: {str(e)}")
+
+    st.divider()
+
+        # Cleanup incomplete games
+    with st.expander("🗑️ Cleanup Tools"):
+        st.write("**Manage Incomplete Games**")
+        st.caption("Game sessions that were started but never marked as complete")
+        
+        if st.button("Show Incomplete Games"):
+            incomplete_games = get_user_game_sessions(
+                st.session_state.user_info['id'], 
+                include_completed=False
+            )
+            
+            if incomplete_games:
+                st.warning(f"Found {len(incomplete_games)} incomplete game(s)")
+                
+                # Show each incomplete game with delete option
+                for game in incomplete_games:
+                    with st.container():
+                        game_col1, game_col2 = st.columns([4, 1])
+                        
+                        with game_col1:
+                            st.write(f"**{game['session_name']}**")
+                            updated_at = game.get('updated_at')
+                            date_str = updated_at.strftime('%m/%d/%y') if hasattr(updated_at, 'strftime') else 'Unknown'
+                            st.caption(f"{game['current_quarter']} | {game['home_score']}-{game['away_score']} | Updated: {date_str}")
+                        
+                        with game_col2:
+                            if st.button("Delete", key=f"del_{game['id']}", type="secondary"):
+                                if delete_game_session(game['id']):
+                                    st.success("Deleted!")
+                                    st.rerun()
+                        
+                        st.divider()
+                
+                # Bulk delete option
+                st.write("")
+                bulk_col1, bulk_col2 = st.columns(2)
+                
+                with bulk_col1:
+                    if st.button("Delete All Incomplete", type="secondary"):
+                        st.session_state.confirm_bulk_delete = True
+                
+                with bulk_col2:
+                    if st.session_state.get('confirm_bulk_delete', False):
+                        if st.button("⚠️ Confirm", type="primary"):
+                            deleted_count = 0
+                            for game in incomplete_games:
+                                if delete_game_session(game['id']):
+                                    deleted_count += 1
+                            
+                            st.session_state.confirm_bulk_delete = False
+                            st.success(f"Deleted {deleted_count} incomplete game(s)")
+                            st.rerun()
+            else:
+                st.success("No incomplete games found")
 
     st.divider()
 
