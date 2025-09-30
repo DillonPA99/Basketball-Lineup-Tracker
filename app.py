@@ -6455,7 +6455,7 @@ with tab2:
                     ).applymap(
                         color_ts_percentage, subset=['TS%']
                     ).applymap(
-                        color_turnovers, subset=['Turnovers']
+                        color_turnovers, subset=['Total TOs']
                     )
 
                     st.dataframe(
