@@ -7495,6 +7495,7 @@ with tab4:
             
             game_log_data.append({
                 'Date': date_str,
+                'Date Source': 'Completed' if game.get('completed_at') else 'Updated' if game.get('updated_at') else 'Created',
                 'Opponent': game.get('away_team_name', 'Unknown'),
                 'Result': 'W' if game.get('home_score', 0) > game.get('away_score', 0) else 'L',
                 'Score': f"{game.get('home_score', 0)}-{game.get('away_score', 0)}",
