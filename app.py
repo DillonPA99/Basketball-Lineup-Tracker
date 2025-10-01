@@ -7500,10 +7500,10 @@ with tab4:
             # Check if game is marked as completed
             if game.get('is_completed') and game.get('completed_at'):
                 date_obj = game['completed_at']
-            elif 'updated_at' in game and game['updated_at'] is not None:
-                date_obj = game['updated_at']
             elif 'created_at' in game and game['created_at'] is not None:
                 date_obj = game['created_at']
+            elif 'updated_at' in game and game['updated_at'] is not None:
+                date_obj = game['updated_at']
             else:
                 date_obj = None
             
@@ -7522,7 +7522,7 @@ with tab4:
             
             game_log_data.append({
                 'Date': date_str,
-                'Date Source': 'Completed' if game.get('completed_at') else 'Updated' if game.get('updated_at') else 'Created',
+                'Date Source': 'Completed' if game.get('completed_at') else 'Created' if game.get('created_at') else 'Updated',
                 'Opponent': game.get('away_team_name', 'Unknown'),
                 'Result': 'W' if game.get('home_score', 0) > game.get('away_score', 0) else 'L',
                 'Score': f"{game.get('home_score', 0)}-{game.get('away_score', 0)}",
