@@ -7474,12 +7474,12 @@ with tab4:
 
         # Game log
         st.subheader("Game Log")
-
+        
         game_log_data = []
         for game in season_games:
-            # Get the completion date or fall back to created/updated date
+            # Prioritize completed_at (when user marks game complete), then fall back to updated_at or created_at
             date_obj = game.get('completed_at') or game.get('updated_at') or game.get('created_at')
-    
+            
             # Format the date
             if date_obj:
                 if hasattr(date_obj, 'timestamp'):
@@ -7492,7 +7492,7 @@ with tab4:
                     date_str = 'Unknown'
             else:
                 date_str = 'Unknown'
-    
+            
             game_log_data.append({
                 'Date': date_str,
                 'Opponent': game.get('away_team_name', 'Unknown'),
@@ -7500,7 +7500,7 @@ with tab4:
                 'Score': f"{game.get('home_score', 0)}-{game.get('away_score', 0)}",
                 'Game Name': game.get('session_name', 'Unnamed Game')
             })
-
+        
         if game_log_data:
             game_log_df = pd.DataFrame(game_log_data)
             st.dataframe(game_log_df, use_container_width=True, hide_index=True)
