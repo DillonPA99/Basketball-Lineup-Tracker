@@ -7474,6 +7474,16 @@ with tab4:
 
         # Game log
         st.subheader("Game Log")
+
+        st.write("**DEBUG: Checking game fields**")
+        for i, game in enumerate(season_games[:2]):  # Just check first 2 games
+            st.write(f"Game {i+1}:")
+            st.write(f"- is_completed: {game.get('is_completed')}")
+            st.write(f"- completed_at exists: {'completed_at' in game}")
+            st.write(f"- completed_at value: {game.get('completed_at')}")
+            st.write(f"- updated_at exists: {'updated_at' in game}")
+            st.write(f"- created_at exists: {'created_at' in game}")
+            st.divider()
         
         game_log_data = []
         for game in season_games:
