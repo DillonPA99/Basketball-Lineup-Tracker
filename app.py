@@ -4325,32 +4325,6 @@ if not st.session_state.authenticated:
     # Important: Stop execution here if not authenticated
     st.stop()
 
-# === ADD THIS DEBUG SECTION ===
-if st.session_state.authenticated:
-    with st.expander("🔍 Firebase Connection Debug"):
-        st.write(f"**Database object exists:** {st.session_state.db is not None}")
-        
-        if st.session_state.db:
-            st.success("✅ Database connection established")
-            
-            # Try a simple test query
-            try:
-                test_docs = st.session_state.db.collection('users').limit(1).get()
-                st.success(f"✅ Successfully queried database - found {len(test_docs)} test docs")
-            except Exception as e:
-                st.error(f"❌ Database query failed: {str(e)}")
-                st.code(f"Error type: {type(e).__name__}")
-        else:
-            st.error("❌ Database connection is None - Firebase didn't initialize")
-            
-            # Check if Firebase app exists
-            if firebase_admin._apps:
-                st.warning("Firebase app exists but no database connection")
-            else:
-                st.error("No Firebase app initialized at all")
-# === END DEBUG SECTION ===
-
-
 # ------------------------------------------------------------------
 # Roster Setup Gate (REPLACE THE EXISTING ROSTER SETUP SECTION)
 # ------------------------------------------------------------------
@@ -7266,7 +7240,7 @@ with tab4:
             'games_appeared': set()
         })
         
-# Aggregate lineup stats from all games
+        # Aggregate lineup stats from all games
         for game_idx, game in enumerate(season_games):
             # Calculate time for each lineup in this game
             game_lineup_times = calculate_lineup_times_for_game(game)
@@ -7484,16 +7458,6 @@ with tab4:
 
         # Game log
         st.subheader("Game Log")
-
-        st.write("**DEBUG: Checking game fields**")
-        for i, game in enumerate(season_games[:2]):  # Just check first 2 games
-            st.write(f"Game {i+1}:")
-            st.write(f"- is_completed: {game.get('is_completed')}")
-            st.write(f"- completed_at exists: {'completed_at' in game}")
-            st.write(f"- completed_at value: {game.get('completed_at')}")
-            st.write(f"- updated_at exists: {'updated_at' in game}")
-            st.write(f"- created_at exists: {'created_at' in game}")
-            st.divider()
         
         game_log_data = []
         for game in season_games:
