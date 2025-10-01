@@ -2213,6 +2213,29 @@ def color_points(val):
     except (ValueError, TypeError):
         return ''
 
+def color_points_per_minute(val):
+    """Color code points per minute with gradient."""
+    try:
+        
+        if isinstance(val, str):
+            numeric_val = float(val)
+        else:
+            numeric_val = float(val)
+        
+        if numeric_val >= 0.375:
+            return 'background-color: #2d5016; color: white'  # Dark green
+        elif numeric_val >= 0.325:
+            return 'background-color: #90EE90; color: black'  # Light green
+        elif numeric_val >= 0.28:
+            return 'background-color: #FFFACD; color: black'  # Light yellow
+        elif numeric_val >= 0.23:
+            return 'background-color: #FFB6C1; color: black'  # Light red
+        else:
+            return 'background-color: #FF0000; color: white'  # Dark red
+    except (ValueError, TypeError) as e:
+        print(f"Error processing Points/Min value {val}: {e}")
+        return ''
+
 def color_lineup_points(val):
     """Color code points scored with gradient."""
     try:
@@ -2234,8 +2257,6 @@ def color_lineup_points(val):
 def color_lineup_points_per_minute(val):
     """Color code points per minute with gradient."""
     try:
-        # Debug: print the value being processed
-        print(f"Processing Points/Min value: {val} (type: {type(val)})")
         
         if isinstance(val, str):
             numeric_val = float(val)
@@ -7208,6 +7229,8 @@ with tab4:
                     color_defensive_efficiency_scores, subset=['Def. Eff.']
                 ).applymap(
                     color_points, subset=['Points']
+                 ).applymap(
+                    color_points_per_minute, subset=['Points/Min']
                 ).applymap(
                     color_ft_percentage, subset=['FT%']
                 ).applymap(
