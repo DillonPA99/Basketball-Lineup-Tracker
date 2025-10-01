@@ -7477,8 +7477,15 @@ with tab4:
         
         game_log_data = []
         for game in season_games:
-            # Prioritize completed_at (when user marks game complete), then fall back to updated_at or created_at
-            date_obj = game.get('completed_at') or game.get('updated_at') or game.get('created_at')
+            # Check if game is marked as completed
+            if game.get('is_completed') and game.get('completed_at'):
+                date_obj = game['completed_at']
+            elif 'updated_at' in game and game['updated_at'] is not None:
+                date_obj = game['updated_at']
+            elif 'created_at' in game and game['created_at'] is not None:
+                date_obj = game['created_at']
+            else:
+                date_obj = None
             
             # Format the date
             if date_obj:
