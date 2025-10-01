@@ -828,6 +828,10 @@ def delete_game_session(session_id):
 def update_game_session(session_id, game_data):
     """Update an existing game session."""
     try:
+        # Get existing document to preserve completed status
+        existing_doc = db.collection('game_sessions').document(session_id).get()
+        existing_data = existing_doc.to_dict() if existing_doc.exists else {}
+        
         # Prepare update data with same serialization as save_game_session
         update_data = {
             'session_name': generate_default_game_name(),
@@ -848,6 +852,12 @@ def update_game_session(session_id, game_data):
             'points_off_turnovers': game_data.get('points_off_turnovers', {'home': 0, 'away': 0}),
             'last_turnover_event': game_data.get('last_turnover_event', None)
         }
+        
+        # Preserve completion status if already completed
+        if existing_data.get('is_completed'):
+            update_data['is_completed'] = True
+            if 'completed_at' in existing_data:
+                update_data['completed_at'] = existing_data['completed_at']
         
         # Serialize complex data with error handling
         try:
