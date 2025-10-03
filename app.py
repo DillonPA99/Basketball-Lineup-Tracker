@@ -6592,8 +6592,8 @@ with tab2:
                         'Off. Eff.': f"{offensive_efficiency:.1f}", 
                         'Def. Eff.': f"{defensive_efficiency:.1f}",
                         'Points': stats['points'],
-                        'Points/Min': f"{stats['points'] / minutes_played:.2f}" if minutes_played > 0 else "0.00",  # NEW LINE
                         'PPP': f"{PPP:.2f}",  
+                        'Points/Min': f"{stats['points'] / minutes_played:.2f}" if minutes_played > 0 else "0.00",
                         'FT': f"{stats['free_throws_made']}/{stats['free_throws_attempted']}" if stats['free_throws_attempted'] > 0 else "0/0",
                         'FT%': f"{stats['free_throws_made']/stats['free_throws_attempted']*100:.1f}%" if stats['free_throws_attempted'] > 0 else "0.0%",
                         '2PT': f"{two_pt_made}/{two_pt_attempted}" if two_pt_attempted > 0 else "0/0",
