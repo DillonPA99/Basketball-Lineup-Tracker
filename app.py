@@ -6592,6 +6592,7 @@ with tab2:
                         'Off. Eff.': f"{offensive_efficiency:.1f}", 
                         'Def. Eff.': f"{defensive_efficiency:.1f}",
                         'Points': stats['points'],
+                        'Points/Min': f"{stats['points'] / minutes_played:.2f}" if minutes_played > 0 else "0.00",  # NEW LINE
                         'PPP': f"{PPP:.2f}",  
                         'FT': f"{stats['free_throws_made']}/{stats['free_throws_attempted']}" if stats['free_throws_attempted'] > 0 else "0/0",
                         'FT%': f"{stats['free_throws_made']/stats['free_throws_attempted']*100:.1f}%" if stats['free_throws_attempted'] > 0 else "0.0%",
@@ -6620,6 +6621,8 @@ with tab2:
                         color_defensive_impact, subset=['Def Impact']
                     ).applymap(
                         color_defensive_impact_per_minute, subset=['Def Impact/Min']
+                    ).applymap(
+                        color_points_per_minute, subset=['Points/Min']
                     ).applymap(
                         color_PPP, subset=['PPP']
                     ).applymap(
