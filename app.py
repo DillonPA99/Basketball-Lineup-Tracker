@@ -2213,6 +2213,28 @@ def color_points(val):
     except (ValueError, TypeError):
         return ''
 
+def color_ppg(val):
+    """Color code points per game with gradient."""
+    try:
+        if isinstance(val, str):
+            numeric_val = float(val)
+        else:
+            numeric_val = float(val)
+        
+        if numeric_val >= 12:
+            return 'background-color: #2d5016; color: white'  # Dark green
+        elif numeric_val >= 9.5:
+            return 'background-color: #90EE90; color: black'  # Light green
+        elif numeric_val >= 6:
+            return 'background-color: #FFFACD; color: black'  # Light yellow
+        elif numeric_val >= 3:
+            return 'background-color: #FFB6C1; color: black'  # Light red
+        else:
+            return 'background-color: #FF0000; color: white'  # Dark red
+    except (ValueError, TypeError) as e:
+        print(f"Error processing PPG value {val}: {e}")
+        return ''
+
 
 def color_points_per_minute(val):
     """Color code points per minute with gradient."""
@@ -2253,6 +2275,28 @@ def color_lineup_points(val):
         else:
             return 'background-color: #FF0000; color: white'  # Dark red
     except (ValueError, TypeError):
+        return ''
+
+def color_lineup_ppg(val):
+    """Color code points per game with gradient."""
+    try:
+        if isinstance(val, str):
+            numeric_val = float(val)
+        else:
+            numeric_val = float(val)
+        
+        if numeric_val >= 36:
+            return 'background-color: #2d5016; color: white'  # Dark green
+        elif numeric_val >= 12:
+            return 'background-color: #90EE90; color: black'  # Light green
+        elif numeric_val >= 6:
+            return 'background-color: #FFFACD; color: black'  # Light yellow
+        elif numeric_val >= 3:
+            return 'background-color: #FFB6C1; color: black'  # Light red
+        else:
+            return 'background-color: #FF0000; color: white'  # Dark red
+    except (ValueError, TypeError) as e:
+        print(f"Error processing PPG value {val}: {e}")
         return ''
 
 def color_lineup_points_per_minute(val):
@@ -7295,7 +7339,7 @@ with tab4:
                 ).applymap(
                     color_defensive_efficiency_scores, subset=['Def. Eff.']
                 ).applymap(
-                    color_points, subset=['PPG']
+                    color_ppg, subset=['PPG']
                  ).applymap(
                     color_points_per_minute, subset=['Points/Min']
                 ).applymap(
@@ -7516,7 +7560,9 @@ with tab4:
                     lineup_season_df[display_cols].style.applymap(
                         color_plus_minus, subset=['+/-']
                     ).applymap(
-                        color_lineup_points, subset=['PPG']
+                        color_lineup_ppg, subset=['PPG']
+                    ).applymap(
+                        color_lineup_points_per_minute, subset=['Points/Min']
                     ).applymap(
                         color_offensive_efficiency_scores, subset=['Off. Eff.']
                     ).applymap(
