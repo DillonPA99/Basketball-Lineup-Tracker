@@ -3639,12 +3639,21 @@ def calculate_lineup_offensive_efficiency():
         # Count offensive events that occurred during this specific lineup period
         lineup_quarter = lineup_event.get('quarter')
         lineup_players = lineup_event.get('new_lineup', [])
+        lineup_game_time = lineup_event.get('game_time')
+
+        # Determine the time range for this lineup period
+        if i < len(st.session_state.lineup_history) - 1:
+            next_event = st.session_state.lineup_history[i + 1]
+            next_game_time = next_event.get('game_time')
+            next_quarter = next_event.get('quarter')
+        else:
+            next_game_time = st.session_state.current_game_time
+            next_quarter = st.session_state.current_quarter
         
         # Count home team scoring events with this exact lineup
         for score_event in st.session_state.score_history:
-            if (score_event['team'] == 'home' and  # Only home team offense
-                score_event.get('quarter') == lineup_quarter and
-                score_event.get('lineup') == lineup_players):
+            if score_event['team'] != 'home':
+                continue
                 
                 # Add points
                 lineup_offensive_stats[current_lineup]['points_scored'] += score_event.get('points', 0)
@@ -3672,13 +3681,14 @@ def calculate_lineup_offensive_efficiency():
         
         # Count home team turnovers with this exact lineup
         for turnover_event in st.session_state.turnover_history:
-            if turnover_event['team'] == 'home':
-                turnover_quarter = turnover_event.get('quarter')
-                turnover_lineup = turnover_event.get('lineup', [])
+            if turnover_event['team'] != 'home':
+                continue
+            
+            event_quarter = turnover_event.get('quarter')
+            event_lineup = turnover_event.get('lineup', [])
         
-            # Check if turnover occurred with this exact lineup
-            if (turnover_quarter == lineup_quarter and 
-                sorted(turnover_lineup) == sorted(lineup_players)):
+            if (event_quarter == lineup_quarter and
+                sorted(event_lineup) == sorted(lineup_players)):
                 lineup_offensive_stats[current_lineup]['turnovers'] += 1
     
     # Convert to final format with efficiency calculations
