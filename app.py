@@ -7419,6 +7419,13 @@ with tab4:
                         turnover_event.get('lineup') == lineup_players):
                         game_lineup_stats[lineup_key]['opp_turnovers'] += 1
                         game_lineup_stats[lineup_key]['def_impact'] += 1.5
+
+                for turnover_event in game.get('turnover_history', []):
+                    if turnover_event.get('team') == 'home':
+                        lineup_in_turnover = turnover_event.get('lineup', [])
+                        if lineup_in_turnover:
+                            turnover_lineup_key = " | ".join(sorted(lineup_in_turnover))
+                            season_lineup_stats[turnover_lineup_key]['total_turnovers'] += 1
                 
                 for score_event in game.get('score_history', []):
                     if (score_event.get('team') == 'away' and
@@ -7541,6 +7548,8 @@ with tab4:
                     '3FG%': f"{three_pct:.1f}%",
                     'eFG%': f"{efg_pct:.1f}%",
                     'TS%': f"{ts_pct:.1f}%",
+                    'Total TOs': stats['total_turnovers'],
+                    'TO/G': f"{stats['total_turnovers'] / games_appeared:.1f}" if games_appeared > 0 else "0.0",
                     'Total Def Impact': f"{stats['total_def_impact']:.1f}",
                     'Def Impact/G': f"{stats['total_def_impact'] / games_appeared:.1f}" if games_appeared > 0 else "0.0",
                     'Def Impact/Min': f"{def_impact_per_min:.2f}",
@@ -7553,7 +7562,7 @@ with tab4:
                 lineup_season_df = pd.DataFrame(lineup_season_data)
                 lineup_season_df = lineup_season_df.sort_values('numeric_points', ascending=False)
                 
-                display_cols = ['Lineup', 'Games', 'Appearances', 'Minutes', 'MPG', 'Off. Eff.', 'Def. Eff.', 'Total Points', 'PPG', 'Points/Min', '+/-', 'FT', 'FT%', 'FG', 'FG%', '2FG', '2FG%', '3FG', '3FG%', 'eFG%', 'TS%', 'Total Def Impact', 'Def Impact/G', 'Def Impact/Min' ]
+                display_cols = ['Lineup', 'Games', 'Appearances', 'Minutes', 'MPG', 'Off. Eff.', 'Def. Eff.', 'Total Points', 'PPG', 'Points/Min', '+/-', 'FT', 'FT%', 'FG', 'FG%', '2FG', '2FG%', '3FG', '3FG%', 'eFG%', 'TS%', 'Total TOs', 'TO/G', 'Total Def Impact', 'Def Impact/G', 'Def Impact/Min']
                 
                 # Apply styling
                 st.dataframe(
@@ -7579,6 +7588,8 @@ with tab4:
                         color_efg_percentage, subset=['eFG%']
                     ).applymap(
                         color_ts_percentage, subset=['TS%']
+                    ).applymap(
+                        color_turnovers_per_game, subset=['TO/G']
                     ).applymap(
                         color_lineup_defensive_impact_per_minute, subset=['Def Impact/Min']
                     ).applymap(
