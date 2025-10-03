@@ -2286,9 +2286,27 @@ def color_turnovers(val):
             return 'background-color: #2d5016; color: white'  # Dark green
         elif numeric_val == 1:
             return 'background-color: #90EE90; color: black'  # Light green
-        elif numeric_val == 2:
+        elif numeric_val >= 3:
             return 'background-color: #FFFACD; color: black'  # Light yellow
-        elif numeric_val <= 3:
+        elif numeric_val >= 4:
+            return 'background-color: #FFB6C1; color: black'  # Light red
+        else:
+            return 'background-color: #FF0000; color: white'  # Dark red
+    except (ValueError, TypeError):
+        return ''
+
+def color_turnovers_per_game(val):
+    """Color code turnovers per minutes (lower is better)."""
+    try:
+        numeric_val = int(val)
+        
+        if numeric_val == 0:
+            return 'background-color: #2d5016; color: white'  # Dark green
+        elif numeric_val == 1:
+            return 'background-color: #90EE90; color: black'  # Light green
+        elif numeric_val >= 3:
+            return 'background-color: #FFFACD; color: black'  # Light yellow
+        elif numeric_val >= 4:
             return 'background-color: #FFB6C1; color: black'  # Light red
         else:
             return 'background-color: #FF0000; color: white'  # Dark red
@@ -7245,6 +7263,8 @@ with tab4:
                     color_ts_percentage, subset=['TS%']
                 ).applymap(
                     color_turnovers, subset=['Turnovers']
+                ).applymap(
+                    color_turnovers_per_game, subset=['TO/G']
                 )
                 
                 st.dataframe(styled_season_player_df, use_container_width=True, hide_index=True)
