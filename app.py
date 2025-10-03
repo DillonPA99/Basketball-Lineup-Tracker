@@ -2470,7 +2470,7 @@ def color_offensive_efficiency_scores(val):
     except (ValueError, TypeError):
         return ''
 
-def color_offensive_rating(val):
+def color_PPP(val):
     """Color code offensive rating (points per 100 possessions)."""
     try:
         if isinstance(val, str):
@@ -2478,20 +2478,20 @@ def color_offensive_rating(val):
         else:
             numeric_val = float(val)
         
-        if numeric_val >= 110:
+        if numeric_val >= 1.10:
             return 'background-color: #2d5016; color: white'  # Dark green
-        elif numeric_val >= 95:
+        elif numeric_val >= 0.95:
             return 'background-color: #90EE90; color: black'  # Light green
-        elif numeric_val >= 80:
+        elif numeric_val >= 0.80:
             return 'background-color: #FFFACD; color: black'  # Light yellow
-        elif numeric_val >= 70:
+        elif numeric_val >= 0.70:
             return 'background-color: #FFB6C1; color: black'  # Light red
         else:
             return 'background-color: #FF0000; color: white'  # Dark red
     except (ValueError, TypeError):
         return ''
 
-def color_lineup_offensive_rating(val):
+def color_lineup_PPP(val):
     """Color code lineup offensive rating (points per 100 possessions)."""
     try:
         if isinstance(val, str):
@@ -2499,13 +2499,13 @@ def color_lineup_offensive_rating(val):
         else:
             numeric_val = float(val)
         
-        if numeric_val >= 110:
+        if numeric_val >= 1.10:
             return 'background-color: #2d5016; color: white'  # Dark green
-        elif numeric_val >= 95:
+        elif numeric_val >= 0.95:
             return 'background-color: #90EE90; color: black'  # Light green
-        elif numeric_val >= 80:
+        elif numeric_val >= 0.80:
             return 'background-color: #FFFACD; color: black'  # Light yellow
-        elif numeric_val >= 70:
+        elif numeric_val >= 0.70:
             return 'background-color: #FFB6C1; color: black'  # Light red
         else:
             return 'background-color: #FF0000; color: white'  # Dark red
@@ -6583,13 +6583,13 @@ with tab2:
                     points_per_shot = stats['points'] / total_shot_attempts if total_shot_attempts > 0 else 0
 
                     estimated_possessions = stats['field_goals_attempted'] + turnovers + (0.44 * stats['free_throws_attempted'])
-                    offensive_rating = (stats['points'] / estimated_possessions) * 100 if estimated_possessions > 0 else 0
+                    PPP = (stats['points'] / estimated_possessions) if estimated_possessions > 0 else 0
                     
                     player_shooting_data.append({
                         'Player': player.split('(')[0].strip(),
                         'Minutes': f"{minutes_played:.1f}",
                         '+/-': f"+{plus_minus}" if plus_minus >= 0 else str(plus_minus),
-                        'Off. Rating': f"{offensive_rating:.1f}",  
+                        'PPP': f"{PPP:.2f}",  
                         'Off. Eff.': f"{offensive_efficiency:.1f}", 
                         'Def. Eff.': f"{defensive_efficiency:.1f}",
                         'Points': stats['points'],
@@ -6621,7 +6621,7 @@ with tab2:
                     ).applymap(
                         color_defensive_impact_per_minute, subset=['Def Impact/Min']
                     ).applymap(
-                        color_offensive_rating, subset=['Off. Rating']
+                        color_offensive_rating, subset=['PPP']
                     ).applymap(
                         color_offensive_efficiency_scores, subset=['Off. Eff.']
                     ).applymap(
@@ -6801,7 +6801,7 @@ with tab2:
                 lineup_points_per_shot = total_points / total_shot_attempts if total_shot_attempts > 0 else 0
 
                 estimated_possessions = fg_attempted + total_turnovers + (0.44 * ft_attempted)
-                lineup_offensive_rating = (total_points / estimated_possessions) * 100 if estimated_possessions > 0 else 0
+                lineup_PPP = (total_points / estimated_possessions) if estimated_possessions > 0 else 0
                 
                 lineup_plus_minus_data.append({
                     "Lineup": lineup,
@@ -6809,7 +6809,7 @@ with tab2:
                     "Plus/Minus": f"+{stats['plus_minus']}" if stats['plus_minus'] >= 0 else str(stats['plus_minus']),
                     "Minutes": f"{stats['minutes']:.1f}",
                     "Total Points": total_points,
-                    "Off. Rating": f"{lineup_offensive_rating:.1f}",
+                    "PPP": f"{lineup_PPP:.2f}",
                     "Off. Eff.": f"{offensive_efficiency:.1f}",
                     "Def. Eff.": f"{defensive_efficiency:.1f}",
                     "Points/Min": f"{total_points / minutes_played:.2f}" if minutes_played > 0 else "0.0",
@@ -6838,7 +6838,7 @@ with tab2:
                 lineup_df = lineup_df.sort_values('numeric_plus_minus', ascending=False)
 
                 # Display main columns
-                main_columns = ["Lineup", "Appearances", "Minutes", "Off. Rating", "Off. Eff.", "Def. Eff.", "Points/Min", "Plus/Minus", "Total Points", "FT", "FT%", "FG", "FG%", "2FG", "2FG%", "3FG", "3FG%", "eFG%", "TS%", "Total TOs", "TO/Min" , "Def Impact/Min", "Total Def Impact"]
+                main_columns = ["Lineup", "Appearances", "Minutes", "PPP", "Off. Eff.", "Def. Eff.", "Points/Min", "Plus/Minus", "Total Points", "FT", "FT%", "FG", "FG%", "2FG", "2FG%", "3FG", "3FG%", "eFG%", "TS%", "Total TOs", "TO/Min" , "Def Impact/Min", "Total Def Impact"]
                 
                 st.dataframe(
                     lineup_df[main_columns].style.applymap(
@@ -6846,7 +6846,7 @@ with tab2:
                     ).applymap(
                         color_lineup_points, subset=["Total Points"]
                     ).applymap(
-                        color_lineup_offensive_rating, subset=["Off. Rating"]
+                        color_lineup_offensive_rating, subset=["PPP"]
                     ).applymap(
                         color_offensive_efficiency_scores, subset=["Off. Eff."]
                     ).applymap(
@@ -7377,7 +7377,7 @@ with tab4:
                 def_eff = def_impact_per_min * 10
 
                 estimated_possessions = stats['total_fg_attempted'] + stats['total_turnovers'] + (0.44 * stats['total_ft_attempted'])
-                offensive_rating = (stats['total_points'] / estimated_possessions) * 100 if estimated_possessions > 0 else 0
+                PPP = (stats['total_points'] / estimated_possessions) if estimated_possessions > 0 else 0
                 
                 player_season_data.append({
                     'Player': player.split('(')[0].strip(),
@@ -7385,7 +7385,7 @@ with tab4:
                     'Minutes': f"{stats['total_minutes']:.1f}",
                     'MPG': f"{mpg:.1f}",
                     '+/-': f"+{stats['total_plus_minus']}" if stats['total_plus_minus'] >= 0 else str(stats['total_plus_minus']),
-                    'Off. Rating': f"{offensive_rating:.1f}", 
+                    'PPP': f"{PPP:.2f}", 
                     'Off. Eff.': f"{off_eff:.1f}",
                     'Def. Eff.': f"{def_eff:.1f}",
                     'Points': stats['total_points'],
@@ -7420,7 +7420,7 @@ with tab4:
                 ).applymap(
                     color_defensive_impact_per_minute, subset=['Def Impact/Min']
                 ).applymap(
-                    color_offensive_rating, subset=['Off. Rating']
+                    color_offensive_rating, subset=['PPP']
                 ).applymap(
                     color_offensive_efficiency_scores, subset=['Off. Eff.']
                 ).applymap(
@@ -7616,7 +7616,7 @@ with tab4:
                 defensive_efficiency = def_impact_per_min * 5
 
                 estimated_possessions = stats['total_fg_attempted'] + stats['total_turnovers'] + (0.44 * stats['total_ft_attempted'])
-                lineup_offensive_rating = (stats['total_points'] / estimated_possessions) * 100 if estimated_possessions > 0 else 0
+                lineup_PPP = (stats['total_points'] / estimated_possessions) if estimated_possessions > 0 else 0
                 
                 lineup_season_data.append({
                     'Lineup': lineup,
@@ -7624,7 +7624,7 @@ with tab4:
                     'Appearances': stats['total_appearances'],
                     'Minutes': f"{stats['total_minutes']:.1f}",
                     'MPG': f"{stats['total_minutes'] / games_appeared:.1f}" if games_appeared > 0 else "0.0",
-                    'Off. Rating': f"{lineup_offensive_rating:.1f}",
+                    'PPP': f"{lineup_PPP:.2f}",
                     'Off. Eff.': f"{offensive_efficiency:.1f}",
                     'Def. Eff.': f"{defensive_efficiency:.1f}",
                     'Total Points': stats['total_points'],
@@ -7655,7 +7655,7 @@ with tab4:
                 lineup_season_df = pd.DataFrame(lineup_season_data)
                 lineup_season_df = lineup_season_df.sort_values('numeric_points', ascending=False)
                 
-                display_cols = ['Lineup', 'Games', 'Appearances', 'Minutes', 'MPG', "Off. Rating", 'Off. Eff.', 'Def. Eff.', 'Total Points', 'PPG', 'Points/Min', '+/-', 'FT', 'FT%', 'FG', 'FG%', '2FG', '2FG%', '3FG', '3FG%', 'eFG%', 'TS%', 'Total TOs', 'TO/G', 'Total Def Impact', 'Def Impact/G', 'Def Impact/Min']
+                display_cols = ['Lineup', 'Games', 'Appearances', 'Minutes', 'MPG', "PPP", 'Off. Eff.', 'Def. Eff.', 'Total Points', 'PPG', 'Points/Min', '+/-', 'FT', 'FT%', 'FG', 'FG%', '2FG', '2FG%', '3FG', '3FG%', 'eFG%', 'TS%', 'Total TOs', 'TO/G', 'Total Def Impact', 'Def Impact/G', 'Def Impact/Min']
                 
                 # Apply styling
                 st.dataframe(
@@ -7666,7 +7666,7 @@ with tab4:
                     ).applymap(
                         color_lineup_points_per_minute, subset=['Points/Min']
                     ).applymap(
-                        color_lineup_offensive_rating, subset=["Off. Rating"]
+                        color_lineup_offensive_rating, subset=["PPP"]
                     ).applymap(
                         color_offensive_efficiency_scores, subset=['Off. Eff.']
                     ).applymap(
