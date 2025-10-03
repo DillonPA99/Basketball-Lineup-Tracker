@@ -6621,7 +6621,7 @@ with tab2:
                     ).applymap(
                         color_defensive_impact_per_minute, subset=['Def Impact/Min']
                     ).applymap(
-                        color_offensive_rating, subset=['PPP']
+                        color_PPP, subset=['PPP']
                     ).applymap(
                         color_offensive_efficiency_scores, subset=['Off. Eff.']
                     ).applymap(
@@ -6846,7 +6846,7 @@ with tab2:
                     ).applymap(
                         color_lineup_points, subset=["Total Points"]
                     ).applymap(
-                        color_lineup_offensive_rating, subset=["PPP"]
+                        color_lineup_PPP, subset=["PPP"]
                     ).applymap(
                         color_offensive_efficiency_scores, subset=["Off. Eff."]
                     ).applymap(
@@ -7420,7 +7420,7 @@ with tab4:
                 ).applymap(
                     color_defensive_impact_per_minute, subset=['Def Impact/Min']
                 ).applymap(
-                    color_offensive_rating, subset=['PPP']
+                    color_PPP, subset=['PPP']
                 ).applymap(
                     color_offensive_efficiency_scores, subset=['Off. Eff.']
                 ).applymap(
@@ -7666,7 +7666,7 @@ with tab4:
                     ).applymap(
                         color_lineup_points_per_minute, subset=['Points/Min']
                     ).applymap(
-                        color_lineup_offensive_rating, subset=["PPP"]
+                        color_lineup_PPP, subset=["PPP"]
                     ).applymap(
                         color_offensive_efficiency_scores, subset=['Off. Eff.']
                     ).applymap(
