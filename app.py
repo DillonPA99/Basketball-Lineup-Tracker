@@ -2361,6 +2361,27 @@ def color_turnovers_per_game(val):
     except (ValueError, TypeError):
         return ''
 
+def color_lineup_turnovers_per_game(val):
+    """Color code turnovers (lower is better)."""
+    try:
+        if isinstance(val, str):
+            numeric_val = float(val)
+        else:
+            numeric_val = float(val)
+        
+        if numeric_val == 0:
+            return 'background-color: #2d5016; color: white'  # Dark green
+        elif numeric_val <= 2.25:
+            return 'background-color: #90EE90; color: black'  # Light green
+        elif numeric_val <= 3.0:
+            return 'background-color: #FFFACD; color: black'  # Light yellow
+        elif numeric_val <= 3.75:
+            return 'background-color: #FFB6C1; color: black'  # Light red
+        else:
+            return 'background-color: #FF0000; color: white'  # Dark red
+    except (ValueError, TypeError):
+        return ''
+
 def color_turnovers_per_min(val):
     """Color code turnovers (lower is better)."""
     try:
@@ -7591,7 +7612,7 @@ with tab4:
                     ).applymap(
                         color_ts_percentage, subset=['TS%']
                     ).applymap(
-                        color_turnovers_per_game, subset=['TO/G']
+                        color_lineup_turnovers_per_game, subset=['TO/G']
                     ).applymap(
                         color_lineup_defensive_impact_per_minute, subset=['Def Impact/Min']
                     ).applymap(
