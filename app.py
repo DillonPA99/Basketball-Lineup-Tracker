@@ -2221,13 +2221,13 @@ def color_points_per_shot(val):
         else:
             numeric_val = float(val)
         
-        if numeric_val >= 1.10:
+        if numeric_val >= 1.25:
             return 'background-color: #2d5016; color: white'  # Dark green
         elif numeric_val >= 1.00:
             return 'background-color: #90EE90; color: black'  # Light green
-        elif numeric_val >= 0.85:
+        elif numeric_val >= 0.75:
             return 'background-color: #FFFACD; color: black'  # Light yellow
-        elif numeric_val >= 0.70:
+        elif numeric_val >= 0.60:
             return 'background-color: #FFB6C1; color: black'  # Light red
         else:
             return 'background-color: #FF0000; color: white'  # Dark red
@@ -2351,13 +2351,13 @@ def color_lineup_points_per_shot(val):
         else:
             numeric_val = float(val)
         
-        if numeric_val >= 1.10:
+        if numeric_val >= 1.25:
             return 'background-color: #2d5016; color: white'  # Dark green
         elif numeric_val >= 1.00:
             return 'background-color: #90EE90; color: black'  # Light green
-        elif numeric_val >= 0.85:
+        elif numeric_val >= 0.75:
             return 'background-color: #FFFACD; color: black'  # Light yellow
-        elif numeric_val >= 0.70:
+        elif numeric_val >= 0.60:
             return 'background-color: #FFB6C1; color: black'  # Light red
         else:
             return 'background-color: #FF0000; color: white'  # Dark red
