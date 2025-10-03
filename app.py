@@ -7473,9 +7473,9 @@ with tab4:
                     '3FG%': f"{three_pct:.1f}%",
                     'eFG%': f"{efg_pct:.1f}%",
                     'TS%': f"{ts_pct:.1f}%",
-                    'Def Impact/Min': f"{def_impact_per_min:.2f}",
-                    'Def Impact/G': f"{stats['total_def_impact'] / games_appeared:.1f}" if games_appeared > 0 else "0.0",
                     'Total Def Impact': f"{stats['total_def_impact']:.1f}",
+                    'Def Impact/G': f"{stats['total_def_impact'] / games_appeared:.1f}" if games_appeared > 0 else "0.0",
+                    'Def Impact/Min': f"{def_impact_per_min:.2f}",
                     'numeric_points': stats['total_points'],
                     'numeric_off_eff': offensive_efficiency,
                     'numeric_def_eff': defensive_efficiency
@@ -7485,7 +7485,7 @@ with tab4:
                 lineup_season_df = pd.DataFrame(lineup_season_data)
                 lineup_season_df = lineup_season_df.sort_values('numeric_points', ascending=False)
                 
-                display_cols = ['Lineup', 'Games', 'Appearances', 'Minutes', 'MPG', 'Off. Eff.', 'Def. Eff.', 'Total Points', 'PPG', 'Points/Min', '+/-', 'FT', 'FT%', 'FG', 'FG%', '2FG', '2FG%', '3FG', '3FG%', 'eFG%', 'TS%', 'Def Impact/Min', 'Def Impact/G', 'Total Def Impact']
+                display_cols = ['Lineup', 'Games', 'Appearances', 'Minutes', 'MPG', 'Off. Eff.', 'Def. Eff.', 'Total Points', 'PPG', 'Points/Min', '+/-', 'FT', 'FT%', 'FG', 'FG%', '2FG', '2FG%', '3FG', '3FG%', 'eFG%', 'TS%', 'Total Def Impact', 'Def Impact/G', 'Def Impact/Min' ]
                 
                 # Apply styling
                 st.dataframe(
@@ -7513,8 +7513,6 @@ with tab4:
                         color_lineup_defensive_impact_per_minute, subset=['Def Impact/Min']
                      ).applymap(
                         color_lineup_defensive_impact, subset=['Def Impact/G']
-                    ).applymap(
-                        color_lineup_defensive_impact, subset=['Total Def Impact']
                     ),
                     use_container_width=True,
                     hide_index=True
