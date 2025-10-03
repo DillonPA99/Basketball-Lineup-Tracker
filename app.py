@@ -6579,7 +6579,7 @@ with tab2:
                         if true_shooting_attempts > 0:
                             ts_pct = (stats['points'] / (2 * true_shooting_attempts)) * 100
 
-                    total_shot_attempts = stats['field_goals_attempted'] + stats['free_throws_attempted']
+                    total_shot_attempts = stats['field_goals_attempted'] + (0.44 * stats['free_throws_attempted'])
                     points_per_shot = stats['points'] / total_shot_attempts if total_shot_attempts > 0 else 0
                     
                     player_shooting_data.append({
@@ -6794,7 +6794,7 @@ with tab2:
                 defensive_impact_per_minute = def_stats.get('defensive_impact_per_minute', 0)
                 total_defensive_impact = def_stats.get('total_defensive_events', 0)
 
-                total_shot_attempts = fg_attempted + ft_attempted
+                total_shot_attempts = fg_attempted + (0.44 * ft_attempted)
                 lineup_points_per_shot = total_points / total_shot_attempts if total_shot_attempts > 0 else 0
 
                 
