@@ -7385,7 +7385,8 @@ with tab4:
                 'points': 0,
                 'opp_turnovers': 0,
                 'opp_missed_shots': 0,
-                'def_impact': 0
+                'def_impact': 0,
+                'turnovers': 0
             })
             
             for i in range(len(game.get('lineup_history', []))):
@@ -7414,18 +7415,17 @@ with tab4:
                 lineup_players = lineup_event.get('new_lineup', [])
                 
                 for turnover_event in game.get('turnover_history', []):
+                    if (turnover_event.get('team') == 'home' and
+                        turnover_event.get('quarter') == lineup_quarter and
+                        turnover_event.get('lineup') == lineup_players):
+                        game_lineup_stats[lineup_key]['turnovers'] += 1
+                
+                for turnover_event in game.get('turnover_history', []):
                     if (turnover_event.get('team') == 'away' and
                         turnover_event.get('quarter') == lineup_quarter and
                         turnover_event.get('lineup') == lineup_players):
                         game_lineup_stats[lineup_key]['opp_turnovers'] += 1
                         game_lineup_stats[lineup_key]['def_impact'] += 1.5
-
-                for turnover_event in game.get('turnover_history', []):
-                    if turnover_event.get('team') == 'home':
-                        lineup_in_turnover = turnover_event.get('lineup', [])
-                        if lineup_in_turnover:
-                            turnover_lineup_key = " | ".join(sorted(lineup_in_turnover))
-                            season_lineup_stats[turnover_lineup_key]['total_turnovers'] += 1
                 
                 for score_event in game.get('score_history', []):
                     if (score_event.get('team') == 'away' and
@@ -7455,6 +7455,8 @@ with tab4:
                     season_lineup_stats[lineup_key]['total_plus_minus'] += game_lineup_stats[lineup_key]['plus_minus']
                     season_lineup_stats[lineup_key]['total_points'] += game_lineup_stats[lineup_key]['points']
                     season_lineup_stats[lineup_key]['total_def_impact'] += game_lineup_stats[lineup_key]['def_impact']
+                    season_lineup_stats[lineup_key]['total_turnovers'] += game_lineup_stats[lineup_key]['turnovers']
+
                     
                     processed_lineups_this_game.add(lineup_key)
                 
