@@ -2213,6 +2213,27 @@ def color_points(val):
     except (ValueError, TypeError):
         return ''
 
+def color_points_per_shot(val):
+    """Color code points per shot with gradient."""
+    try:
+        if isinstance(val, str):
+            numeric_val = float(val)
+        else:
+            numeric_val = float(val)
+        
+        if numeric_val >= 1.10:
+            return 'background-color: #2d5016; color: white'  # Dark green
+        elif numeric_val >= 1.00:
+            return 'background-color: #90EE90; color: black'  # Light green
+        elif numeric_val >= 0.85:
+            return 'background-color: #FFFACD; color: black'  # Light yellow
+        elif numeric_val >= 0.70:
+            return 'background-color: #FFB6C1; color: black'  # Light red
+        else:
+            return 'background-color: #FF0000; color: white'  # Dark red
+    except (ValueError, TypeError) as e:
+        return ''
+
 def color_ppg(val):
     """Color code points per game with gradient."""
     try:
@@ -2320,6 +2341,27 @@ def color_lineup_points_per_minute(val):
             return 'background-color: #FF0000; color: white'  # Dark red
     except (ValueError, TypeError) as e:
         print(f"Error processing Points/Min value {val}: {e}")
+        return ''
+
+def color_lineup_points_per_shot(val):
+    """Color code lineup points per shot with gradient."""
+    try:
+        if isinstance(val, str):
+            numeric_val = float(val)
+        else:
+            numeric_val = float(val)
+        
+        if numeric_val >= 1.10:
+            return 'background-color: #2d5016; color: white'  # Dark green
+        elif numeric_val >= 1.00:
+            return 'background-color: #90EE90; color: black'  # Light green
+        elif numeric_val >= 0.85:
+            return 'background-color: #FFFACD; color: black'  # Light yellow
+        elif numeric_val >= 0.70:
+            return 'background-color: #FFB6C1; color: black'  # Light red
+        else:
+            return 'background-color: #FF0000; color: white'  # Dark red
+    except (ValueError, TypeError) as e:
         return ''
 
 def color_turnovers(val):
@@ -6536,6 +6578,9 @@ with tab2:
                         true_shooting_attempts = stats['field_goals_attempted'] + (0.44 * stats['free_throws_attempted'])
                         if true_shooting_attempts > 0:
                             ts_pct = (stats['points'] / (2 * true_shooting_attempts)) * 100
+
+                    total_shot_attempts = stats['field_goals_attempted'] + stats['free_throws_attempted']
+                    points_per_shot = stats['points'] / total_shot_attempts if total_shot_attempts > 0 else 0
                     
                     player_shooting_data.append({
                         'Player': player.split('(')[0].strip(),
@@ -6544,6 +6589,7 @@ with tab2:
                         'Off. Eff.': f"{offensive_efficiency:.1f}", 
                         'Def. Eff.': f"{defensive_efficiency:.1f}",
                         'Points': stats['points'],
+                        'Points/Shot': f"{points_per_shot:.2f}",
                         'FT': f"{stats['free_throws_made']}/{stats['free_throws_attempted']}" if stats['free_throws_attempted'] > 0 else "0/0",
                         'FT%': f"{stats['free_throws_made']/stats['free_throws_attempted']*100:.1f}%" if stats['free_throws_attempted'] > 0 else "0.0%",
                         '2PT': f"{two_pt_made}/{two_pt_attempted}" if two_pt_attempted > 0 else "0/0",
@@ -6577,6 +6623,8 @@ with tab2:
                         color_defensive_efficiency_scores, subset=['Def. Eff.']
                     ).applymap(
                         color_points, subset=['Points']
+                    ).applymap(
+                        color_points_per_shot, subset=['Points/Shot']
                     ).applymap(
                         color_ft_percentage, subset=['FT%']
                     ).applymap(
@@ -6745,6 +6793,10 @@ with tab2:
                 total_turnovers = off_stats.get('total_turnovers', 0)
                 defensive_impact_per_minute = def_stats.get('defensive_impact_per_minute', 0)
                 total_defensive_impact = def_stats.get('total_defensive_events', 0)
+
+                total_shot_attempts = fg_attempted + ft_attempted
+                lineup_points_per_shot = total_points / total_shot_attempts if total_shot_attempts > 0 else 0
+
                 
                 lineup_plus_minus_data.append({
                     "Lineup": lineup,
@@ -6754,6 +6806,7 @@ with tab2:
                     "Total Points": total_points,
                     "Off. Eff.": f"{offensive_efficiency:.1f}",
                     "Def. Eff.": f"{defensive_efficiency:.1f}",
+                    "Points/Shot": f"{lineup_points_per_shot:.2f}",
                     "Points/Min": f"{total_points / minutes_played:.2f}" if minutes_played > 0 else "0.0",
                     "FT": f"{ft_made}/{ft_attempted}" if ft_attempted > 0 else "0/0",
                     "FT%": f"{ft_percentage:.1f}%" if ft_attempted > 0 else "0.0%",
@@ -6780,7 +6833,7 @@ with tab2:
                 lineup_df = lineup_df.sort_values('numeric_plus_minus', ascending=False)
 
                 # Display main columns
-                main_columns = ["Lineup", "Appearances", "Minutes", "Off. Eff.", "Def. Eff.", "Points/Min", "Plus/Minus", "Total Points", "FT", "FT%", "FG", "FG%", "2FG", "2FG%", "3FG", "3FG%", "eFG%", "TS%", "Total TOs", "TO/Min" , "Def Impact/Min", "Total Def Impact"]
+                main_columns = ["Lineup", "Appearances", "Minutes", "Off. Eff.", "Def. Eff.", "Points/Shot" , "Points/Min", "Plus/Minus", "Total Points", "FT", "FT%", "FG", "FG%", "2FG", "2FG%", "3FG", "3FG%", "eFG%", "TS%", "Total TOs", "TO/Min" , "Def Impact/Min", "Total Def Impact"]
                 
                 st.dataframe(
                     lineup_df[main_columns].style.applymap(
@@ -6793,6 +6846,8 @@ with tab2:
                         color_defensive_efficiency_scores, subset=["Def. Eff."]
                     ).applymap(
                         color_lineup_points_per_minute, subset=["Points/Min"]
+                    ).applymap(
+                        color_lineup_points_per_shot, subset=["Points/Shot"]                    
                     ).applymap(
                         color_ft_percentage, subset=['FT%']
                     ).applymap(
