@@ -2213,6 +2213,7 @@ def color_points(val):
     except (ValueError, TypeError):
         return ''
 
+
 def color_points_per_minute(val):
     """Color code points per minute with gradient."""
     try:
@@ -7294,7 +7295,7 @@ with tab4:
                 ).applymap(
                     color_defensive_efficiency_scores, subset=['Def. Eff.']
                 ).applymap(
-                    color_points, subset=['Points']
+                    color_points, subset=['PPG']
                  ).applymap(
                     color_points_per_minute, subset=['Points/Min']
                 ).applymap(
@@ -7515,7 +7516,7 @@ with tab4:
                     lineup_season_df[display_cols].style.applymap(
                         color_plus_minus, subset=['+/-']
                     ).applymap(
-                        color_lineup_points, subset=['Total Points']
+                        color_lineup_points, subset=['PPG']
                     ).applymap(
                         color_offensive_efficiency_scores, subset=['Off. Eff.']
                     ).applymap(
