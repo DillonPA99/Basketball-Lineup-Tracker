@@ -7581,7 +7581,7 @@ with tab4:
                         color_ts_percentage, subset=['TS%']
                     ).applymap(
                         color_lineup_defensive_impact_per_minute, subset=['Def Impact/Min']
-                     ).applymap(
+                    ).applymap(
                         color_lineup_defensive_impact, subset=['Def Impact/G']
                     ),
                     use_container_width=True,
