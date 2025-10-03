@@ -7251,8 +7251,8 @@ with tab4:
                     'Turnovers': stats['total_turnovers'],
                     'TO/G': f"{stats['total_turnovers'] / gp:.1f}",
                     'Def Impact/Min': f"{def_impact_per_min:.2f}",
-                    'Def Impact/G': f"{stats['total_def_impact'] / gp:.1f}" if gp > 0 else "0.0",
-                    'Total Def Impact': f"{stats['total_def_impact']:.1f}"
+                    'Total Def Impact': f"{stats['total_def_impact']:.1f}",
+                    'Def Impact/G': f"{stats['total_def_impact'] / gp:.1f}" if gp > 0 else "0.0"
                 })
             
             if player_season_data:
@@ -7262,8 +7262,6 @@ with tab4:
                 # Apply same styling as Tab 2
                 styled_season_player_df = player_season_df.style.applymap(
                     color_plus_minus, subset=['+/-']
-                ).applymap(
-                    color_defensive_impact, subset=['Total Def Impact']
                 ).applymap(
                     color_defensive_impact, subset=['Def Impact/G']
                 ).applymap(
@@ -7288,8 +7286,6 @@ with tab4:
                     color_efg_percentage, subset=['eFG%']
                 ).applymap(
                     color_ts_percentage, subset=['TS%']
-                ).applymap(
-                    color_turnovers, subset=['Turnovers']
                 ).applymap(
                     color_turnovers_per_game, subset=['TO/G']
                 )
