@@ -2337,6 +2337,27 @@ def color_turnovers_per_min(val):
     except (ValueError, TypeError):
         return ''
 
+def color_turnovers_lineup_per_min(val):
+    """Color code turnovers (lower is better)."""
+    try:
+        if isinstance(val, str):
+            numeric_val = float(val)
+        else:
+            numeric_val = float(val)
+        
+        if numeric_val == 0:
+            return 'background-color: #2d5016; color: white'  # Dark green
+        elif numeric_val <= 0.25:
+            return 'background-color: #90EE90; color: black'  # Light green
+        elif numeric_val <= 0.50:
+            return 'background-color: #FFFACD; color: black'  # Light yellow
+        elif numeric_val <= 0.625:
+            return 'background-color: #FFB6C1; color: black'  # Light red
+        else:
+            return 'background-color: #FF0000; color: white'  # Dark red
+    except (ValueError, TypeError):
+        return ''
+
 
 def color_plus_minus(val):
     """Color code plus/minus values with gradient."""
@@ -6719,11 +6740,13 @@ with tab2:
                     ).applymap(
                         color_ts_percentage, subset=["TS%"]
                     ).applymap(
-                        color_turnovers, subset=["Total TOs"]  # NEW: Turnover color coding
+                        color_turnovers, subset=["Total TOs"] 
                     ).applymap(
-                        color_lineup_defensive_impact_per_minute, subset=["Def Impact/Min"]  # NEW: Def impact/min color coding
+                        color_turnovers_lineup_per_min, subset=["TO/Min"] 
                     ).applymap(
-                        color_lineup_defensive_impact, subset=["Total Def Impact"]  # NEW: Total def impact color coding
+                        color_lineup_defensive_impact_per_minute, subset=["Def Impact/Min"]
+                    ).applymap(
+                        color_lineup_defensive_impact, subset=["Total Def Impact"]
                     ),
                     use_container_width=True,
                     hide_index=True
