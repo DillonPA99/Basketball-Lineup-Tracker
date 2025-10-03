@@ -6589,10 +6589,10 @@ with tab2:
                         'Player': player.split('(')[0].strip(),
                         'Minutes': f"{minutes_played:.1f}",
                         '+/-': f"+{plus_minus}" if plus_minus >= 0 else str(plus_minus),
-                        'PPP': f"{PPP:.2f}",  
                         'Off. Eff.': f"{offensive_efficiency:.1f}", 
                         'Def. Eff.': f"{defensive_efficiency:.1f}",
                         'Points': stats['points'],
+                        'PPP': f"{PPP:.2f}",  
                         'FT': f"{stats['free_throws_made']}/{stats['free_throws_attempted']}" if stats['free_throws_attempted'] > 0 else "0/0",
                         'FT%': f"{stats['free_throws_made']/stats['free_throws_attempted']*100:.1f}%" if stats['free_throws_attempted'] > 0 else "0.0%",
                         '2PT': f"{two_pt_made}/{two_pt_attempted}" if two_pt_attempted > 0 else "0/0",
@@ -6808,10 +6808,10 @@ with tab2:
                     "Appearances": stats['appearances'],
                     "Plus/Minus": f"+{stats['plus_minus']}" if stats['plus_minus'] >= 0 else str(stats['plus_minus']),
                     "Minutes": f"{stats['minutes']:.1f}",
-                    "Total Points": total_points,
-                    "PPP": f"{lineup_PPP:.2f}",
                     "Off. Eff.": f"{offensive_efficiency:.1f}",
                     "Def. Eff.": f"{defensive_efficiency:.1f}",
+                    "Total Points": total_points,
+                    "PPP": f"{lineup_PPP:.2f}",
                     "Points/Min": f"{total_points / minutes_played:.2f}" if minutes_played > 0 else "0.0",
                     "FT": f"{ft_made}/{ft_attempted}" if ft_attempted > 0 else "0/0",
                     "FT%": f"{ft_percentage:.1f}%" if ft_attempted > 0 else "0.0%",
@@ -6838,7 +6838,7 @@ with tab2:
                 lineup_df = lineup_df.sort_values('numeric_plus_minus', ascending=False)
 
                 # Display main columns
-                main_columns = ["Lineup", "Appearances", "Minutes", "PPP", "Off. Eff.", "Def. Eff.", "Points/Min", "Plus/Minus", "Total Points", "FT", "FT%", "FG", "FG%", "2FG", "2FG%", "3FG", "3FG%", "eFG%", "TS%", "Total TOs", "TO/Min" , "Def Impact/Min", "Total Def Impact"]
+                main_columns = ["Lineup", "Appearances", "Minutes", "Off. Eff.", "Def. Eff.", "Points/Min", "Plus/Minus", "Total Points", "PPP", "FT", "FT%", "FG", "FG%", "2FG", "2FG%", "3FG", "3FG%", "eFG%", "TS%", "Total TOs", "TO/Min" , "Def Impact/Min", "Total Def Impact"]
                 
                 st.dataframe(
                     lineup_df[main_columns].style.applymap(
@@ -7385,11 +7385,11 @@ with tab4:
                     'Minutes': f"{stats['total_minutes']:.1f}",
                     'MPG': f"{mpg:.1f}",
                     '+/-': f"+{stats['total_plus_minus']}" if stats['total_plus_minus'] >= 0 else str(stats['total_plus_minus']),
-                    'PPP': f"{PPP:.2f}", 
                     'Off. Eff.': f"{off_eff:.1f}",
                     'Def. Eff.': f"{def_eff:.1f}",
                     'Points': stats['total_points'],
                     'PPG': f"{ppg:.1f}",
+                    'PPP': f"{PPP:.2f}", 
                     'Points/Min': f"{stats['total_points'] / stats['total_minutes']:.2f}" if stats['total_minutes'] > 0 else "0.00",
                     'FT': f"{stats['total_ft_made']}/{stats['total_ft_attempted']}",
                     'FT%': f"{ft_pct:.1f}%",
@@ -7624,11 +7624,11 @@ with tab4:
                     'Appearances': stats['total_appearances'],
                     'Minutes': f"{stats['total_minutes']:.1f}",
                     'MPG': f"{stats['total_minutes'] / games_appeared:.1f}" if games_appeared > 0 else "0.0",
-                    'PPP': f"{lineup_PPP:.2f}",
                     'Off. Eff.': f"{offensive_efficiency:.1f}",
                     'Def. Eff.': f"{defensive_efficiency:.1f}",
                     'Total Points': stats['total_points'],
                     'PPG': f"{stats['total_points'] / games_appeared:.1f}" if games_appeared > 0 else "0.0",
+                    'PPP': f"{lineup_PPP:.2f}",
                     'Points/Min': f"{stats['total_points'] / stats['total_minutes']:.2f}" if stats['total_minutes'] > 0 else "0.00",
                     '+/-': f"+{stats['total_plus_minus']}" if stats['total_plus_minus'] >= 0 else str(stats['total_plus_minus']),
                     'FT': f"{stats['total_ft_made']}/{stats['total_ft_attempted']}",
@@ -7655,7 +7655,7 @@ with tab4:
                 lineup_season_df = pd.DataFrame(lineup_season_data)
                 lineup_season_df = lineup_season_df.sort_values('numeric_points', ascending=False)
                 
-                display_cols = ['Lineup', 'Games', 'Appearances', 'Minutes', 'MPG', "PPP", 'Off. Eff.', 'Def. Eff.', 'Total Points', 'PPG', 'Points/Min', '+/-', 'FT', 'FT%', 'FG', 'FG%', '2FG', '2FG%', '3FG', '3FG%', 'eFG%', 'TS%', 'Total TOs', 'TO/G', 'Total Def Impact', 'Def Impact/G', 'Def Impact/Min']
+                display_cols = ['Lineup', 'Games', 'Appearances', 'Minutes', 'MPG', 'Off. Eff.', 'Def. Eff.', 'Total Points', 'PPG', "PPP", 'Points/Min', '+/-', 'FT', 'FT%', 'FG', 'FG%', '2FG', '2FG%', '3FG', '3FG%', 'eFG%', 'TS%', 'Total TOs', 'TO/G', 'Total Def Impact', 'Def Impact/G', 'Def Impact/Min']
                 
                 # Apply styling
                 st.dataframe(
