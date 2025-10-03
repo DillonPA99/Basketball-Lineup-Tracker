@@ -2326,7 +2326,7 @@ def color_turnovers_per_min(val):
         
         if numeric_val == 0:
             return 'background-color: #2d5016; color: white'  # Dark green
-        elif numeric_val <= 0.5:
+        elif numeric_val <= 0.05:
             return 'background-color: #90EE90; color: black'  # Light green
         elif numeric_val <= 0.10:
             return 'background-color: #FFFACD; color: black'  # Light yellow
