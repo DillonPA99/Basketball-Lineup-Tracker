@@ -2478,13 +2478,13 @@ def color_offensive_rating(val):
         else:
             numeric_val = float(val)
         
-        if numeric_val >= 120:
+        if numeric_val >= 110:
             return 'background-color: #2d5016; color: white'  # Dark green
-        elif numeric_val >= 110:
+        elif numeric_val >= 95:
             return 'background-color: #90EE90; color: black'  # Light green
-        elif numeric_val >= 100:
+        elif numeric_val >= 80:
             return 'background-color: #FFFACD; color: black'  # Light yellow
-        elif numeric_val >= 90:
+        elif numeric_val >= 70:
             return 'background-color: #FFB6C1; color: black'  # Light red
         else:
             return 'background-color: #FF0000; color: white'  # Dark red
@@ -2499,13 +2499,13 @@ def color_lineup_offensive_rating(val):
         else:
             numeric_val = float(val)
         
-        if numeric_val >= 120:
+        if numeric_val >= 110:
             return 'background-color: #2d5016; color: white'  # Dark green
-        elif numeric_val >= 110:
+        elif numeric_val >= 95:
             return 'background-color: #90EE90; color: black'  # Light green
-        elif numeric_val >= 100:
+        elif numeric_val >= 80:
             return 'background-color: #FFFACD; color: black'  # Light yellow
-        elif numeric_val >= 90:
+        elif numeric_val >= 70:
             return 'background-color: #FFB6C1; color: black'  # Light red
         else:
             return 'background-color: #FF0000; color: white'  # Dark red
