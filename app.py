@@ -2284,11 +2284,11 @@ def color_turnovers(val):
         
         if numeric_val == 0:
             return 'background-color: #2d5016; color: white'  # Dark green
-        elif numeric_val >= 1.9:
+        elif numeric_val <= 1.9:
             return 'background-color: #90EE90; color: black'  # Light green
-        elif numeric_val >= 2.9:
+        elif numeric_val <= 2.9:
             return 'background-color: #FFFACD; color: black'  # Light yellow
-        elif numeric_val >= 3.9:
+        elif numeric_val <= 3.9:
             return 'background-color: #FFB6C1; color: black'  # Light red
         else:
             return 'background-color: #FF0000; color: white'  # Dark red
