@@ -2295,7 +2295,7 @@ def color_turnovers(val):
     except (ValueError, TypeError):
         return ''
 
-def color_turnovers(val):
+def color_turnovers_per_game(val):
     """Color code turnovers (lower is better)."""
     try:
         if isinstance(val, str):
