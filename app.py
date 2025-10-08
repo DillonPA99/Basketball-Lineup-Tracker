@@ -7005,7 +7005,7 @@ with tab2:
                     
                     **Offensive Efficiency:**
                     - Formula: (True Shooting % * 15) + (Usage Rate * 3) - (Turnover Rate * 5)
-                    - True Shooting accounts for FG, 3PT, and FT efficiency combined
+                    - True Shooting accounts for FG, 3-PT, and FT efficiency combined
                     - Usage Rate = shot attempts per minute of play
                     - Turnover Rate = turnovers per minute of play (penalty)
                     
@@ -7014,9 +7014,23 @@ with tab2:
                     - Defensive Impact = (Opponent Turnovers * 1.5) + (Opponent Missed Shots * 1.0)
                     - Measures how well the lineup disrupts opponent offense per minute
                     
+                    **Points Per Possession (PPP):**
+                    - Formula: Points / Estimated Possessions
+                    - Estimated Possessions = FGA + TO + (0.44 * FTA)
+                    - Scale: 0.9-1.0 is average, 1.0-1.1 is good, 1.1-1.2 is very good, 1.2+ is excellent
+                    - Best measure of scoring efficiency - accounts for turnovers and free throws
+                    - League average is typically around 1.0 PPP
+                    
                     **Turnover Rate (TO Rate):**
                     - Turnovers per minute of play
                     - Lower is better (fewer turnovers per minute)
+                    
+                    **Possession Estimation:**
+                    - Used in calculating efficiency metrics
+                    - Formula: FGA + TO + (0.44 * FTA)
+                    - The 0.44 coefficient adjusts free throw attempts to approximate possessions
+                    - See "Advanced Metric Explanations" above for detailed breakdown
+                    
                     
                     """)
 
