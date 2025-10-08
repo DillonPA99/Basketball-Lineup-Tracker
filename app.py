@@ -6581,7 +6581,7 @@ with tab2:
 
                     total_shot_attempts = stats['field_goals_attempted'] + (0.44 * stats['free_throws_attempted'])
                     points_per_shot = stats['points'] / total_shot_attempts if total_shot_attempts > 0 else 0
-                    
+
                     estimated_possessions = stats['field_goals_attempted'] + turnovers + (0.44 * stats['free_throws_attempted'])
                     PPP = (stats['points'] / estimated_possessions) if estimated_possessions > 0 else 0
                     
@@ -7550,23 +7550,16 @@ with tab4:
                     
                     processed_lineups_this_game.add(lineup_key)
                 
-                # REPLACE FROM HERE DOWN (Aggregate shooting stats for this lineup)
-                lineup_quarter = lineup_event.get('quarter')
-                lineup_players = lineup_event.get('new_lineup', [])
-    
+                # Aggregate shooting stats for this lineup
                 for score_event in game.get('score_history', []):
-                    # FIX: Compare sorted lineups to ensure match
-                    score_lineup = score_event.get('lineup', [])
-                    score_quarter = score_event.get('quarter')
-        
                     if (score_event.get('team') == 'home' and 
-                        sorted(score_lineup) == sorted(lineup_players) and
-                        score_quarter == lineup_quarter):
-            
+                        score_event.get('lineup') == lineup_event.get('new_lineup') and
+                        score_event.get('quarter') == lineup_event.get('quarter')):
+                        
                         shot_type = score_event.get('shot_type')
                         made = score_event.get('made', True)
                         attempted = score_event.get('attempted', True)
-            
+                        
                         if attempted:
                             if shot_type == 'free_throw':
                                 season_lineup_stats[lineup_key]['total_ft_attempted'] += 1
@@ -7627,17 +7620,6 @@ with tab4:
 
                 estimated_possessions = stats['total_fg_attempted'] + stats['total_turnovers'] + (0.44 * stats['total_ft_attempted'])
                 lineup_PPP = (stats['total_points'] / estimated_possessions) if estimated_possessions > 0 else 0
-                
-                # ADD DEBUG CODE HERE - RIGHT BEFORE lineup_season_data.append
-                if stats['total_points'] > 0:  # Only show lineups that scored
-                    st.write(f"DEBUG - {lineup}:")
-                    st.write(f"  Total Points: {stats['total_points']}")
-                    st.write(f"  FG Attempted: {stats['total_fg_attempted']}")
-                    st.write(f"  FT Attempted: {stats['total_ft_attempted']}")
-                    st.write(f"  Turnovers: {stats['total_turnovers']}")
-                    st.write(f"  Estimated Possessions: {estimated_possessions}")
-                    st.write(f"  Calculated PPP: {lineup_PPP:.4f}")
-                    st.write("---")
                 
                 lineup_season_data.append({
                     'Lineup': lineup,
