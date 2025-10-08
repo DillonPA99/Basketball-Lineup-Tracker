@@ -6725,7 +6725,6 @@ with tab2:
                         **Effective Field Goal % (eFG%):**
                         - Adjusts FG% to account for 3-pointers being worth more
                         - Formula: (FGM + 0.5 * 3PM) ÷ FGA * 100
-                        - Scale: 48-50% is average, 50-53% is good, 53-56% is very good, 56%+ is excellent
                         - Does not include free throws (unlike TS%)
                         
                         **POSSESSION & VOLUME METRICS:**
@@ -7016,7 +7015,6 @@ with tab2:
                     **Points Per Possession (PPP):**
                     - Formula: Points / Estimated Possessions
                     - Estimated Possessions = FGA + TO + (0.44 * FTA)
-                    - Scale: 0.9-1.0 is average, 1.0-1.1 is good, 1.1-1.2 is very good, 1.2+ is excellent
                     - Best measure of scoring efficiency - accounts for turnovers and free throws
                     - League average is typically around 1.0 PPP
                     
