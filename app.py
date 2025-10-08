@@ -6759,7 +6759,7 @@ with tab2:
                         - Formula: Total Defensive Impact ÷ Minutes Played
                         - Allows fair comparison between players with different minutes
 
-                    
+                    """)
                     # Shooting Percentage Charts (keep existing charts unchanged)
                     st.write("**Shooting Percentage Comparison**")
                     
