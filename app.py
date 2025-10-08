@@ -7004,14 +7004,14 @@ with tab2:
                     st.write("""
                     
                     **Offensive Efficiency:**
-                    - Formula: (True Shooting % × 15) + (Usage Rate × 3) - (Turnover Rate × 5)
+                    - Formula: (True Shooting % * 15) + (Usage Rate * 3) - (Turnover Rate * 5)
                     - True Shooting accounts for FG, 3PT, and FT efficiency combined
                     - Usage Rate = shot attempts per minute of play
                     - Turnover Rate = turnovers per minute of play (penalty)
                     
                     **Defensive Efficiency:**
-                    - Formula: Defensive Impact per Minute × 5
-                    - Defensive Impact = (Opponent Turnovers × 1.5) + (Opponent Missed Shots × 1.0)
+                    - Formula: Defensive Impact per Minute * 5
+                    - Defensive Impact = (Opponent Turnovers * 1.5) + (Opponent Missed Shots * 1.0)
                     - Measures how well the lineup disrupts opponent offense per minute
                     
                     **Turnover Rate (TO Rate):**
