@@ -7002,7 +7002,6 @@ with tab2:
                 # Efficiency explanation
                 with st.expander("ℹ️ Consistent Lineup Efficiency Metrics"):
                     st.write("""
-                    
                     **Offensive Efficiency:**
                     - Formula: (True Shooting % * 15) + (Usage Rate * 3) - (Turnover Rate * 5)
                     - True Shooting accounts for FG, 3-PT, and FT efficiency combined
@@ -7030,8 +7029,6 @@ with tab2:
                     - Formula: FGA + TO + (0.44 * FTA)
                     - The 0.44 coefficient adjusts free throw attempts to approximate possessions
                     - See "Advanced Metric Explanations" above for detailed breakdown
-                    
-                    
                     """)
 
         else:
