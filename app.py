@@ -6671,37 +6671,103 @@ with tab2:
 
                     with st.expander("ℹ️ Advanced Metric Explanations"):
                         st.write("""
+                        **POSSESSION ESTIMATION:**
+                        
+                        **Formula: Estimated Possessions = FGA + TO + (0.44 × FTA)**
+                        - **Field Goal Attempts (FGA)**: Each shot attempt typically ends a possession
+                        - **Turnovers (TO)**: Each turnover ends a possession without a shot
+                        - **Free Throw Attempts (FTA × 0.44)**: The 0.44 factor accounts for:
+                          - Most free throws come in pairs (2-shot fouls)
+                          - Some come in sets of 3 (3-point shooting fouls)
+                          - "And-one" free throws (after made shots)
+                          - Technical free throws (1 shot)
+                          - The 0.44 multiplier converts FTA into estimated possessions that ended in free throws
+                        
+                        **What This Captures:**
+                        - Possessions ending in a shot attempt (made or missed)
+                        - Possessions ending in a turnover
+                        - Possessions ending in free throws (approximately)
+                        
+                        **What This Doesn't Capture:**
+                        - Offensive rebounds (which extend possessions)
+                        - Team rebounds
+                        - Defensive stops where you didn't take a shot                        
+                        
+                        **EFFICIENCY METRICS:**
+                        
                         **Offensive Efficiency Score:**
-                        - Based on True Shooting Percentage, points per minute, and turnover rate
-                        - Accounts for shot efficiency, volume, and ball security
-                        - Higher scores indicate better offensive performance per minute played
-                        - Scale: 0-20+ (10+ is above average, 15+ is excellent)
-
-                        **True Shooting % (TS%):**
-                        - Accounts for 2PT, 3PT, and FT efficiency in one metric
-                        - Formula: Points / (2 × (FGA + 0.44 × FTA))
-                        - More accurate than FG% because it weights 3-pointers and free throws properly
-                
+                        - Comprehensive measure combining shooting efficiency, volume, and ball security
+                        - Formula: (True Shooting % × 15) + (Usage Rate × 3) - (Turnover Rate × 5)
+                        - Components:
+                          - True Shooting %: Accounts for all scoring (2PT, 3PT, FT) in one metric
+                          - Usage Rate: Shot attempts per minute (measures offensive involvement)
+                          - Turnover Rate: Turnovers per minute (penalty for poor ball security)
+                        - Scale: 0-20+ (8-10 is average, 10-13 is good, 13-15 is very good, 15+ is excellent)
+                        - Higher scores = more efficient offensive production per minute
+                        
                         **Defensive Efficiency Score:**
-                        - Based on defensive events per minute (opponent turnovers + missed shots)
-                        - Opponent turnovers are weighted 1.5x, missed shots 1x
                         - Measures impact on opponent's offensive possessions
-                        - Scale: 0-10+ (2+ is above average, 5+ is excellent)
-
+                        - Formula: Defensive Impact per Minute × 5
+                        - Based on weighted defensive events:
+                          - Opponent turnovers forced: weighted 1.5x (most valuable)
+                          - Opponent missed shots: weighted 1.0x
+                        - Scale: 0-15+ (5-7 is average, 7-10 is good, 10-12 is very good, 12+ is excellent)
+                        - Higher scores = stronger defensive impact per minute
+                        
+                        **SHOOTING EFFICIENCY METRICS:**
+                        
+                        **True Shooting % (TS%):**
+                        - Most accurate overall shooting efficiency metric
+                        - Formula: Points ÷ (2 × (FGA + 0.44 × FTA))
+                        - Accounts for:
+                          - 2-point field goals (worth 2 points)
+                          - 3-point field goals (worth 3 points, weighted appropriately)
+                          - Free throws (0.44 factor accounts for and-ones and technical FTs)
+                        - Scale: 45-50% is average, 50-55% is good, 55-60% is very good, 60%+ is excellent
+                        - Superior to FG% because it properly weights 3-pointers and free throws
+                        
+                        **Effective Field Goal % (eFG%):**
+                        - Adjusts FG% to account for 3-pointers being worth more
+                        - Formula: (FGM + 0.5 × 3PM) ÷ FGA × 100
+                        - Scale: 48-50% is average, 50-53% is good, 53-56% is very good, 56%+ is excellent
+                        - Does not include free throws (unlike TS%)
+                        
+                        **POSSESSION & VOLUME METRICS:**
+                        
+                        **Points Per Possession (PPP):**
+                        - Measures scoring efficiency per offensive possession
+                        - Formula: Points ÷ Estimated Possessions
+                        - Estimated Possessions = FGA + TO + (0.44 × FTA)
+                        - Scale: 0.9-1.0 is average, 1.0-1.1 is good, 1.1-1.2 is very good, 1.2+ is excellent
+                        - League average is typically around 1.0 PPP
+                        - Higher values indicate more efficient scoring
+                        
+                        **Points Per Minute:**
+                        - Raw scoring rate while on court
+                        - Shows offensive production regardless of efficiency
+                        
+                        **Usage Rate:**
+                        - Percentage of team possessions used by a player/lineup
+                        - Calculated as: Shot attempts per minute of play
+                        - Higher usage = more offensive involvement
+                        - High usage with high efficiency is ideal
+                        
+                        **DEFENSIVE METRICS:**
+                        
                         **Defensive Impact Score:**
-                        - Raw total of weighted defensive events while player was on court
-                        - Shows cumulative defensive contribution across all minutes played
-                        - Calculated as: (Opponent Turnovers × 1.5) + (Opponent Missed Shots × 1.0)
-                        - Higher numbers indicate more defensive impact events occurred while player was on court
-                        - Examples: 15+ is excellent, 8-15 is good, 4-8 is average, <4 is below average
-                        - Note: Players with more court time naturally have higher opportunity for defensive impact
-
+                        - Total weighted defensive events while on court
+                        - Formula: (Opponent Turnovers × 1.5) + (Opponent Missed Shots × 1.0)
+                        - Shows cumulative defensive contribution
+                        - Individual Scale: 15+ is excellent, 8-15 is good, 4-8 is average, <4 is below average
+                        - Lineup Scale: 25+ is excellent, 18-25 is good, 12-18 is average, <12 is below average
+                        - Note: More playing time = more opportunities for defensive impact
+                        
                         **Defensive Impact per Minute:**
-                        - Shows the rate of defensive impact per minute of play
-                        - Calculated as: Total Defensive Impact Score ÷ Minutes Played
-                        - Allows fair comparison between players with different playing times
-                        - Examples: 2.0+ is excellent, 1.0-2.0 is good, 0.5-1.0 is average, <0.5 is below average
-                        """)
+                        - Rate of defensive impact normalized by playing time
+                        - Formula: Total Defensive Impact ÷ Minutes Played
+                        - Allows fair comparison between players with different minutes
+                        - Individual Scale: 1.5+ is excellent, 1.2-1.5 is good, 1.0-1.2 is average, <1.0 is below average
+                        - Lineup Scale: 2.5+ is excellent, 2.0-2.5 is good, 1.5-2.0 is average, <1.5 is below average
                     
                     # Shooting Percentage Charts (keep existing charts unchanged)
                     st.write("**Shooting Percentage Comparison**")
