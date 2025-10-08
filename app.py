@@ -7621,6 +7621,17 @@ with tab4:
                 estimated_possessions = stats['total_fg_attempted'] + stats['total_turnovers'] + (0.44 * stats['total_ft_attempted'])
                 lineup_PPP = (stats['total_points'] / estimated_possessions) if estimated_possessions > 0 else 0
                 
+                # ADD DEBUG CODE HERE - RIGHT BEFORE lineup_season_data.append
+                if stats['total_points'] > 0:  # Only show lineups that scored
+                    st.write(f"DEBUG - {lineup}:")
+                    st.write(f"  Total Points: {stats['total_points']}")
+                    st.write(f"  FG Attempted: {stats['total_fg_attempted']}")
+                    st.write(f"  FT Attempted: {stats['total_ft_attempted']}")
+                    st.write(f"  Turnovers: {stats['total_turnovers']}")
+                    st.write(f"  Estimated Possessions: {estimated_possessions}")
+                    st.write(f"  Calculated PPP: {lineup_PPP:.4f}")
+                    st.write("---")
+                
                 lineup_season_data.append({
                     'Lineup': lineup,
                     'Games': games_appeared,
