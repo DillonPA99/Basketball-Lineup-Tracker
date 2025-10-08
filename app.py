@@ -3592,7 +3592,7 @@ def calculate_lineup_offensive_efficiency():
         except:
             return 0
     
-    # Process each lineup period to calculate time duration and offensive events
+    # Process each lineup period to calculate time duration
     for i in range(len(st.session_state.lineup_history)):
         lineup_event = st.session_state.lineup_history[i]
         current_lineup = tuple(sorted(lineup_event['new_lineup']))
@@ -3610,7 +3610,7 @@ def calculate_lineup_offensive_efficiency():
                 'total_time_seconds': 0
             }
         
-        # Calculate time duration for this lineup period (same logic as defensive)
+        # Calculate time duration for this lineup period
         lineup_start_seconds = parse_game_time(lineup_event.get('game_time', '0:00'))
         
         if i < len(st.session_state.lineup_history) - 1:
@@ -3635,48 +3635,62 @@ def calculate_lineup_offensive_efficiency():
         
         time_elapsed = max(0, time_elapsed)
         lineup_offensive_stats[current_lineup]['total_time_seconds'] += time_elapsed
+    
+    # FIXED: Process score events ONCE and attribute to correct lineup
+    for score_event in st.session_state.score_history:
+        if score_event.get('team') != 'home':  # Only home team offense
+            continue
         
-        # Count offensive events that occurred during this specific lineup period
-        lineup_quarter = lineup_event.get('quarter')
-        lineup_players = lineup_event.get('new_lineup', [])
+        # Get the lineup that was on court when this score happened
+        score_lineup = score_event.get('lineup', [])
         
-        # Count home team scoring events with this exact lineup
-        for score_event in st.session_state.score_history:
-            if (score_event['team'] == 'home' and  # Only home team offense
-                score_event.get('quarter') == lineup_quarter and
-                score_event.get('lineup') == lineup_players):
-                
-                # Add points
-                lineup_offensive_stats[current_lineup]['points_scored'] += score_event.get('points', 0)
-                
-                # Count shot attempts and makes
-                shot_type = score_event.get('shot_type')
-                attempted = score_event.get('attempted', True)
-                made = score_event.get('made', True)
-                
-                if attempted:
-                    if shot_type == 'free_throw':
-                        lineup_offensive_stats[current_lineup]['free_throws_attempted'] += 1
-                        if made:
-                            lineup_offensive_stats[current_lineup]['free_throws_made'] += 1
-                    elif shot_type == 'field_goal':
-                        lineup_offensive_stats[current_lineup]['field_goals_attempted'] += 1
-                        if made:
-                            lineup_offensive_stats[current_lineup]['field_goals_made'] += 1
-                    elif shot_type == 'three_pointer':
-                        lineup_offensive_stats[current_lineup]['three_pointers_attempted'] += 1
-                        lineup_offensive_stats[current_lineup]['field_goals_attempted'] += 1
-                        if made:
-                            lineup_offensive_stats[current_lineup]['three_pointers_made'] += 1
-                            lineup_offensive_stats[current_lineup]['field_goals_made'] += 1
+        if not score_lineup:
+            continue
         
-        # Count home team turnovers with this exact lineup
-        for turnover_event in st.session_state.turnover_history:
-            if (turnover_event['team'] == 'home' and
-                turnover_event.get('quarter') == lineup_quarter and
-                turnover_event.get('lineup') == lineup_players):
-                
-                lineup_offensive_stats[current_lineup]['turnovers'] += 1
+        lineup_key = tuple(sorted(score_lineup))
+        
+        # Skip if this lineup wasn't tracked (shouldn't happen)
+        if lineup_key not in lineup_offensive_stats:
+            continue
+        
+        # Add points
+        lineup_offensive_stats[lineup_key]['points_scored'] += score_event.get('points', 0)
+        
+        # Count shot attempts and makes
+        shot_type = score_event.get('shot_type')
+        attempted = score_event.get('attempted', True)
+        made = score_event.get('made', True)
+        
+        if attempted:
+            if shot_type == 'free_throw':
+                lineup_offensive_stats[lineup_key]['free_throws_attempted'] += 1
+                if made:
+                    lineup_offensive_stats[lineup_key]['free_throws_made'] += 1
+            elif shot_type == 'field_goal':
+                lineup_offensive_stats[lineup_key]['field_goals_attempted'] += 1
+                if made:
+                    lineup_offensive_stats[lineup_key]['field_goals_made'] += 1
+            elif shot_type == 'three_pointer':
+                lineup_offensive_stats[lineup_key]['three_pointers_attempted'] += 1
+                lineup_offensive_stats[lineup_key]['field_goals_attempted'] += 1
+                if made:
+                    lineup_offensive_stats[lineup_key]['three_pointers_made'] += 1
+                    lineup_offensive_stats[lineup_key]['field_goals_made'] += 1
+    
+    # FIXED: Count home team turnovers ONCE per lineup
+    for turnover_event in st.session_state.turnover_history:
+        if turnover_event.get('team') != 'home':
+            continue
+        
+        turnover_lineup = turnover_event.get('lineup', [])
+        
+        if not turnover_lineup:
+            continue
+        
+        lineup_key = tuple(sorted(turnover_lineup))
+        
+        if lineup_key in lineup_offensive_stats:
+            lineup_offensive_stats[lineup_key]['turnovers'] += 1
     
     # Convert to final format with efficiency calculations
     final_offensive_stats = {}
@@ -7464,7 +7478,7 @@ with tab4:
             'games_appeared': set()
         })
         
-        # Aggregate lineup stats from all games
+        # Aggregate lineup stats from all games - FIXED VERSION
         for game_idx, game in enumerate(season_games):
             # Calculate time for each lineup in this game
             game_lineup_times = calculate_lineup_times_for_game(game)
@@ -7546,35 +7560,45 @@ with tab4:
                     season_lineup_stats[lineup_key]['total_points'] += game_lineup_stats[lineup_key]['points']
                     season_lineup_stats[lineup_key]['total_def_impact'] += game_lineup_stats[lineup_key]['def_impact']
                     season_lineup_stats[lineup_key]['total_turnovers'] += game_lineup_stats[lineup_key]['turnovers']
-
                     
                     processed_lineups_this_game.add(lineup_key)
+            
+            # FIXED: Process score events ONCE per game and attribute to correct lineup
+            for score_event in game.get('score_history', []):
+                if score_event.get('team') != 'home':
+                    continue
                 
-                # Aggregate shooting stats for this lineup
-                for score_event in game.get('score_history', []):
-                    if (score_event.get('team') == 'home' and 
-                        score_event.get('lineup') == lineup_event.get('new_lineup') and
-                        score_event.get('quarter') == lineup_event.get('quarter')):
-                        
-                        shot_type = score_event.get('shot_type')
-                        made = score_event.get('made', True)
-                        attempted = score_event.get('attempted', True)
-                        
-                        if attempted:
-                            if shot_type == 'free_throw':
-                                season_lineup_stats[lineup_key]['total_ft_attempted'] += 1
-                                if made:
-                                    season_lineup_stats[lineup_key]['total_ft_made'] += 1
-                            elif shot_type == 'field_goal':
-                                season_lineup_stats[lineup_key]['total_fg_attempted'] += 1
-                                if made:
-                                    season_lineup_stats[lineup_key]['total_fg_made'] += 1
-                            elif shot_type == 'three_pointer':
-                                season_lineup_stats[lineup_key]['total_3pt_attempted'] += 1
-                                season_lineup_stats[lineup_key]['total_fg_attempted'] += 1
-                                if made:
-                                    season_lineup_stats[lineup_key]['total_3pt_made'] += 1
-                                    season_lineup_stats[lineup_key]['total_fg_made'] += 1
+                # Get the lineup that was on court when this score happened
+                score_lineup = score_event.get('lineup', [])
+                
+                if not score_lineup:
+                    continue
+                
+                lineup_key = " | ".join(sorted(score_lineup))
+                
+                # Skip if this lineup isn't being tracked
+                if lineup_key not in season_lineup_stats:
+                    continue
+                
+                shot_type = score_event.get('shot_type')
+                made = score_event.get('made', True)
+                attempted = score_event.get('attempted', True)
+                
+                if attempted:
+                    if shot_type == 'free_throw':
+                        season_lineup_stats[lineup_key]['total_ft_attempted'] += 1
+                        if made:
+                            season_lineup_stats[lineup_key]['total_ft_made'] += 1
+                    elif shot_type == 'field_goal':
+                        season_lineup_stats[lineup_key]['total_fg_attempted'] += 1
+                        if made:
+                            season_lineup_stats[lineup_key]['total_fg_made'] += 1
+                    elif shot_type == 'three_pointer':
+                        season_lineup_stats[lineup_key]['total_3pt_attempted'] += 1
+                        season_lineup_stats[lineup_key]['total_fg_attempted'] += 1
+                        if made:
+                            season_lineup_stats[lineup_key]['total_3pt_made'] += 1
+                            season_lineup_stats[lineup_key]['total_fg_made'] += 1
         
         # Build lineup data table
         if season_lineup_stats:
