@@ -7028,7 +7028,7 @@ with tab2:
                         points = best_efficiency['Total Points']
                         minutes = best_efficiency['Minutes']
                         ts_pct = float(best_efficiency['TS%'].rstrip('%'))
-                        plus_minus = best_efficiency['Plus/Minus'] if 'Plus/Minus' in best_efficiency else best_efficiency['+/-']
+                        plus_minus = best_efficiency.get('Plus/Minus', best_efficiency.get('+/-', '0'))
                         
                         st.caption(f"TS%: {ts_pct:.1f}% | +/-: {plus_minus}")
                         st.caption(f"{points} pts in {minutes} min")
@@ -7043,7 +7043,7 @@ with tab2:
                 with insight_col1:
                     # Best Plus/Minus (different from best offensive)
                     best_pm = lineup_df.sort_values("numeric_plus_minus", ascending=False).iloc[0]
-                    plus_minus_val = best_pm['Plus/Minus'] if 'Plus/Minus' in best_pm else best_pm['+/-']
+                    plus_minus_val = best_pm.get('Plus/Minus', best_pm.get('+/-', '0'))
                     
                     st.success("📈 **Best +/- Lineup**")
                     st.write(f"**{plus_minus_val}** Plus/Minus")
@@ -7069,7 +7069,10 @@ with tab2:
                 
                 with insight_col3:
                     # Highest Scoring Output (total points with minutes context)
-                    highest_scoring = lineup_df.sort_values("numeric_points", ascending=False).iloc[0]
+                    # Convert Total Points to numeric for sorting
+                    lineup_df_with_numeric = lineup_df.copy()
+                    lineup_df_with_numeric['numeric_total_points'] = lineup_df_with_numeric['Total Points'].astype(int)
+                    highest_scoring = lineup_df_with_numeric.sort_values("numeric_total_points", ascending=False).iloc[0]
                     
                     st.success("💪 **Highest Scoring Output**")
                     st.write(f"**{highest_scoring['Total Points']}** Total Points")
@@ -7125,7 +7128,6 @@ with tab2:
                     
                     **Note:** All efficiency formulas explained in detail above in "Advanced Metric Explanations"
                     """)
-
         else:
             st.info("No lineup plus/minus data available yet.")
         
