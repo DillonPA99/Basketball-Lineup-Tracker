@@ -6970,63 +6970,158 @@ with tab2:
                 # Top performers by category
                 st.write("**Top Performers by Category:**")
                 
-                perf_col1, perf_col2 = st.columns(2)
+                perf_col1, perf_col2, perf_col3 = st.columns(3)
                 
                 with perf_col1:
-                    # Best Offensive Lineup
+                    # Best Offensive Lineup - using PPP (Points Per Possession) as primary metric
                     best_offense = lineup_df.sort_values("numeric_off_eff", ascending=False).iloc[0]
+                    best_offense_lineup_key = best_offense['Lineup']
+                    
+                    # Get detailed offensive stats
+                    off_details = lineup_offensive_efficiency.get(best_offense_lineup_key, {})
+                    
                     st.info("🔥 **Best Offensive Lineup**")
                     st.write(f"**{best_offense['Off. Eff.']}** Off. Efficiency")
-                    st.caption(f"{best_offense['TS%']} TS% | {best_offense['TO/Min']} TO/min")
+                    
+                    # Show key offensive metrics
+                    ppp = float(best_offense['PPP'])
+                    ts_pct = off_details.get('true_shooting_percentage', 0)
+                    to_rate = float(best_offense['TO/Min'])
+                    
+                    st.caption(f"PPP: {ppp:.2f} | TS%: {ts_pct:.1f}% | TO/min: {to_rate:.2f}")
+                    st.caption(f"{best_offense['Total Points']} pts in {best_offense['Minutes']} min")
                     st.write(f"_{best_offense['Lineup']}_")
                 
                 with perf_col2:
-                    # Best Defensive Lineup  
+                    # Best Defensive Lineup - using Defensive Impact per Minute
                     best_defense = lineup_df.sort_values("numeric_def_eff", ascending=False).iloc[0]
-                    # Get detailed defensive stats for this lineup
                     best_def_lineup_key = best_defense['Lineup']
+                    
+                    # Get detailed defensive stats
                     def_details = lineup_defensive_efficiency.get(best_def_lineup_key, {})
-    
+                    
                     st.info("🛡️ **Best Defensive Lineup**")
                     st.write(f"**{best_defense['Def. Eff.']}** Def. Efficiency")
-    
-                    # Enhanced caption with detailed defensive stats
+                    
+                    # Show detailed defensive breakdown
                     opp_tos = def_details.get('total_opponent_turnovers', 0)
                     opp_misses = def_details.get('total_opponent_missed_shots', 0)
                     def_impact_per_min = def_details.get('defensive_impact_per_minute', 0)
-    
-                    st.caption(f"{best_defense['Minutes']} min | {best_defense['Def Impact/Min']} Def/min | {best_defense['Total Def Impact']} Total Def")
+                    
+                    st.caption(f"Def/min: {def_impact_per_min:.2f} | Total: {best_defense['Total Def Impact']}")
+                    st.caption(f"Opp TOs: {opp_tos} | Opp Misses: {opp_misses}")
                     st.write(f"_{best_defense['Lineup']}_")
-
+                
+                with perf_col3:
+                    # Most Efficient Scoring Lineup - best PPP with minimum minutes threshold
+                    qualified_lineups = lineup_df[lineup_df['Minutes'].astype(float) >= 3.0]  # At least 3 minutes
+                    
+                    if len(qualified_lineups) > 0:
+                        # Convert PPP to numeric for sorting
+                        qualified_lineups['numeric_ppp'] = qualified_lineups['PPP'].astype(float)
+                        best_efficiency = qualified_lineups.sort_values("numeric_ppp", ascending=False).iloc[0]
+                        
+                        st.info("⚡ **Most Efficient Scoring**")
+                        st.write(f"**{best_efficiency['PPP']}** PPP")
+                        
+                        # Show context
+                        points = best_efficiency['Total Points']
+                        minutes = best_efficiency['Minutes']
+                        ts_pct = float(best_efficiency['TS%'].rstrip('%'))
+                        
+                        st.caption(f"TS%: {ts_pct:.1f}% | +/-: {best_efficiency['+/-']}")
+                        st.caption(f"{points} pts in {minutes} min")
+                        st.write(f"_{best_efficiency['Lineup']}_")
+                    else:
+                        st.info("⚡ **Most Efficient Scoring**")
+                        st.caption("No lineups meet 3-minute minimum")
+                
+                # Add a second row for additional insights
+                insight_col1, insight_col2, insight_col3 = st.columns(3)
+                
+                with insight_col1:
+                    # Best Plus/Minus (different from best offensive)
+                    best_pm = lineup_df.sort_values("numeric_plus_minus", ascending=False).iloc[0]
+                    
+                    st.success("📈 **Best +/- Lineup**")
+                    st.write(f"**{best_pm['+/-']}** Plus/Minus")
+                    st.caption(f"{best_pm['Minutes']} min | {best_pm['Appearances']} appearances")
+                    st.write(f"_{best_pm['Lineup']}_")
+                
+                with insight_col2:
+                    # Best Ball Security (lowest TO/Min with minimum minutes)
+                    qualified_security = lineup_df[lineup_df['Minutes'].astype(float) >= 3.0]
+                    
+                    if len(qualified_security) > 0:
+                        # Convert TO/Min to numeric for sorting
+                        qualified_security['numeric_to_min'] = qualified_security['TO/Min'].astype(float)
+                        best_security = qualified_security.sort_values("numeric_to_min", ascending=True).iloc[0]
+                        
+                        st.success("🎯 **Best Ball Security**")
+                        st.write(f"**{best_security['TO/Min']}** TO/min")
+                        st.caption(f"{best_security['Total TOs']} total TOs in {best_security['Minutes']} min")
+                        st.write(f"_{best_security['Lineup']}_")
+                    else:
+                        st.success("🎯 **Best Ball Security**")
+                        st.caption("No lineups meet 3-minute minimum")
+                
+                with insight_col3:
+                    # Highest Scoring Output (total points with minutes context)
+                    highest_scoring = lineup_df.sort_values("numeric_points", ascending=False).iloc[0]
+                    
+                    st.success("💪 **Highest Scoring Output**")
+                    st.write(f"**{highest_scoring['Total Points']}** Total Points")
+                    st.caption(f"{highest_scoring['Points/Min']}/min | {highest_scoring['Minutes']} min")
+                    st.write(f"_{highest_scoring['Lineup']}_")
+                
                 # Efficiency explanation
                 with st.expander("ℹ️ Consistent Lineup Efficiency Metrics"):
                     st.write("""
-                    **Offensive Efficiency:**
+                    **Top Performer Categories Explained:**
+                    
+                    **Best Offensive Lineup:**
+                    - Primary metric: Offensive Efficiency Score
                     - Formula: (True Shooting % * 15) + (Usage Rate * 3) - (Turnover Rate * 5)
-                    - True Shooting accounts for FG, 3-PT, and FT efficiency combined
-                    - Usage Rate = shot attempts per minute of play
-                    - Turnover Rate = turnovers per minute of play (penalty)
+                    - Shows: PPP (Points Per Possession), TS%, and TO/min
+                    - Best overall offensive impact per possession
                     
-                    **Defensive Efficiency:**
+                    **Best Defensive Lineup:**
+                    - Primary metric: Defensive Efficiency Score
                     - Formula: Defensive Impact per Minute * 5
-                    - Defensive Impact = (Opponent Turnovers * 1.5) + (Opponent Missed Shots * 1.0)
-                    - Measures how well the lineup disrupts opponent offense per minute
+                    - Shows: Opponent turnovers forced and missed shots caused
+                    - Measures disruption of opponent offense
                     
-                    **Points Per Possession (PPP):**
-                    - Formula: Points / Estimated Possessions
-                    - Estimated Possessions = FGA + TO + (0.44 * FTA)
-                    - Best measure of scoring efficiency - accounts for turnovers and free throws
-                    - League average is typically around 1.0 PPP
+                    **Most Efficient Scoring:**
+                    - Primary metric: Points Per Possession (PPP)
+                    - Minimum: 3 minutes played (ensures meaningful sample)
+                    - Shows: True Shooting % and Plus/Minus for context
+                    - Best points scored per possession used
                     
-                    **Turnover Rate (TO Rate):**
-                    - Turnovers per minute of play
-                    - Lower is better (fewer turnovers per minute)
+                    **Best +/- Lineup:**
+                    - Primary metric: Raw Plus/Minus
+                    - Shows: Point differential when lineup is on court
+                    - Captures overall impact (offense + defense + intangibles)
                     
-                    **Possession Estimation:**
-                    - Used in calculating efficiency metrics
-                    - Formula: FGA + TO + (0.44 * FTA)
-                    - The 0.44 coefficient adjusts free throw attempts to approximate possessions
-                    - See "Advanced Metric Explanations" above for detailed breakdown
+                    **Best Ball Security:**
+                    - Primary metric: Turnovers per Minute (lowest)
+                    - Minimum: 3 minutes played
+                    - Shows: Total turnovers and playing time
+                    - Best at protecting the basketball
+                    
+                    **Highest Scoring Output:**
+                    - Primary metric: Total Points scored
+                    - Shows: Points per minute rate
+                    - Raw scoring production (volume metric)
+                    
+                    **Why These Metrics Matter:**
+                    - **Offensive Efficiency**: Comprehensive offensive evaluation
+                    - **Defensive Efficiency**: Measures defensive disruption
+                    - **PPP**: Most accurate scoring efficiency (accounts for possessions)
+                    - **Plus/Minus**: Bottom-line winning impact
+                    - **Ball Security**: Crucial for offensive success
+                    - **Scoring Output**: Shows high-volume production capability
+                    
+                    **Note:** All efficiency formulas explained in detail above in "Advanced Metric Explanations"
                     """)
 
         else:
