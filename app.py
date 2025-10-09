@@ -3297,7 +3297,7 @@ def calculate_lineup_chemistry_score(lineup):
 
 
 def recommend_best_lineup(include_defense=True):
-    """Recommend the best 5-player lineup using multiple criteria including defense - UPDATED VERSION."""
+    """Recommend the best 5-player lineup using multiple criteria including defense - IMPROVED VERSION."""
     if len(st.session_state.roster) < 5:
         return None, "Need at least 5 players in roster"
     
@@ -3314,44 +3314,108 @@ def recommend_best_lineup(include_defense=True):
     best_score = float('-inf')
     lineup_scores = []
     
+    # Get pre-calculated stats for efficiency
+    defensive_stats = calculate_individual_defensive_impact()
+    individual_pm_stats = calculate_individual_plus_minus()
+    player_stats = st.session_state.player_stats
+    
     for lineup in all_lineups:
         lineup_list = list(lineup)
         
-        # Calculate multiple scoring factors
+        # 1. Offensive Efficiency Score (0-100 scale)
+        offensive_efficiency = 0
+        total_minutes = 0
+        total_points = 0
+        total_shots = 0
+        total_turnovers = 0
         
-        # 1. Offensive efficiency (separate from defensive)
-        offensive_efficiency = sum(calculate_player_efficiency_score(player) for player in lineup_list)
+        for player in lineup_list:
+            player_off_eff = calculate_player_efficiency_score(player)
+            offensive_efficiency += player_off_eff
+            
+            # Track volume stats for weighting
+            if player in player_stats:
+                stats = player_stats[player]
+                minutes = calculate_player_minutes_played(player)
+                total_minutes += minutes
+                total_points += stats.get('points', 0)
+                total_shots += stats.get('field_goals_attempted', 0)
+                total_turnovers += st.session_state.player_turnovers.get(player, 0)
         
-        # 2. Defensive efficiency (if enabled) - UPDATED CALCULATION
+        # Normalize offensive efficiency by number of players
+        offensive_efficiency = offensive_efficiency / 5 if offensive_efficiency > 0 else 0
+        
+        # 2. Defensive Efficiency Score (0-100 scale)
         defensive_efficiency = 0
         if include_defense:
-            defensive_stats = calculate_individual_defensive_impact()
             for player in lineup_list:
                 if player in defensive_stats:
-                    # CHANGED: Now uses defensive_impact_per_minute instead of defensive_events_per_minute
-                    defensive_efficiency += defensive_stats[player].get('defensive_impact_per_minute', 0) * 5
+                    def_impact_per_min = defensive_stats[player].get('defensive_impact_per_minute', 0)
+                    defensive_efficiency += def_impact_per_min * 10  # Scale to match offensive
         
-        # 3. Positional balance
+        # Normalize defensive efficiency
+        defensive_efficiency = defensive_efficiency / 5 if defensive_efficiency > 0 else 0
+        
+        # 3. Positional Balance Score (0-30 scale)
         position_score = calculate_position_balance_score(lineup_list)
         
-        # 4. Historical lineup performance
+        # 4. Historical Performance Score (-50 to +50 scale, normalized)
         historical_score = get_lineup_historical_performance(lineup_list)
+        # Normalize to 0-30 scale
+        normalized_historical = max(0, min(30, (historical_score + 50) * 0.3))
         
-        # 5. Player chemistry
+        # 5. Player Chemistry Score (0-20 scale)
         chemistry_score = calculate_lineup_chemistry_score(lineup_list)
         
-        # 6. Plus/minus (but weighted lower than other factors)
-        individual_stats = calculate_individual_plus_minus()
-        plus_minus_total = sum(individual_stats.get(player, {}).get('plus_minus', 0) for player in lineup_list)
+        # 6. Plus/Minus Impact (-50 to +50 scale, normalized)
+        plus_minus_total = sum(individual_pm_stats.get(player, {}).get('plus_minus', 0) for player in lineup_list)
+        # Normalize to 0-20 scale
+        normalized_pm = max(0, min(20, (plus_minus_total + 50) * 0.2))
         
-        # Combine all factors with weights (defense always included)
+        # 7. Experience Factor (bonus for players with more court time)
+        experience_bonus = 0
+        if total_minutes > 0:
+            # Give bonus for lineups with experienced players (up to 10 points)
+            avg_minutes = total_minutes / 5
+            experience_bonus = min(10, avg_minutes * 0.5)
+        
+        # 8. Shooting Efficiency Bonus (bonus for good shooters together)
+        shooting_bonus = 0
+        shooters_count = 0
+        for player in lineup_list:
+            if player in player_stats:
+                stats = player_stats[player]
+                if stats.get('field_goals_attempted', 0) >= 5:  # Minimum threshold
+                    fg_pct = stats.get('field_goals_made', 0) / stats['field_goals_attempted']
+                    if fg_pct >= 0.45:  # Good shooter
+                        shooters_count += 1
+        
+        # Bonus for having 3+ good shooters
+        if shooters_count >= 3:
+            shooting_bonus = 10
+        elif shooters_count >= 2:
+            shooting_bonus = 5
+        
+        # 9. Ball Security Factor (penalty for turnover-prone lineups)
+        turnover_penalty = 0
+        if total_minutes > 0 and total_turnovers > 0:
+            to_rate = total_turnovers / total_minutes
+            if to_rate > 0.15:  # High turnover rate
+                turnover_penalty = -10
+            elif to_rate > 0.10:
+                turnover_penalty = -5
+        
+        # Calculate weighted total score (out of 100+)
         total_score = (
-            offensive_efficiency * 0.25 +   # 25% offensive efficiency
-            defensive_efficiency * 0.20 +   # 20% defensive efficiency
-            position_score * 0.25 +         # 25% positional balance
-            historical_score * 0.15 +       # 15% historical lineup performance
-            chemistry_score * 0.10 +        # 10% player chemistry
-            plus_minus_total * 0.05          # 5% individual plus/minus
+            offensive_efficiency * 0.30 +      # 30% - Most important
+            defensive_efficiency * 0.25 +      # 25% - Second most important
+            position_score * 0.20 +            # 20% - Structure matters
+            normalized_historical * 0.10 +     # 10% - Past performance
+            chemistry_score * 0.08 +           # 8% - Familiarity
+            normalized_pm * 0.07 +             # 7% - Overall impact
+            experience_bonus +                  # Bonus for experience
+            shooting_bonus +                    # Bonus for shooting
+            turnover_penalty                    # Penalty for turnovers
         )
         
         lineup_scores.append({
@@ -3360,9 +3424,12 @@ def recommend_best_lineup(include_defense=True):
             'offensive_efficiency': offensive_efficiency,
             'defensive_efficiency': defensive_efficiency,
             'position_balance': position_score,
-            'historical': historical_score,
+            'historical': normalized_historical,
             'chemistry': chemistry_score,
-            'plus_minus': plus_minus_total
+            'plus_minus': normalized_pm,
+            'experience': experience_bonus,
+            'shooting': shooting_bonus,
+            'turnovers': turnover_penalty
         })
         
         if total_score > best_score:
