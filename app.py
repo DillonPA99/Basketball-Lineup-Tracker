@@ -6967,7 +6967,7 @@ with tab2:
                         st.write(f"_{worst_lineup['Lineup']}_")
                         st.caption(f"Off: {worst_lineup['Off. Eff.']} | Def: {worst_lineup['Def. Eff.']} | {worst_lineup['Minutes']} min")
                 
-                # Top performers by category
+# Top performers by category
                 st.write("**Top Performers by Category:**")
                 
                 perf_col1, perf_col2, perf_col3 = st.columns(3)
@@ -7041,14 +7041,19 @@ with tab2:
                 insight_col1, insight_col2, insight_col3 = st.columns(3)
                 
                 with insight_col1:
-                    # Best Plus/Minus (different from best offensive)
-                    best_pm = lineup_df.sort_values("numeric_plus_minus", ascending=False).iloc[0]
-                    plus_minus_val = best_pm.get('Plus/Minus', best_pm.get('+/-', '0'))
+                    # Most Balanced Lineup (best combined offense + defense)
+                    lineup_df_balanced = lineup_df.copy()
+                    lineup_df_balanced['balance_score'] = (
+                        lineup_df_balanced['numeric_off_eff'] + 
+                        lineup_df_balanced['numeric_def_eff']
+                    ) / 2
+                    best_balanced = lineup_df_balanced.sort_values("balance_score", ascending=False).iloc[0]
                     
-                    st.success("📈 **Best +/- Lineup**")
-                    st.write(f"**{plus_minus_val}** Plus/Minus")
-                    st.caption(f"{best_pm['Minutes']} min | {best_pm['Appearances']} appearances")
-                    st.write(f"_{best_pm['Lineup']}_")
+                    st.success("⚖️ **Most Balanced Lineup**")
+                    st.write(f"**{best_balanced['balance_score']:.1f}** Combined Score")
+                    st.caption(f"Off: {best_balanced['Off. Eff.']} | Def: {best_balanced['Def. Eff.']}")
+                    st.caption(f"{best_balanced['Minutes']} min | {best_balanced['Appearances']} appearances")
+                    st.write(f"_{best_balanced['Lineup']}_")
                 
                 with insight_col2:
                     # Best Ball Security (lowest TO/Min with minimum minutes)
@@ -7102,10 +7107,12 @@ with tab2:
                     - Shows: True Shooting % and Plus/Minus for context
                     - Best points scored per possession used
                     
-                    **Best +/- Lineup:**
-                    - Primary metric: Raw Plus/Minus
-                    - Shows: Point differential when lineup is on court
-                    - Captures overall impact (offense + defense + intangibles)
+                    **Most Balanced Lineup:**
+                    - Primary metric: Combined Efficiency Score
+                    - Formula: (Offensive Efficiency + Defensive Efficiency) / 2
+                    - Shows: Both offensive and defensive efficiency scores
+                    - Identifies the most complete two-way lineup
+                    - Great for finding your "go-to" unit that excels at both ends
                     
                     **Best Ball Security:**
                     - Primary metric: Turnovers per Minute (lowest)
@@ -7122,7 +7129,7 @@ with tab2:
                     - **Offensive Efficiency**: Comprehensive offensive evaluation
                     - **Defensive Efficiency**: Measures defensive disruption
                     - **PPP**: Most accurate scoring efficiency (accounts for possessions)
-                    - **Plus/Minus**: Bottom-line winning impact
+                    - **Balanced Score**: Two-way excellence - offense AND defense
                     - **Ball Security**: Crucial for offensive success
                     - **Scoring Output**: Shows high-volume production capability
                     
