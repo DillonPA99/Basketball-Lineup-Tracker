@@ -5290,18 +5290,21 @@ with st.sidebar:
             • Free throw, 2-point, 3-point, and total field goal percentages
             • Makes/attempts breakdown for both home and away teams
             • Team shooting efficiency comparisons
+            • Points off turnovers for both teams
         
             👤 **Enhanced Individual Player Statistics (Home Team):**
             • Points, minutes played, plus/minus ratings
-            • Complete shooting percentages by shot type (FT, 2PT, 3PT, FG, eFG%)
-            • Turnover counts and defensive impact metrics
+            • **Efficiency Scores**: Offensive & Defensive Efficiency using consistent methodology
+            • **Advanced Metrics**: PPP (Points Per Possession), Points/Min
+            • Complete shooting percentages: FT%, 2PT%, 3PT%, FG%, eFG%, TS%
+            • **Ball Security**: Turnover counts and TO/Min rates
+            • **Defensive Impact**: Defensive Impact Score, Def Impact/Min
             • Opponent turnovers forced and missed shots while on court
-            • Defensive impact scores and events per minute
         
             🔄 **Turnover Analysis:**
             • Team turnover counts and differential analysis
             • Turnover advantage breakdown
-            • Individual player turnover statistics
+            • Individual player turnover statistics with per-minute rates
         
             🎯 **Points Off Turnovers Analytics:**
             • Team points off turnovers with efficiency ratings
@@ -5316,11 +5319,19 @@ with st.sidebar:
             • Points scored by each lineup
             • Best and worst performing lineups with context
         
+            🏀 **Lineup Statistics:**
+            • **Efficiency Scores**: Offensive & Defensive Efficiency (same methodology as players)
+            • **Scoring Metrics**: Total Points, PPG, PPP, Points/Min
+            • Complete shooting percentages: FT%, FG%, 2FG%, 3FG%, eFG%, TS%
+            • **Ball Security**: Total TOs and TO/Min rates
+            • **Defensive Performance**: Total Def Impact, Def Impact/Min
+            • Plus/minus ratings for each lineup combination
+        
             🛡️ **Defensive Analytics:**
             • Individual defensive impact scores and statistics
             • Opponent turnovers forced and missed shots caused
-            • Defensive events per minute calculations
-            • Lineup defensive performance ratings
+            • Defensive impact per minute calculations (weighted: TOs = 1.5x, Misses = 1.0x)
+            • Lineup defensive performance ratings using same methodology
             • Best defensive lineup identification
         
             📋 **Historical Records:**
@@ -5332,7 +5343,14 @@ with st.sidebar:
             • Professional text format suitable for email
             • Organized sections with clear headers
             • Statistical breakdowns with percentages and efficiency metrics
+            • **Consistent Methodology**: Same efficiency calculations for players and lineups
             • Summary insights and key performance highlights
+            
+            **Key Metrics Explained:**
+            • **Offensive Efficiency**: (TS% × 15) + (Usage × 3) - (TO Rate × 5)
+            • **Defensive Efficiency**: Defensive Impact per Minute × 5
+            • **PPP**: Points ÷ Estimated Possessions (most accurate efficiency metric)
+            • **Defensive Impact**: Weighted events (Opp TOs × 1.5 + Opp Misses × 1.0)
             
             **Simply copy and paste the generated content into your email client!**
             """)
