@@ -4237,10 +4237,25 @@ Total Points: {total_points}
                 opp_missed_shots = def_stats.get('opponent_missed_shots', 0)
                 def_impact_score = def_stats.get('weighted_defensive_events', 0)
                 
+                # Calculate efficiency scores
+                offensive_efficiency = calculate_player_efficiency_score(player)
+                def_impact_per_min = def_stats.get('defensive_impact_per_minute', 0)
+                defensive_efficiency = def_impact_per_min * 10 if minutes_played > 0 else 0
+
+                # Calculate PPP
+                estimated_possessions = stats['field_goals_attempted'] + turnovers + (0.44 * stats['free_throws_attempted'])
+                PPP = (stats['points'] / estimated_possessions) if estimated_possessions > 0 else 0
+
                 email_body += f"{player.split('(')[0].strip()}:\n"
                 email_body += f"  Points: {stats['points']}\n"
                 email_body += f"  Minutes Played: {minutes_played:.1f}\n"
                 email_body += f"  Plus/Minus: {'+' + str(plus_minus) if plus_minus >= 0 else str(plus_minus)}\n"
+                email_body += f"  Offensive Efficiency: {offensive_efficiency:.1f}\n"
+                email_body += f"  Defensive Efficiency: {defensive_efficiency:.1f}\n"
+                email_body += f"  PPP (Points Per Possession): {PPP:.2f}\n"
+
+                if minutes_played > 0:
+                    email_body += f"  Points/Min: {stats['points'] / minutes_played:.2f}\n"
                 
                 if stats['free_throws_attempted'] > 0:
                     ft_pct = stats['free_throws_made']/stats['free_throws_attempted']*100
@@ -4259,18 +4274,28 @@ Total Points: {total_points}
                 if stats['field_goals_attempted'] > 0:
                     fg_pct = stats['field_goals_made']/stats['field_goals_attempted']*100
                     efg_pct = ((stats['field_goals_made'] + 0.5 * stats['three_pointers_made']) / stats['field_goals_attempted']) * 100
+    
+                    # Calculate TS%
+                    tsa = stats['field_goals_attempted'] + (0.44 * stats['free_throws_attempted'])
+                    ts_pct = (stats['points'] / (2 * tsa)) * 100 if tsa > 0 else 0
+    
                     email_body += f"  Total FG: {stats['field_goals_made']}/{stats['field_goals_attempted']} ({fg_pct:.1f}%)\n"
                     email_body += f"  Effective FG%: {efg_pct:.1f}%\n"
-                
+                    email_body += f"  True Shooting%: {ts_pct:.1f}%\n"
+
                 if turnovers > 0:
                     email_body += f"  Turnovers: {turnovers}\n"
+                    if minutes_played > 0:
+                        email_body += f"  TO/Min: {turnovers / minutes_played:.2f}\n"
                 
                 # Add defensive stats
-                if opp_turnovers > 0 or opp_missed_shots > 0:
+                if opp_turnovers > 0 or opp_missed_shots > 0 or def_impact_score > 0:
                     email_body += f"  Defensive Impact:\n"
                     email_body += f"    Opponent Turnovers: {opp_turnovers}\n"
                     email_body += f"    Opponent Missed Shots: {opp_missed_shots}\n"
                     email_body += f"    Defensive Impact Score: {def_impact_score:.1f}\n"
+                    if minutes_played > 0:
+                        email_body += f"    Defensive Impact/Min: {def_impact_per_min:.2f}\n"
                 
                 email_body += "\n"
 
@@ -4358,17 +4383,72 @@ Total Points: {total_points}
         email_body += "\n"
     
     # Lineup Plus/Minus with enhanced stats
-    lineup_stats = calculate_lineup_plus_minus_with_time()
-    if lineup_stats:
-        email_body += "LINEUP PLUS/MINUS WITH TIME PLAYED:\n"
-        sorted_lineups = sorted(lineup_stats.items(), key=lambda x: x[1]['plus_minus'], reverse=True)
-        for lineup, stats in sorted_lineups:
-            pm_text = f"+{stats['plus_minus']}" if stats['plus_minus'] >= 0 else str(stats['plus_minus'])
-            email_body += f"Lineup: {lineup}\n"
-            email_body += f"Plus/Minus: {pm_text}\n"
-            email_body += f"Time Played: {stats['minutes']:.1f} minutes\n"
-            email_body += f"Appearances: {stats['appearances']}\n"
-            email_body += f"Points Scored: {stats.get('points_scored', 0)}\n\n"
+lineup_stats = calculate_lineup_plus_minus_with_time()
+if lineup_stats:
+    email_body += "LINEUP STATISTICS WITH ADVANCED METRICS:\n"
+    
+    # Get efficiency data using consistent methodology
+    lineup_offensive_efficiency = calculate_lineup_offensive_efficiency()
+    lineup_defensive_efficiency = calculate_lineup_defensive_efficiency()
+    
+    sorted_lineups = sorted(lineup_stats.items(), key=lambda x: x[1]['plus_minus'], reverse=True)
+    for lineup, stats in sorted_lineups:
+        pm_text = f"+{stats['plus_minus']}" if stats['plus_minus'] >= 0 else str(stats['plus_minus'])
+        
+        # Get efficiency scores
+        off_stats = lineup_offensive_efficiency.get(lineup, {})
+        def_stats = lineup_defensive_efficiency.get(lineup, {})
+        offensive_efficiency = off_stats.get('offensive_efficiency', 0)
+        defensive_efficiency = def_stats.get('defensive_efficiency', 0)
+        
+        # Calculate PPP
+        total_points = stats.get('points_scored', 0)
+        total_turnovers = off_stats.get('total_turnovers', 0)
+        fg_attempted = off_stats.get('field_goals_attempted', 0)
+        ft_attempted = off_stats.get('free_throws_attempted', 0)
+        
+        estimated_possessions = fg_attempted + total_turnovers + (0.44 * ft_attempted)
+        lineup_PPP = (total_points / estimated_possessions) if estimated_possessions > 0 else 0
+        
+        email_body += f"Lineup: {lineup}\n"
+        email_body += f"Plus/Minus: {pm_text}\n"
+        email_body += f"Time Played: {stats['minutes']:.1f} minutes\n"
+        email_body += f"Appearances: {stats['appearances']}\n"
+        email_body += f"Offensive Efficiency: {offensive_efficiency:.1f}\n"
+        email_body += f"Defensive Efficiency: {defensive_efficiency:.1f}\n"
+        email_body += f"Points Scored: {total_points}\n"
+        email_body += f"PPP (Points Per Possession): {lineup_PPP:.2f}\n"
+        
+        if stats['minutes'] > 0:
+            email_body += f"Points/Min: {total_points / stats['minutes']:.2f}\n"
+        
+        # Add shooting percentages if available
+        if fg_attempted > 0:
+            fg_pct = off_stats.get('fg_percentage', 0)
+            two_pt_pct = off_stats.get('two_pt_percentage', 0)
+            three_pt_pct = off_stats.get('three_pt_percentage', 0)
+            efg_pct = off_stats.get('efg_percentage', 0)
+            ts_pct = off_stats.get('true_shooting_percentage', 0)
+            
+            email_body += f"FG%: {fg_pct:.1f}%\n"
+            email_body += f"2PT%: {two_pt_pct:.1f}%\n"
+            email_body += f"3PT%: {three_pt_pct:.1f}%\n"
+            email_body += f"eFG%: {efg_pct:.1f}%\n"
+            email_body += f"TS%: {ts_pct:.1f}%\n"
+        
+        # Add turnover and defensive stats
+        if total_turnovers > 0:
+            email_body += f"Turnovers: {total_turnovers}\n"
+            if stats['minutes'] > 0:
+                email_body += f"TO/Min: {total_turnovers / stats['minutes']:.2f}\n"
+        
+        def_impact_per_min = def_stats.get('defensive_impact_per_minute', 0)
+        total_def_impact = def_stats.get('total_defensive_events', 0)
+        if total_def_impact > 0:
+            email_body += f"Defensive Impact Score: {total_def_impact:.1f}\n"
+            email_body += f"Defensive Impact/Min: {def_impact_per_min:.2f}\n"
+        
+        email_body += "\n"
         
         # Best and Worst Lineups
         if len(sorted_lineups) > 0:
@@ -4402,7 +4482,8 @@ Total Points: {total_points}
             email_body += f"  Defensive Impact Score: {def_stats['weighted_defensive_events']:.1f}\n"
             if def_stats['total_minutes_played'] > 0:
                 email_body += f"  Defensive Impact per Minute: {def_stats['defensive_impact_per_minute']:.2f}\n"
-            email_body += "\n"
+                email_body += f"  Defensive Efficiency: {def_stats['defensive_impact_per_minute'] * 10:.1f}\n"
+        email_body += "\n"
     
     # Lineup defensive performance
     lineup_defensive_ratings = calculate_lineup_defensive_rating()
@@ -4424,6 +4505,9 @@ Total Points: {total_points}
                 email_body += f"Opponent Missed Shots: {def_stats['total_opponent_missed_shots']}\n"
                 email_body += f"Defensive Impact per Minute: {def_stats['defensive_impact_per_minute']:.2f}\n"
                 email_body += f"Defensive Impact Score: {def_stats['total_defensive_events']:.1f}\n\n"
+                email_body += f"Defensive Impact per Minute: {def_stats['defensive_impact_per_minute']:.2f}\n"
+                email_body += f"Defensive Impact Score: {def_stats['total_defensive_events']:.1f}\n"
+                email_body += f"Defensive Efficiency: {def_stats['defensive_efficiency']:.1f}\n\n"
         
         if sorted_def_lineups:
             best_def_lineup = sorted_def_lineups[0]
@@ -4451,7 +4535,14 @@ Total Points: {total_points}
     email_body += f"Report Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
     email_body += f"Report includes: Game Summary, Shooting Stats, Individual Player Stats,\n"
     email_body += f"Turnover Analysis, Points off Turnovers, Plus/Minus Analytics,\n"
-    email_body += f"Defensive Analytics, Quarter Records, and Lineup History"
+    email_body += f"Advanced Lineup Statistics, Defensive Analytics, Quarter Records, and Lineup History\n\n"
+    email_body += "METRIC DEFINITIONS:\n"
+    email_body += "• Offensive Efficiency = (TS% × 15) + (Usage × 3) - (TO Rate × 5)\n"
+    email_body += "• Defensive Efficiency = Defensive Impact per Minute × 5\n"
+    email_body += "• PPP (Points Per Possession) = Points ÷ (FGA + TO + 0.44×FTA)\n"
+    email_body += "• Defensive Impact = (Opp TOs × 1.5) + (Opp Misses × 1.0)\n"
+    email_body += "• True Shooting% = Points ÷ (2 × (FGA + 0.44×FTA))\n"
+    email_body += "• Effective FG% = (FGM + 0.5×3PM) ÷ FGA\n"
     
     return email_subject, email_body
     
