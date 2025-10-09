@@ -4383,9 +4383,9 @@ Total Points: {total_points}
         email_body += "\n"
     
     # Lineup Plus/Minus with enhanced stats
-lineup_stats = calculate_lineup_plus_minus_with_time()
-if lineup_stats:
-    email_body += "LINEUP STATISTICS WITH ADVANCED METRICS:\n"
+    lineup_stats = calculate_lineup_plus_minus_with_time()
+    if lineup_stats:
+        email_body += "LINEUP STATISTICS WITH ADVANCED METRICS:\n"
     
     # Get efficiency data using consistent methodology
     lineup_offensive_efficiency = calculate_lineup_offensive_efficiency()
