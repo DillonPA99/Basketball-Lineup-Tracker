@@ -7014,7 +7014,7 @@ with tab2:
                 
                 with perf_col3:
                     # Most Efficient Scoring Lineup - best PPP with minimum minutes threshold
-                    qualified_lineups = lineup_df[lineup_df['Minutes'].astype(float) >= 3.0]  # At least 3 minutes
+                    qualified_lineups = lineup_df[lineup_df['Minutes'].astype(float) >= 3.0].copy()  # At least 3 minutes
                     
                     if len(qualified_lineups) > 0:
                         # Convert PPP to numeric for sorting
@@ -7024,12 +7024,13 @@ with tab2:
                         st.info("⚡ **Most Efficient Scoring**")
                         st.write(f"**{best_efficiency['PPP']}** PPP")
                         
-                        # Show context
+                        # Show context - safely access the plus/minus value
                         points = best_efficiency['Total Points']
                         minutes = best_efficiency['Minutes']
                         ts_pct = float(best_efficiency['TS%'].rstrip('%'))
+                        plus_minus = best_efficiency['Plus/Minus'] if 'Plus/Minus' in best_efficiency else best_efficiency['+/-']
                         
-                        st.caption(f"TS%: {ts_pct:.1f}% | +/-: {best_efficiency['+/-']}")
+                        st.caption(f"TS%: {ts_pct:.1f}% | +/-: {plus_minus}")
                         st.caption(f"{points} pts in {minutes} min")
                         st.write(f"_{best_efficiency['Lineup']}_")
                     else:
@@ -7042,15 +7043,16 @@ with tab2:
                 with insight_col1:
                     # Best Plus/Minus (different from best offensive)
                     best_pm = lineup_df.sort_values("numeric_plus_minus", ascending=False).iloc[0]
+                    plus_minus_val = best_pm['Plus/Minus'] if 'Plus/Minus' in best_pm else best_pm['+/-']
                     
                     st.success("📈 **Best +/- Lineup**")
-                    st.write(f"**{best_pm['+/-']}** Plus/Minus")
+                    st.write(f"**{plus_minus_val}** Plus/Minus")
                     st.caption(f"{best_pm['Minutes']} min | {best_pm['Appearances']} appearances")
                     st.write(f"_{best_pm['Lineup']}_")
                 
                 with insight_col2:
                     # Best Ball Security (lowest TO/Min with minimum minutes)
-                    qualified_security = lineup_df[lineup_df['Minutes'].astype(float) >= 3.0]
+                    qualified_security = lineup_df[lineup_df['Minutes'].astype(float) >= 3.0].copy()
                     
                     if len(qualified_security) > 0:
                         # Convert TO/Min to numeric for sorting
