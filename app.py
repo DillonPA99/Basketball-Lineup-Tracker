@@ -7105,6 +7105,91 @@ with tab2:
 
                             st.dataframe(styled_player_df, use_container_width=True, hide_index=True)
 
+                    # Advanced Metric Explanations
+                    with st.expander("ℹ️ Advanced Metric Explanations"):
+                        st.write("""
+                        **POSSESSION ESTIMATION:**
+                        
+                        **Formula: Estimated Possessions = FGA + TO + (0.44 * FTA)**
+                        - **Field Goal Attempts (FGA)**: Each shot attempt typically ends a possession
+                        - **Turnovers (TO)**: Each turnover ends a possession without a shot
+                        - **Free Throw Attempts (FTA * 0.44)**: The 0.44 factor accounts for:
+                          - Most free throws come in pairs (2-shot fouls)
+                          - Some come in sets of 3 (3-point shooting fouls)
+                          - "And-one" free throws (after made shots)
+                          - Technical free throws (1 shot)
+                          - The 0.44 multiplier converts FTA into estimated possessions that ended in free throws
+                        
+                        **What This Captures:**
+                        - Possessions ending in a shot attempt (made or missed)
+                        - Possessions ending in a turnover
+                        - Possessions ending in free throws (approximately)
+                        
+                        **What This Doesn't Capture:**
+                        - Offensive rebounds (which extend possessions)
+                        - Team rebounds
+                        - Defensive stops where you didn't take a shot                        
+                        
+                        **EFFICIENCY METRICS:**
+                        
+                        **Offensive Efficiency Score:**
+                        - Comprehensive measure combining shooting efficiency, volume, and ball security
+                        - Formula: (True Shooting % * 15) + (Usage Rate * 3) - (Turnover Rate * 5)
+                        - Components:
+                          - True Shooting %: Accounts for all scoring (2PT, 3PT, FT) in one metric
+                          - Usage Rate: Shot attempts per minute (measures offensive involvement)
+                          - Turnover Rate: Turnovers per minute (penalty for poor ball security)
+                        
+                        **Defensive Efficiency Score:**
+                        - Measures impact on opponent's offensive possessions
+                        - Formula: Defensive Impact per Minute * 5
+                        - Based on weighted defensive events:
+                          - Opponent turnovers forced: weighted 1.5x (most valuable)
+                          - Opponent missed shots: weighted 1.0x
+
+                        **SHOOTING EFFICIENCY METRICS:**
+                        
+                        **True Shooting % (TS%):**
+                        - Most accurate overall shooting efficiency metric
+                        - Formula: Points ÷ (2 * (FGA + 0.44 * FTA))
+                        - Accounts for:
+                          - 2-point field goals (worth 2 points)
+                          - 3-point field goals (worth 3 points, weighted appropriately)
+                          - Free throws (0.44 factor accounts for and-ones and technical FTs)
+                        - Superior to FG% because it properly weights 3-pointers and free throws
+                        
+                        **Effective Field Goal % (eFG%):**
+                        - Adjusts FG% to account for 3-pointers being worth more
+                        - Formula: (FGM + 0.5 * 3PM) ÷ FGA * 100
+                        - Does not include free throws (unlike TS%)
+                        
+                        **POSSESSION & VOLUME METRICS:**
+                        
+                        **Points Per Possession (PPP):**
+                        - Measures scoring efficiency per offensive possession
+                        - Formula: Points ÷ Estimated Possessions
+                        - Estimated Possessions = FGA + TO + (0.44 * FTA)
+                        - League average is typically around 1.0 PPP
+                        - Higher values indicate more efficient scoring
+                        
+                        **Points Per Minute:**
+                        - Raw scoring rate while on court
+                        - Shows offensive production regardless of efficiency
+                        
+                        **DEFENSIVE METRICS:**
+                        
+                        **Defensive Impact Score:**
+                        - Total weighted defensive events while on court
+                        - Formula: (Opponent Turnovers * 1.5) + (Opponent Missed Shots * 1.0)
+                        - Shows cumulative defensive contribution
+                        
+                        **Defensive Impact per Minute:**
+                        - Rate of defensive impact normalized by playing time
+                        - Formula: Total Defensive Impact ÷ Minutes Played
+                        - Allows fair comparison between players with different minutes
+
+                    """)
+                    
                     # Shooting Percentage Charts (keep existing charts unchanged)                    
                     chart_col1, chart_col2 = st.columns(2)
                     
