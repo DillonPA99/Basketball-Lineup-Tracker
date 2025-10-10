@@ -6980,7 +6980,7 @@ with tab2:
 
                     # ===== CORE STATISTICS TABLE =====
                     st.subheader("**📊 Core Statistics**")
-                    core_cols = ['Player', 'Minutes', '+/-', 'Points', 'FG%', '3PT%', 'FT%', 'PPP']
+                    core_cols = ['Player', 'Minutes', '+/-', 'Off. Eff.', 'Def. Eff.', 'Points', 'PPP', 'Points/Min', 'TS%', 'TO/Min', 'Def/Min']
             
                     st.dataframe(
                         player_shooting_df[core_cols].style.applymap(
@@ -6988,13 +6988,19 @@ with tab2:
                         ).applymap(
                             color_points, subset=['Points']
                         ).applymap(
-                            color_fg_percentage, subset=['FG%']
+                            color_ts_percentage, subset=['TS%']
                         ).applymap(
-                            color_3pt_percentage, subset=['3PT%']
+                            color_points_per_minute, subset=['Points/Min']
                         ).applymap(
-                            color_ft_percentage, subset=['FT%']
+                            color_defensive_impact_per_minute, subset=['Def Impact/Min']
                         ).applymap(
                             color_PPP, subset=['PPP']
+                        ).applymap(
+                            color_turnovers_per_min, subset=['TO/Min']
+                        ).applymap(
+                            color_offensive_efficiency_scores, subset=['Off. Eff.']
+                        ).applymap(
+                            color_defensive_efficiency_scores, subset=['Def. Eff.']
                         ),
                         use_container_width=True,
                         hide_index=True
