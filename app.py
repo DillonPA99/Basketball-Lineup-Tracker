@@ -6978,6 +6978,351 @@ with tab2:
 
                     st.header("**Player Statistics**")
 
+                    st.divider()
+
+                    # Performance Over Time Graph
+                    st.subheader("📈 Performance Over Time")
+
+                    if st.session_state.score_history or st.session_state.lineup_history:
+                        # Create timeline data from score history
+                        timeline_data = []
+                        lineup_changes = []  # Track lineup changes separately
+                        
+                        # Start with initial state
+                        current_home = 0
+                        current_away = 0
+                        event_counter = 0
+                        
+                        # Add starting point
+                        timeline_data.append({
+                            'Event': 'Game Start',
+                            'Quarter': 'Q1',
+                            'Game Time': f"{st.session_state.quarter_length}:00",
+                            'Home Score': 0,
+                            'Away Score': 0,
+                            'Margin': 0,
+                            'Event Type': 'Start',
+                            'Index': event_counter
+                        })
+                        event_counter += 1
+                        
+                        # Create a combined timeline of all events (scores and lineups)
+                        all_events = []
+                        
+                        # Add score events
+                        for i, score_event in enumerate(st.session_state.score_history):
+                            all_events.append({
+                                'type': 'score',
+                                'data': score_event,
+                                'index': i,
+                                'timestamp': score_event.get('timestamp', datetime.now())
+                            })
+                        
+                        # Add lineup change events (excluding quarter-end snapshots)
+                        for i, lineup_event in enumerate(st.session_state.lineup_history):
+                            if not lineup_event.get('is_quarter_end', False):
+                                all_events.append({
+                                    'type': 'lineup',
+                                    'data': lineup_event,
+                                    'index': i,
+                                    'timestamp': lineup_event.get('timestamp', datetime.now())
+                                })
+                        
+                        # Sort events by timestamp (or by order if no timestamp)
+                        all_events.sort(key=lambda x: x.get('timestamp', datetime.now()))
+                        
+                        # Process all events in chronological order
+                        for event in all_events:
+                            if event['type'] == 'score':
+                                score_event = event['data']
+                                
+                                if score_event['team'] == 'home':
+                                    current_home += score_event['points']
+                                else:
+                                    current_away += score_event['points']
+                                
+                                margin = current_home - current_away
+                                
+                                timeline_data.append({
+                                    'Event': f"Score #{event['index']+1}",
+                                    'Quarter': score_event['quarter'],
+                                    'Game Time': score_event.get('game_time', 'Unknown'),
+                                    'Home Score': current_home,
+                                    'Away Score': current_away,
+                                    'Margin': margin,
+                                    'Event Type': 'Score',
+                                    'Index': event_counter
+                                })
+                                event_counter += 1
+                                
+                            elif event['type'] == 'lineup':
+                                lineup_event = event['data']
+                                
+                                # Record the lineup change with current score
+                                lineup_changes.append({
+                                    'Index': event_counter,
+                                    'Quarter': lineup_event.get('quarter', 'Unknown'),
+                                    'Game Time': lineup_event.get('game_time', 'Unknown'),
+                                    'Margin': current_home - current_away,
+                                    'New Lineup': ' | '.join(lineup_event.get('new_lineup', [])),
+                                    'Previous Lineup': ' | '.join(lineup_event.get('previous_lineup', []))
+                                })
+                                
+                                # Add lineup change to timeline
+                                timeline_data.append({
+                                    'Event': f"Lineup Change",
+                                    'Quarter': lineup_event.get('quarter', 'Unknown'),
+                                    'Game Time': lineup_event.get('game_time', 'Unknown'),
+                                    'Home Score': current_home,
+                                    'Away Score': current_away,
+                                    'Margin': current_home - current_away,
+                                    'Event Type': 'Lineup',
+                                    'Index': event_counter
+                                })
+                                event_counter += 1
+                        
+                        # Add quarter end markers
+                        for qe in st.session_state.quarter_end_history:
+                            timeline_data.append({
+                                'Event': f"{qe['quarter']} End",
+                                'Quarter': qe['quarter'],
+                                'Game Time': '0:00',
+                                'Home Score': int(qe['final_score'].split('-')[0]),
+                                'Away Score': int(qe['final_score'].split('-')[1]),
+                                'Margin': int(qe['final_score'].split('-')[0]) - int(qe['final_score'].split('-')[1]),
+                                'Event Type': 'Quarter End',
+                                'Index': event_counter
+                            })
+                            event_counter += 1
+                        
+                        if len(timeline_data) > 1:
+                            timeline_df = pd.DataFrame(timeline_data)
+                            
+                            # Create the line chart
+                            fig = go.Figure()
+                            
+                            # Add margin line
+                            fig.add_trace(go.Scatter(
+                                x=timeline_df['Index'],
+                                y=timeline_df['Margin'],
+                                mode='lines+markers',
+                                name='Score Margin',
+                                line=dict(color='#1f77b4', width=3),
+                                marker=dict(size=8, color='#1f77b4'),
+                                hovertemplate='<b>%{customdata[0]}</b><br>' +
+                                             'Quarter: %{customdata[1]}<br>' +
+                                             'Time: %{customdata[2]}<br>' +
+                                             'Score: %{customdata[3]}-%{customdata[4]}<br>' +
+                                             'Margin: %{y:+d}<br>' +
+                                             '<extra></extra>',
+                                customdata=timeline_df[['Event', 'Quarter', 'Game Time', 'Home Score', 'Away Score']].values
+                            ))
+                            
+                            # Add vertical lines for lineup changes
+                            for lineup_change in lineup_changes:
+                                fig.add_vline(
+                                    x=lineup_change['Index'],
+                                    line_dash="dot",
+                                    line_color="orange",
+                                    opacity=0.6,
+                                    annotation_text="Sub",
+                                    annotation_position="top",
+                                    annotation=dict(
+                                        font_size=10,
+                                        font_color="orange"
+                                    )
+                                )
+                            
+                            # Add vertical lines for quarter ends
+                            quarter_end_indices = timeline_df[timeline_df['Event Type'] == 'Quarter End']['Index'].values
+                            for qe_index in quarter_end_indices:
+                                fig.add_vline(
+                                    x=qe_index,
+                                    line_dash="dash",
+                                    line_color="purple",
+                                    opacity=0.7,
+                                    annotation_text="Q End",
+                                    annotation_position="top",
+                                    annotation=dict(
+                                        font_size=10,
+                                        font_color="purple"
+                                    )
+                                )
+                            
+                            # Add zero line (tie game)
+                            fig.add_hline(y=0, line_dash="dash", line_color="gray", 
+                                         annotation_text="Tie Game", annotation_position="right")
+                            
+                            # Add shaded regions for winning/losing
+                            max_margin = max(timeline_df['Margin'].max(), 10)
+                            min_margin = min(timeline_df['Margin'].min(), -10)
+                            
+                            fig.add_hrect(y0=0, y1=max_margin, 
+                                         fillcolor="lightgreen", opacity=0.2, line_width=0)
+                            fig.add_hrect(y0=min_margin, y1=0, 
+                                         fillcolor="lightcoral", opacity=0.2, line_width=0)
+                            
+                            # Update layout
+                            fig.update_layout(
+                                title=f"Score Margin Throughout Game ({st.session_state.home_team_name} perspective)",
+                                xaxis_title="Game Progression (Orange dots = Substitutions, Purple lines = Quarter Ends)",
+                                yaxis_title="Point Margin (+ = Leading, - = Trailing)",
+                                hovermode='closest',
+                                height=500,
+                                showlegend=True,
+                                xaxis=dict(
+                                    tickmode='array',
+                                    tickvals=list(range(0, len(timeline_df), max(1, len(timeline_df)//15))),
+                                    ticktext=[f"{timeline_df.iloc[i]['Quarter']}\n{timeline_df.iloc[i]['Game Time']}" 
+                                             for i in range(0, len(timeline_df), max(1, len(timeline_df)//15))]
+                                )
+                            )
+                            
+                            st.plotly_chart(fig, use_container_width=True)
+                            
+                            # Show lineup change details
+                            if lineup_changes:
+                                with st.expander(f"🔄 Lineup Changes ({len(lineup_changes)} total)"):
+                                    st.write("**Impact of Substitutions:**")
+                                    
+                                    for i, lc in enumerate(lineup_changes):
+                                        # Calculate margin change after this substitution
+                                        # Find the next few events after this lineup change
+                                        next_events = timeline_df[timeline_df['Index'] > lc['Index']].head(5)
+                                        
+                                        if len(next_events) > 0:
+                                            margin_before = lc['Margin']
+                                            margin_after = next_events['Margin'].iloc[-1]
+                                            margin_change = margin_after - margin_before
+                                            
+                                            col1, col2 = st.columns([3, 1])
+                                            
+                                            with col1:
+                                                st.write(f"**Sub #{i+1}** - {lc['Quarter']} at {lc['Game Time']}")
+                                                st.caption(f"New: {lc['New Lineup']}")
+                                                
+                                            with col2:
+                                                if margin_change > 0:
+                                                    st.success(f"+{margin_change} pts")
+                                                elif margin_change < 0:
+                                                    st.error(f"{margin_change} pts")
+                                                else:
+                                                    st.info("Even")
+                                            
+                                            st.divider()
+                            
+                            # Add quarter markers if available
+                            if st.session_state.quarter_end_history:
+                                st.write("**Quarter Snapshots:**")
+                                quarter_cols = st.columns(len(st.session_state.quarter_end_history))
+                                
+                                for i, qe in enumerate(st.session_state.quarter_end_history):
+                                    with quarter_cols[i]:
+                                        home, away = map(int, qe['final_score'].split('-'))
+                                        margin = home - away
+                                        
+                                        if margin > 0:
+                                            st.success(f"**{qe['quarter']}**: {qe['final_score']} (+{margin})")
+                                        elif margin < 0:
+                                            st.error(f"**{qe['quarter']}**: {qe['final_score']} ({margin})")
+                                        else:
+                                            st.info(f"**{qe['quarter']}**: {qe['final_score']} (Tied)")
+                            
+                            # Performance summary
+                            summary_col1, summary_col2, summary_col3, summary_col4 = st.columns(4)
+                            
+                            with summary_col1:
+                                largest_lead = timeline_df['Margin'].max()
+                                st.metric("Largest Lead", f"+{largest_lead}" if largest_lead > 0 else "0")
+                            
+                            with summary_col2:
+                                largest_deficit = timeline_df['Margin'].min()
+                                st.metric("Largest Deficit", f"{largest_deficit}" if largest_deficit < 0 else "0")
+                            
+                            with summary_col3:
+                                current_margin = timeline_df['Margin'].iloc[-1]
+                                if current_margin > 0:
+                                    st.metric("Current Status", "Leading", f"+{current_margin}")
+                                elif current_margin < 0:
+                                    st.metric("Current Status", "Trailing", f"{current_margin}")
+                                else:
+                                    st.metric("Current Status", "Tied", "0")
+                            
+                            with summary_col4:
+                                st.metric("Lineup Changes", len(lineup_changes))
+                            
+                            # Trend analysis
+                            with st.expander("📊 Performance Trends & Lineup Analysis"):
+                                if len(timeline_df) >= 10:
+                                    # Calculate momentum (last 5 events vs previous 5 events)
+                                    recent_margin_change = timeline_df['Margin'].iloc[-1] - timeline_df['Margin'].iloc[-6] if len(timeline_df) > 6 else 0
+                                    
+                                    st.write("**Recent Momentum:**")
+                                    if recent_margin_change > 0:
+                                        st.success(f"🔥 Positive momentum! Score margin improved by {recent_margin_change} points in recent possessions")
+                                    elif recent_margin_change < 0:
+                                        st.warning(f"⚠️ Negative momentum. Score margin decreased by {abs(recent_margin_change)} points in recent possessions")
+                                    else:
+                                        st.info("Holding steady with no significant margin change")
+                                
+                                # Lead changes
+                                lead_changes = 0
+                                for i in range(1, len(timeline_df)):
+                                    if (timeline_df['Margin'].iloc[i] > 0 and timeline_df['Margin'].iloc[i-1] <= 0) or \
+                                       (timeline_df['Margin'].iloc[i] < 0 and timeline_df['Margin'].iloc[i-1] >= 0):
+                                        lead_changes += 1
+                                
+                                st.write(f"**Lead Changes:** {lead_changes}")
+                                
+                                # Lineup change effectiveness
+                                if lineup_changes:
+                                    st.write("**Lineup Change Effectiveness:**")
+                                    
+                                    positive_subs = 0
+                                    negative_subs = 0
+                                    
+                                    for lc in lineup_changes:
+                                        next_events = timeline_df[timeline_df['Index'] > lc['Index']].head(5)
+                                        if len(next_events) > 0:
+                                            margin_change = next_events['Margin'].iloc[-1] - lc['Margin']
+                                            if margin_change > 0:
+                                                positive_subs += 1
+                                            elif margin_change < 0:
+                                                negative_subs += 1
+                                    
+                                    sub_col1, sub_col2, sub_col3 = st.columns(3)
+                                    with sub_col1:
+                                        st.metric("Positive Impact", positive_subs)
+                                    with sub_col2:
+                                        st.metric("Negative Impact", negative_subs)
+                                    with sub_col3:
+                                        neutral = len(lineup_changes) - positive_subs - negative_subs
+                                        st.metric("Neutral Impact", neutral)
+                                
+                                # Time spent leading/trailing/tied
+                                leading_events = sum(1 for m in timeline_df['Margin'] if m > 0)
+                                trailing_events = sum(1 for m in timeline_df['Margin'] if m < 0)
+                                tied_events = sum(1 for m in timeline_df['Margin'] if m == 0)
+                                total_events = len(timeline_df)
+                                
+                                st.write("**Time Distribution:**")
+                                trend_col1, trend_col2, trend_col3 = st.columns(3)
+                                
+                                with trend_col1:
+                                    st.metric("Time Leading", f"{leading_events/total_events*100:.1f}%")
+                                with trend_col2:
+                                    st.metric("Time Trailing", f"{trailing_events/total_events*100:.1f}%")
+                                with trend_col3:
+                                    st.metric("Time Tied", f"{tied_events/total_events*100:.1f}%")
+                        
+                        else:
+                            st.info("More game events needed to generate performance timeline")
+                    else:
+                        st.info("Start tracking scores to see performance over time")
+
+                    st.divider()
+
+
                     # ===== CORE STATISTICS TABLE =====
                     st.subheader("**📊 Core Statistics**")
                     core_cols = ['Player', 'Minutes', '+/-', 'Off. Eff.', 'Def. Eff.', 'Points', 'PPP', 'Points/Min', 'TS%', 'TO/Min', 'Def Impact/Min']
