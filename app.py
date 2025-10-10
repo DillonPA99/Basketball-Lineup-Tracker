@@ -8476,8 +8476,8 @@ with tab4:
                 
                 with season_lineup_detail_col1:
                     with st.expander("🎯 Season Lineup Shooting"):
-                        season_lineup_shooting = ['Lineup', 'Games', 'FT', 'FT%', '2FG', '2FG%', '3FG', 
-                                                 '3FG%', 'FG', 'FG%', 'eFG%', 'TS%']
+                        season_lineup_shooting = ['Lineup', 'Games', 'Off. Eff.', 'eFG%', 'TS%', 'FG', 'FG%', 'FT', 'FT%', '2FG', '2FG%', '3FG', 
+                                                 '3FG%']
                         st.dataframe(
                             lineup_season_df[season_lineup_shooting].style.applymap(
                                 color_ft_percentage, subset=['FT%']
@@ -8491,6 +8491,8 @@ with tab4:
                                 color_efg_percentage, subset=['eFG%']
                             ).applymap(
                                 color_ts_percentage, subset=['TS%']
+                            ).applymap(
+                                color_offensive_efficiency_scores, subset=['Off. Eff.']
                             ),
                             use_container_width=True,
                             hide_index=True
@@ -8515,14 +8517,15 @@ with tab4:
                             hide_index=True
                         )
                 with season_lineup_detail_col2:
-                    with st.expander("🛡️ Season Lineup Defense & TOs"):
-                        season_lineup_def = ['Lineup', 'Games', 'Total Def Impact', 
-                                            'Def Impact/G', 'Def Impact/Min']
+                    with st.expander("🛡️ Season Lineup Defense"):
+                        season_lineup_def = ['Lineup', 'Games', 'Def. Eff.', 'Def Impact/G', 'Def Impact/Min', 'Total Def Impact']
                         st.dataframe(
                             lineup_season_df[season_lineup_def].style.applymap(
                                 color_lineup_defensive_impact, subset=['Def Impact/G']
                             ).applymap(
                                 color_lineup_defensive_impact_per_minute, subset=['Def Impact/Min']
+                            ).applymap(
+                                color_defensive_efficiency_scores, subset=['Def. Eff.']
                             ),
                             use_container_width=True,
                             hide_index=True
