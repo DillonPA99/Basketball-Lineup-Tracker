@@ -8118,7 +8118,7 @@ with tab4:
                 with season_detail_col1:
                     with st.expander("🎯 Season Shooting Breakdown"):
                         season_shooting_cols = ['Player', 'GP', 'Off. Eff.', 'eFG%', 'TS%', 'FG', 'FG%', 'FT', 
-                                       'FT%', '2FG', '2FG%', '3FG', '3FG%']
+                                       'FT%', '2PT', '2PT%', '3PT', '3PT%']
                         st.dataframe(
                             player_season_df[season_shooting_cols].style.applymap(
                                 color_ft_percentage, subset=['FT%']
