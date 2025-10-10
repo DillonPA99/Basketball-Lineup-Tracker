@@ -8089,7 +8089,7 @@ with tab4:
 
                 # ===== CORE SEASON TABLE =====
                 st.subheader("**📊 Core Season Statistics**")
-                core_season_cols = ['Player', 'GP', 'MPG', '+/-', 'Off. Eff.', 'Def. Eff.', 'PPG', 'PPP', 'TO/G', Def Impact/G']
+                core_season_cols = ['Player', 'GP', 'MPG', '+/-', 'Off. Eff.', 'Def. Eff.', 'PPG', 'PPP', 'TO/G', 'Def Impact/G']
         
                 st.dataframe(
                     player_season_df[core_season_cols].style.applymap(
