@@ -6701,8 +6701,6 @@ with tab2:
                         stats['field_goals_made'] += 1
 
         # Team Shooting Comparison
-        st.write("**Team Shooting Comparison**")
-
         pot_stats = get_points_off_turnovers_stats()
         home_pot = pot_stats['team_stats'].get('home', 0)
         away_pot = pot_stats['team_stats'].get('away', 0)
@@ -7857,9 +7855,7 @@ with tab4:
                     else:
                         total_away_pot += points
         
-        # Display team shooting comparison (same format as Tab 2)
-        st.subheader("**Team Shooting Comparison**")
-        
+        # Display team shooting comparison (same format as Tab 2)        
         team_col1, team_col2 = st.columns(2)
         
         with team_col1:
@@ -7913,7 +7909,7 @@ with tab4:
         st.divider()
         
         # Individual Player Statistics (exact same table as Tab 2)
-        st.write("**Home Team Individual Player Statistics (Season Totals & Averages)**")
+        st.header("**Home Team Individual Player Season Statistics**")
         
         season_player_stats = defaultdict(lambda: {
             'games_played': 0, 'total_points': 0, 'total_minutes': 0,
@@ -8053,7 +8049,7 @@ with tab4:
                 player_season_df = player_season_df.sort_values('Points', ascending=False)
 
                 # ===== SEASON LEADERS CARDS =====
-                st.write("**🏆 Season Leaders**")
+                st.subheader("**🏆 Season Leaders**")
                 season_col1, season_col2, season_col3, season_col4 = st.columns(4)
         
                 with season_col1:
@@ -8096,7 +8092,7 @@ with tab4:
                 st.divider()
 
                 # ===== CORE SEASON TABLE =====
-                st.write("**📊 Core Season Statistics**")
+                st.subheader("**📊 Core Season Statistics**")
                 core_season_cols = ['Player', 'GP', 'MPG', '+/-', 'Points', 'PPG', 'FG%', '3PT%', 'FT%', 'PPP']
         
                 st.dataframe(
@@ -8213,7 +8209,7 @@ with tab4:
         st.divider()
         
         # Lineup Statistics (exact same table as Tab 2)
-        st.write("**Home Team Lineup Statistics (Season Totals & Averages)**")
+        st.header("**Home Team Lineup Season Statistics**")
         
         season_lineup_stats = defaultdict(lambda: {
             'total_appearances': 0, 'total_minutes': 0, 'total_points': 0,
@@ -8431,7 +8427,7 @@ with tab4:
                 lineup_season_df = lineup_season_df.sort_values('numeric_points', ascending=False)
 
                 # ===== SEASON TOP LINEUPS =====
-                st.write("**🏆 Season Top Lineups**")
+                st.subheader("**🏆 Season Top Lineups**")
         
                 season_lineup_col1, season_lineup_col2, season_lineup_col3 = st.columns(3)
         
@@ -8462,7 +8458,7 @@ with tab4:
                 st.divider()
 
                 # ===== CORE SEASON LINEUP TABLE =====
-                st.write("**📊 Core Season Lineup Statistics**")
+                st.subheader("**📊 Core Season Lineup Statistics**")
                 core_season_lineup_cols = ['Lineup', 'Games', 'Appearances', 'MPG', '+/-', 'Total Points', 
                                            'PPG', 'PPP', 'FG%', '3FG%']
         
