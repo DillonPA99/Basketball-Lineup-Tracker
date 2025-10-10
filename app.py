@@ -8051,41 +8051,164 @@ with tab4:
             if player_season_data:
                 player_season_df = pd.DataFrame(player_season_data)
                 player_season_df = player_season_df.sort_values('Points', ascending=False)
-                
-                # Apply same styling as Tab 2
-                styled_season_player_df = player_season_df.style.applymap(
-                    color_plus_minus, subset=['+/-']
-                ).applymap(
-                    color_defensive_impact, subset=['Def Impact/G']
-                ).applymap(
-                    color_defensive_impact_per_minute, subset=['Def Impact/Min']
-                ).applymap(
-                    color_PPP, subset=['PPP']
-                ).applymap(
-                    color_offensive_efficiency_scores, subset=['Off. Eff.']
-                ).applymap(
-                    color_defensive_efficiency_scores, subset=['Def. Eff.']
-                ).applymap(
-                    color_ppg, subset=['PPG']
-                 ).applymap(
-                    color_points_per_minute, subset=['Points/Min']
-                ).applymap(
-                    color_ft_percentage, subset=['FT%']
-                ).applymap(
-                    color_2pt_percentage, subset=['2PT%']
-                ).applymap(
-                    color_3pt_percentage, subset=['3PT%']
-                ).applymap(
-                    color_fg_percentage, subset=['FG%']
-                ).applymap(
-                    color_efg_percentage, subset=['eFG%']
-                ).applymap(
-                    color_ts_percentage, subset=['TS%']
-                ).applymap(
-                    color_turnovers_per_game, subset=['TO/G']
+
+                # ===== SEASON LEADERS CARDS =====
+                st.write("**🏆 Season Leaders**")
+                season_col1, season_col2, season_col3, season_col4 = st.columns(4)
+        
+                with season_col1:
+                    top_scorer = player_season_df.iloc[0]
+                    st.metric(
+                        "Leading Scorer",
+                        f"{top_scorer['Player']}",
+                        f"{top_scorer['Points']} pts ({top_scorer['PPG']} ppg)"
+                    )
+        
+                with season_col2:
+                    player_season_df['fg_numeric'] = player_season_df['FG%'].str.rstrip('%').astype(float)
+                    best_shooter = player_season_df[player_season_df['fg_numeric'] > 0].sort_values('fg_numeric', ascending=False).iloc[0]
+                    st.metric(
+                        "Best FG%",
+                        f"{best_shooter['Player']}",
+                        f"{best_shooter['FG%']} ({best_shooter['GP']} GP)"
+                    )
+        
+                with season_col3:
+                    player_season_df['pm_numeric'] = player_season_df['+/-'].apply(
+                        lambda x: int(x.replace('+', ''))
+                    )
+                    best_pm = player_season_df.sort_values('pm_numeric', ascending=False).iloc[0]
+                    st.metric(
+                        "Best +/-",
+                        f"{best_pm['Player']}",
+                        f"{best_pm['+/-']} ({best_pm['GP']} GP)"
+                    )
+        
+                with season_col4:
+                    player_season_df['ppp_numeric'] = player_season_df['PPP'].astype(float)
+                    best_eff = player_season_df[player_season_df['ppp_numeric'] > 0].sort_values('ppp_numeric', ascending=False).iloc[0]
+                    st.metric(
+                        "Best PPP",
+                        f"{best_eff['Player']}",
+                        f"{best_eff['PPP']} ({best_eff['GP']} GP)"
+                    )
+        
+                st.divider()
+
+                # ===== CORE SEASON TABLE =====
+                st.write("**📊 Core Season Statistics**")
+                core_season_cols = ['Player', 'GP', 'MPG', '+/-', 'Points', 'PPG', 'FG%', '3PT%', 'FT%', 'PPP']
+        
+                st.dataframe(
+                    player_season_df[core_season_cols].style.applymap(
+                        color_plus_minus, subset=['+/-']
+                    ).applymap(
+                        color_ppg, subset=['PPG']
+                    ).applymap(
+                        color_fg_percentage, subset=['FG%']
+                    ).applymap(
+                        color_3pt_percentage, subset=['3PT%']
+                    ).applymap(
+                        color_ft_percentage, subset=['FT%']
+                    ).applymap(
+                        color_PPP, subset=['PPP']
+                    ),
+                    use_container_width=True,
+                    hide_index=True
                 )
+
+
+                # ===== DETAILED SEASON STATS =====
+                season_detail_col1, season_detail_col2 = st.columns(2)
+        
+                with season_detail_col1:
+                    with st.expander("🎯 Season Shooting Breakdown"):
+                        season_shooting_cols = ['Player', 'GP', 'FT', 'FT%', '2PT', '2PT%', '3PT', '3PT%', 
+                                       'FG', 'FG%', 'eFG%', 'TS%']
+                        st.dataframe(
+                            player_season_df[season_shooting_cols].style.applymap(
+                                color_ft_percentage, subset=['FT%']
+                            ).applymap(
+                                color_2pt_percentage, subset=['2PT%']
+                            ).applymap(
+                                color_3pt_percentage, subset=['3PT%']
+                            ).applymap(
+                                color_fg_percentage, subset=['FG%']
+                            ).applymap(
+                                color_efg_percentage, subset=['eFG%']
+                            ).applymap(
+                                color_ts_percentage, subset=['TS%']
+                            ),
+                            use_container_width=True,
+                            hide_index=True
+                        )
+
+                    with st.expander("⚡ Season Efficiency Metrics"):
+                        season_eff_cols = ['Player', 'GP', 'MPG', 'Off. Eff.', 'Def. Eff.', 'Points/Min', 'PPP']
+                        st.dataframe(
+                            player_season_df[season_eff_cols].style.applymap(
+                                color_offensive_efficiency_scores, subset=['Off. Eff.']
+                            ).applymap(
+                                color_defensive_efficiency_scores, subset=['Def. Eff.']
+                            ).applymap(
+                                color_points_per_minute, subset=['Points/Min']
+                            ).applymap(
+                                color_PPP, subset=['PPP']
+                            ),
+                            use_container_width=True,
+                            hide_index=True
+                        )
+
+                with season_detail_col2:
+                    with st.expander("🛡️ Season Defense & Turnovers"):
+                        season_def_cols = ['Player', 'GP', 'Turnovers', 'TO/G', 'Total Def Impact', 
+                                          'Def Impact/G', 'Def Impact/Min']
+                        st.dataframe(
+                            player_season_df[season_def_cols].style.applymap(
+                                color_turnovers_per_game, subset=['TO/G']
+                            ).applymap(
+                                color_defensive_impact, subset=['Def Impact/G']
+                            ).applymap(
+                                color_defensive_impact_per_minute, subset=['Def Impact/Min']
+                            ),
+                            use_container_width=True,
+                            hide_index=True
+                        )
+        
+                    with st.expander("📋 Complete Season Stats (All Columns)"):
+                        styled_season_player_df = player_season_df.style.applymap(
+                            color_plus_minus, subset=['+/-']
+                        ).applymap(
+                            color_defensive_impact, subset=['Def Impact/G']
+                        ).applymap(
+                            color_defensive_impact_per_minute, subset=['Def Impact/Min']
+                        ).applymap(
+                            color_PPP, subset=['PPP']
+                        ).applymap(
+                            color_offensive_efficiency_scores, subset=['Off. Eff.']
+                        ).applymap(
+                            color_defensive_efficiency_scores, subset=['Def. Eff.']
+                        ).applymap(
+                            color_ppg, subset=['PPG']
+                         ).applymap(
+                            color_points_per_minute, subset=['Points/Min']
+                        ).applymap(
+                            color_ft_percentage, subset=['FT%']
+                        ).applymap(
+                            color_2pt_percentage, subset=['2PT%']
+                        ).applymap(
+                            color_3pt_percentage, subset=['3PT%']
+                        ).applymap(
+                            color_fg_percentage, subset=['FG%']
+                        ).applymap(
+                            color_efg_percentage, subset=['eFG%']
+                        ).applymap(
+                            color_ts_percentage, subset=['TS%']
+                        ).applymap(
+                            color_turnovers_per_game, subset=['TO/G']
+                        )
                 
-                st.dataframe(styled_season_player_df, use_container_width=True, hide_index=True)
+                        st.dataframe(styled_season_player_df, use_container_width=True, hide_index=True)
         
         st.divider()
         
@@ -8298,51 +8421,159 @@ with tab4:
                     'Def Impact/Min': f"{def_impact_per_min:.2f}",
                     'numeric_points': stats['total_points'],
                     'numeric_off_eff': offensive_efficiency,
-                    'numeric_def_eff': defensive_efficiency
+                    'numeric_def_eff': defensive_efficiency,
+                    'numeric_plus_minus': stats['total_plus_minus']
+
                 })
             
             if lineup_season_data:
                 lineup_season_df = pd.DataFrame(lineup_season_data)
                 lineup_season_df = lineup_season_df.sort_values('numeric_points', ascending=False)
-                
-                display_cols = ['Lineup', 'Games', 'Appearances', 'Minutes', 'MPG', 'Off. Eff.', 'Def. Eff.', 'Total Points', 'PPG', "PPP", 'Points/Min', '+/-', 'FT', 'FT%', 'FG', 'FG%', '2FG', '2FG%', '3FG', '3FG%', 'eFG%', 'TS%', 'Total TOs', 'TO/G', 'Total Def Impact', 'Def Impact/G', 'Def Impact/Min']
-                
-                # Apply styling
+
+                # ===== SEASON TOP LINEUPS =====
+                st.write("**🏆 Season Top Lineups**")
+        
+                season_lineup_col1, season_lineup_col2, season_lineup_col3 = st.columns(3)
+        
+                with season_lineup_col1:
+                    best_season_pm = lineup_season_df.sort_values('numeric_plus_minus', ascending=False).iloc[0]
+                    st.success(f"**Best +/- Lineup:** {best_season_pm['+/-']}")
+                    st.caption(f"{best_season_pm['Games']} games | {best_season_pm['Minutes']} total min")
+                    st.caption(f"Off: {best_season_pm['Off. Eff.']} | Def: {best_season_pm['Def. Eff.']}")
+                    with st.expander("View Lineup"):
+                        st.write(best_season_pm['Lineup'])
+        
+                with season_lineup_col2:
+                    best_season_off = lineup_season_df.sort_values('numeric_off_eff', ascending=False).iloc[0]
+                    st.info(f"**Best Offensive:** {best_season_off['Off. Eff.']} Eff")
+                    st.caption(f"{best_season_off['Total Points']} pts | {best_season_off['PPG']} ppg")
+                    st.caption(f"{best_season_off['Games']} games | {best_season_off['PPP']} PPP")
+                    with st.expander("View Lineup"):
+                        st.write(best_season_off['Lineup'])
+        
+                with season_lineup_col3:
+                    best_season_def = lineup_season_df.sort_values('numeric_def_eff', ascending=False).iloc[0]
+                    st.info(f"**Best Defensive:** {best_season_def['Def. Eff.']} Eff")
+                    st.caption(f"{best_season_def['Total Def Impact']} total impact")
+                    st.caption(f"{best_season_def['Games']} games | {best_season_def['Def Impact/Min']}/min")
+                    with st.expander("View Lineup"):
+                        st.write(best_season_def['Lineup'])
+        
+                st.divider()
+
+                # ===== CORE SEASON LINEUP TABLE =====
+                st.write("**📊 Core Season Lineup Statistics**")
+                core_season_lineup_cols = ['Lineup', 'Games', 'Appearances', 'MPG', '+/-', 'Total Points', 
+                                           'PPG', 'PPP', 'FG%', '3FG%']
+        
                 st.dataframe(
-                    lineup_season_df[display_cols].style.applymap(
+                    lineup_season_df[core_season_lineup_cols].style.applymap(
                         color_plus_minus, subset=['+/-']
                     ).applymap(
                         color_lineup_ppg, subset=['PPG']
                     ).applymap(
-                        color_lineup_points_per_minute, subset=['Points/Min']
-                    ).applymap(
-                        color_lineup_PPP, subset=["PPP"]
-                    ).applymap(
-                        color_offensive_efficiency_scores, subset=['Off. Eff.']
-                    ).applymap(
-                        color_defensive_efficiency_scores, subset=['Def. Eff.']
-                    ).applymap(
-                        color_ft_percentage, subset=['FT%']
+                        color_lineup_PPP, subset=['PPP']
                     ).applymap(
                         color_fg_percentage, subset=['FG%']
                     ).applymap(
-                        color_2pt_percentage, subset=['2FG%']
-                    ).applymap(
                         color_3pt_percentage, subset=['3FG%']
-                    ).applymap(
-                        color_efg_percentage, subset=['eFG%']
-                    ).applymap(
-                        color_ts_percentage, subset=['TS%']
-                    ).applymap(
-                        color_lineup_turnovers_per_game, subset=['TO/G']
-                    ).applymap(
-                        color_lineup_defensive_impact_per_minute, subset=['Def Impact/Min']
-                    ).applymap(
-                        color_lineup_defensive_impact, subset=['Def Impact/G']
                     ),
                     use_container_width=True,
                     hide_index=True
                 )
+
+                with season_lineup_detail_col1:
+                    with st.expander("🎯 Season Lineup Shooting"):
+                        season_lineup_shooting = ['Lineup', 'Games', 'FT', 'FT%', '2FG', '2FG%', '3FG', 
+                                                 '3FG%', 'FG', 'FG%', 'eFG%', 'TS%']
+                        st.dataframe(
+                            lineup_season_df[season_lineup_shooting].style.applymap(
+                                color_ft_percentage, subset=['FT%']
+                            ).applymap(
+                                color_2pt_percentage, subset=['2FG%']
+                            ).applymap(
+                                color_3pt_percentage, subset=['3FG%']
+                            ).applymap(
+                                color_fg_percentage, subset=['FG%']
+                            ).applymap(
+                                color_efg_percentage, subset=['eFG%']
+                            ).applymap(
+                                color_ts_percentage, subset=['TS%']
+                            ),
+                            use_container_width=True,
+                            hide_index=True
+                        )
+            
+                    with st.expander("⚡ Season Lineup Efficiency"):
+                        season_lineup_eff = ['Lineup', 'Games', 'MPG', 'Off. Eff.', 'Def. Eff.', 
+                                            'Points/Min', 'PPP']
+                        st.dataframe(
+                            lineup_season_df[season_lineup_eff].style.applymap(
+                                color_offensive_efficiency_scores, subset=['Off. Eff.']
+                            ).applymap(
+                                color_defensive_efficiency_scores, subset=['Def. Eff.']
+                            ).applymap(
+                                color_lineup_points_per_minute, subset=['Points/Min']
+                            ).applymap(
+                                color_lineup_PPP, subset=['PPP']
+                            ),
+                            use_container_width=True,
+                            hide_index=True
+                        )
+                with season_lineup_detail_col2:
+                    with st.expander("🛡️ Season Lineup Defense & TOs"):
+                        season_lineup_def = ['Lineup', 'Games', 'Total TOs', 'TO/G', 'Total Def Impact', 
+                                            'Def Impact/G', 'Def Impact/Min']
+                        st.dataframe(
+                            lineup_season_df[season_lineup_def].style.applymap(
+                                color_lineup_turnovers_per_game, subset=['TO/G']
+                            ).applymap(
+                                color_lineup_defensive_impact, subset=['Def Impact/G']
+                            ).applymap(
+                                color_lineup_defensive_impact_per_minute, subset=['Def Impact/Min']
+                            ),
+                            use_container_width=True,
+                            hide_index=True
+                        )
+                
+                    with st.expander("📋 Complete Season Lineup Stats"):
+                        display_cols = ['Lineup', 'Games', 'Appearances', 'Minutes', 'MPG', 'Off. Eff.', 'Def. Eff.', 'Total Points', 'PPG', "PPP", 'Points/Min', '+/-', 'FT', 'FT%', 'FG', 'FG%', '2FG', '2FG%', '3FG', '3FG%', 'eFG%', 'TS%', 'Total TOs', 'TO/G', 'Total Def Impact', 'Def Impact/G', 'Def Impact/Min']
+                
+                        st.dataframe(
+                            lineup_season_df[display_cols].style.applymap(
+                                color_plus_minus, subset=['+/-']
+                            ).applymap(
+                                color_lineup_ppg, subset=['PPG']
+                            ).applymap(
+                                color_lineup_points_per_minute, subset=['Points/Min']
+                            ).applymap(
+                                color_lineup_PPP, subset=["PPP"]
+                            ).applymap(
+                                color_offensive_efficiency_scores, subset=['Off. Eff.']
+                            ).applymap(
+                                color_defensive_efficiency_scores, subset=['Def. Eff.']
+                            ).applymap(
+                                color_ft_percentage, subset=['FT%']
+                            ).applymap(
+                                color_fg_percentage, subset=['FG%']
+                            ).applymap(
+                                color_2pt_percentage, subset=['2FG%']
+                            ).applymap(
+                                color_3pt_percentage, subset=['3FG%']
+                            ).applymap(
+                                color_efg_percentage, subset=['eFG%']
+                            ).applymap(
+                                color_ts_percentage, subset=['TS%']
+                            ).applymap(
+                                color_lineup_turnovers_per_game, subset=['TO/G']
+                            ).applymap(
+                                color_lineup_defensive_impact_per_minute, subset=['Def Impact/Min']
+                            ).applymap(
+                                color_lineup_defensive_impact, subset=['Def Impact/G']
+                            ),
+                            use_container_width=True,
+                            hide_index=True
+                        )
         
         st.divider()
 
