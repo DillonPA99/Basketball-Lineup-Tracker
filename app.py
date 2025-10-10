@@ -7011,8 +7011,7 @@ with tab2:
             
                     with detail_col1:
                         with st.expander("🎯 Complete Shooting Breakdown"):
-                            shooting_cols = ['Player', 'FT', 'FT%', '2PT', '2PT%', '3PT', '3PT%', 
-                                             'FG', 'FG%', 'eFG%', 'TS%']
+                            shooting_cols = ['Player', 'Off. Eff.', 'eFG%', 'TS%', 'FG', 'FG%', 'FT', 'FT%', '2PT', '2PT%', '3PT', '3PT%']
                             st.dataframe(
                                 player_shooting_df[shooting_cols].style.applymap(
                                     color_ft_percentage, subset=['FT%']
@@ -7026,6 +7025,8 @@ with tab2:
                                     color_efg_percentage, subset=['eFG%']
                                 ).applymap(
                                     color_ts_percentage, subset=['TS%']
+                                ).applymap(                               
+                                    color_offensive_efficiency_scores, subset=['Off. Eff.']
                                 ),
                                 use_container_width=True,
                                 hide_index=True
@@ -7262,24 +7263,21 @@ with tab2:
                     st.success(f"**Best +/- Lineup:** {best_pm['Plus/Minus']}")
                     st.caption(f"{best_pm['Minutes']} min | {best_pm['Appearances']} apps")
                     st.caption(f"Off: {best_pm['Off. Eff.']} | Def: {best_pm['Def. Eff.']}")
-                    with st.expander("View Lineup"):
-                        st.write(best_pm['Lineup'])
+                    st.write(best_pm['Lineup'])
         
                 with lineup_perf_col2:
                     best_off = lineup_df.sort_values('numeric_off_eff', ascending=False).iloc[0]
                     st.info(f"**Best Offensive:** {best_off['Off. Eff.']} Eff")
                     st.caption(f"{best_off['Total Points']} pts | {best_off['PPP']} PPP")
                     st.caption(f"{best_off['Minutes']} min | {best_off['Appearances']} apps")
-                    with st.expander("View Lineup"):
-                        st.write(best_off['Lineup'])
+                    st.write(best_off['Lineup'])
         
                 with lineup_perf_col3:
                     best_def = lineup_df.sort_values('numeric_def_eff', ascending=False).iloc[0]
                     st.info(f"**Best Defensive:** {best_def['Def. Eff.']} Eff")
                     st.caption(f"{best_def['Total Def Impact']} impact | {best_def['Def Impact/Min']}/min")
                     st.caption(f"{best_def['Minutes']} min | {best_def['Appearances']} apps")
-                    with st.expander("View Lineup"):
-                        st.write(best_def['Lineup'])
+                    st.write(best_def['Lineup'])
         
                 st.divider()
 
@@ -7316,8 +7314,7 @@ with tab2:
         
                 with lineup_detail_col1:
                     with st.expander("🎯 Lineup Shooting Details"):
-                        lineup_shooting_cols = ['Lineup', 'FT', 'FT%', '2FG', '2FG%', '3FG', '3FG%', 
-                                                'FG', 'FG%', 'eFG%', 'TS%']
+                        lineup_shooting_cols = ['Lineup', 'Off. Eff.', 'eFG%', 'TS%', 'FG', 'FG%', 'FT', 'FT%', '2FG', '2FG%', '3FG', '3FG%']
                         st.dataframe(
                             lineup_df[lineup_shooting_cols].style.applymap(
                                 color_ft_percentage, subset=['FT%']
@@ -7331,6 +7328,8 @@ with tab2:
                                 color_efg_percentage, subset=['eFG%']
                             ).applymap(
                                 color_ts_percentage, subset=['TS%']
+                            ).applymap(
+                                color_offensive_efficiency_scores, subset=['Off. Eff.']
                             ),
                             use_container_width=True,
                             hide_index=True
