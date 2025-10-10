@@ -7054,12 +7054,14 @@ with tab2:
 
                     with detail_col2:
                         with st.expander("🛡️ Defense"):
-                            def_cols = ['Player', 'Minutes', 'Def Impact', 'Def Impact/Min']
+                            def_cols = ['Player', 'Minutes', 'Def. Eff.', 'Def Impact/Min', 'Def Impact']
                             st.dataframe(
                                 player_shooting_df[def_cols].style.applymap(
                                     color_defensive_impact, subset=['Def Impact']
                                 ).applymap(
                                     color_defensive_impact_per_minute, subset=['Def Impact/Min']
+                                ).applymap(
+                                    color_defensive_efficiency_scores, subset=['Def. Eff.']
                                 ),
                                 use_container_width=True,
                                 hide_index=True
@@ -7357,12 +7359,10 @@ with tab2:
 
                 with lineup_detail_col2:
                     with st.expander("🛡️ Lineup Defense"):
-                        lineup_def_cols = ['Lineup', 'Total TOs', 'TO/Min', 'Total Def Impact', 'Def Impact/Min']
+                        lineup_def_cols = ['Lineup', 'Def. Eff.', 'Def Impact/Min', 'Total Def Impact']
                         st.dataframe(
                             lineup_df[lineup_def_cols].style.applymap(
-                                color_turnovers, subset=['Total TOs']
-                            ).applymap(
-                                color_turnovers_lineup_per_min, subset=['TO/Min']
+                                color_defensive_efficiency_scores, subset=["Def. Eff."]
                             ).applymap(
                                 color_lineup_defensive_impact, subset=['Total Def Impact']
                             ).applymap(
