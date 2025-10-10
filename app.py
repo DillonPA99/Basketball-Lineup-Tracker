@@ -8104,6 +8104,8 @@ with tab4:
                         color_turnovers_per_game, subset=['TO/G']
                     ).applymap(
                         color_PPP, subset=['PPP']
+                    ).applymap(
+                        color_defensive_impact, subset=['Def Impact/G']
                     ),
                     use_container_width=True,
                     hide_index=True
@@ -8146,8 +8148,6 @@ with tab4:
                                 color_points_per_minute, subset=['Points/Min']
                             ).applymap(
                                 color_PPP, subset=['PPP']
-                            ).applymap(
-                                color_defensive_impact, subset=['Def Impact/G']
                             ),
                             use_container_width=True,
                             hide_index=True
