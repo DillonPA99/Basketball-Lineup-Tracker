@@ -8482,6 +8482,9 @@ with tab4:
                     hide_index=True
                 )
 
+                 # ===== DETAILED SEASON LINEUP STATS =====
+                season_lineup_detail_col1, season_lineup_detail_col2 = st.columns(2)
+                
                 with season_lineup_detail_col1:
                     with st.expander("🎯 Season Lineup Shooting"):
                         season_lineup_shooting = ['Lineup', 'Games', 'FT', 'FT%', '2FG', '2FG%', '3FG', 
