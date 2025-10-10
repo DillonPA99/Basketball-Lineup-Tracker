@@ -7289,7 +7289,7 @@ with tab2:
         
                 st.dataframe(
                     lineup_df[core_lineup_cols].style.applymap(
-                        color_plus_minus, subset=['Plus/Minus']
+                        color_plus_minus, subset=['+/-']
                     ).applymap(
                         color_lineup_points, subset=['Total Points']
                     ).applymap(
