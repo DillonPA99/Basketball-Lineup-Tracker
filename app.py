@@ -8471,7 +8471,7 @@ with tab4:
                     ).applymap(
                         color_lineup_turnovers_per_game, subset=['TO/G']
                     ).applymap(
-                        color_defensive_efficiency_scores, subset=['Def. Eff.']
+                        color_lineup_defensive_impact_per_minute, subset=['Def Impact/Min']
                     ),
                     use_container_width=True,
                     hide_index=True
@@ -8518,8 +8518,6 @@ with tab4:
                                 color_lineup_PPP, subset=['PPP']
                             ).applymap(
                                 color_lineup_turnovers_per_game, subset=['TO/G']
-                            ).applymap(
-                                color_lineup_defensive_impact_per_minute, subset=['Def Impact/Min']
                             ),
                             use_container_width=True,
                             hide_index=True
