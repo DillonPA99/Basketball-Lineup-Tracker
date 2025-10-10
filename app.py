@@ -8117,8 +8117,8 @@ with tab4:
         
                 with season_detail_col1:
                     with st.expander("🎯 Season Shooting Breakdown"):
-                        season_shooting_cols = ['Player', 'GP', 'FT', 'FT%', '2PT', '2PT%', '3PT', '3PT%', 
-                                       'FG', 'FG%', 'eFG%', 'TS%']
+                        season_shooting_cols = ['Player', 'GP', 'Off. Eff.', 'eFG%', 'TS%', 'FG', 'FG%', 'FT', 
+                                       'FT%', '2FG', '2FG%', '3FG', '3FG%']
                         st.dataframe(
                             player_season_df[season_shooting_cols].style.applymap(
                                 color_ft_percentage, subset=['FT%']
@@ -8132,13 +8132,15 @@ with tab4:
                                 color_efg_percentage, subset=['eFG%']
                             ).applymap(
                                 color_ts_percentage, subset=['TS%']
+                            ).applymap(
+                                color_offensive_efficiency_scores, subset=['Off. Eff.']
                             ),
                             use_container_width=True,
                             hide_index=True
                         )
 
                     with st.expander("⚡ Season Efficiency Metrics"):
-                        season_eff_cols = ['Player', 'GP', 'MPG', 'Off. Eff.', 'Def. Eff.', 'Points/Min', 'PPP']
+                        season_eff_cols = ['Player', 'GP', 'MPG', 'Off. Eff.', 'Def. Eff.', 'PPP', 'Points/Min', 'TO/G', 'Turnovers']
                         st.dataframe(
                             player_season_df[season_eff_cols].style.applymap(
                                 color_offensive_efficiency_scores, subset=['Off. Eff.']
@@ -8148,22 +8150,24 @@ with tab4:
                                 color_points_per_minute, subset=['Points/Min']
                             ).applymap(
                                 color_PPP, subset=['PPP']
+                            ).applymap(
+                                color_turnovers_per_game, subset=['TO/G']
+
                             ),
                             use_container_width=True,
                             hide_index=True
                         )
 
                 with season_detail_col2:
-                    with st.expander("🛡️ Season Defense & Turnovers"):
-                        season_def_cols = ['Player', 'GP', 'Turnovers', 'TO/G', 'Total Def Impact', 
-                                          'Def Impact/G', 'Def Impact/Min']
+                    with st.expander("🛡️ Season Defense"):
+                        season_def_cols = ['Player', 'GP', 'Def. Eff.', 'Def Impact/G', 'Def Impact/Min', 'Total Def Impact']
                         st.dataframe(
                             player_season_df[season_def_cols].style.applymap(
-                                color_turnovers_per_game, subset=['TO/G']
-                            ).applymap(
                                 color_defensive_impact, subset=['Def Impact/G']
                             ).applymap(
                                 color_defensive_impact_per_minute, subset=['Def Impact/Min']
+                            ).applymap(
+                                color_defensive_efficiency_scores, subset=['Def. Eff.']
                             ),
                             use_container_width=True,
                             hide_index=True
