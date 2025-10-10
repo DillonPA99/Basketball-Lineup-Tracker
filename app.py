@@ -7858,7 +7858,7 @@ with tab4:
                         total_away_pot += points
         
         # Display team shooting comparison (same format as Tab 2)
-        st.write("**Team Shooting Comparison**")
+        st.subheader("**Team Shooting Comparison**")
         
         team_col1, team_col2 = st.columns(2)
         
