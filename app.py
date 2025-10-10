@@ -7053,7 +7053,7 @@ with tab2:
                             )
 
                     with detail_col2:
-                        with st.expander("🛡️ Defense & Ball Security"):
+                        with st.expander("🛡️ Defense"):
                             def_cols = ['Player', 'Minutes', 'Def Impact', 'Def Impact/Min']
                             st.dataframe(
                                 player_shooting_df[def_cols].style.applymap(
@@ -7356,7 +7356,7 @@ with tab2:
                         )
 
                 with lineup_detail_col2:
-                    with st.expander("🛡️ Lineup Defense & Turnovers"):
+                    with st.expander("🛡️ Lineup Defense"):
                         lineup_def_cols = ['Lineup', 'Total TOs', 'TO/Min', 'Total Def Impact', 'Def Impact/Min']
                         st.dataframe(
                             lineup_df[lineup_def_cols].style.applymap(
