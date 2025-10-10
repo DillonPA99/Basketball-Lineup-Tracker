@@ -6605,7 +6605,7 @@ with tab1:
 # Tab 2: Analytics
 # ------------------------------------------------------------------
 with tab2:
-    st.header("Game Analytics")
+    st.header("Game Summary")
 
     # Show game identification
     game_id_text = ""
@@ -6620,7 +6620,6 @@ with tab2:
         st.info("No game data available yet. Start tracking lineups to see analytics!")
     else:
         # Basic game stats
-        st.subheader("Game Summary")
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
@@ -6633,9 +6632,7 @@ with tab2:
             st.metric("Total Points", st.session_state.home_score + st.session_state.away_score)
             
 
-        # Shooting Statistics
-        st.subheader("Shooting Statistics")
-        
+        # Shooting Statistics        
         # Initialize team shooting stats
         home_shooting_stats = {
             'free_throws_made': 0,
@@ -6817,7 +6814,6 @@ with tab2:
                         
         # Individual Home Team Player Statistics (now includes turnovers)
         if st.session_state.player_stats or st.session_state.player_turnovers:
-            st.write("**Individual Player Statistics**")
             
             # Get all players who have any stats (shooting or turnovers)
             all_stat_players = set()
@@ -6980,8 +6976,10 @@ with tab2:
             
                     st.divider()
 
+                    st.header("**Player Statistics**")
+
                     # ===== CORE STATISTICS TABLE =====
-                    st.write("**📊 Core Statistics**")
+                    st.subheader("**📊 Core Statistics**")
                     core_cols = ['Player', 'Minutes', '+/-', 'Points', 'FG%', '3PT%', 'FT%', 'PPP']
             
                     st.dataframe(
@@ -7098,9 +7096,7 @@ with tab2:
 
                             st.dataframe(styled_player_df, use_container_width=True, hide_index=True)
 
-                    # Shooting Percentage Charts (keep existing charts unchanged)
-                    st.write("**Shooting Percentage Comparison**")
-                    
+                    # Shooting Percentage Charts (keep existing charts unchanged)                    
                     chart_col1, chart_col2 = st.columns(2)
                     
                     with chart_col1:
@@ -7164,7 +7160,7 @@ with tab2:
                 st.info("No individual player statistics available yet.")
 
         # Lineup Plus/Minus
-        st.write("**Lineup Statistics**")
+        st.header("**Lineup Statistics**")
         lineup_stats = calculate_lineup_plus_minus_with_time()
         
         if lineup_stats:
@@ -7282,7 +7278,7 @@ with tab2:
                 st.divider()
 
                 # ===== CORE LINEUP TABLE =====
-                st.write("**📊 Core Lineup Statistics**")
+                st.subheader("**📊 Core Lineup Statistics**")
                 core_lineup_cols = ['Lineup', 'Appearances', 'Minutes', 'Plus/Minus', 'Total Points', 'PPP', 'FG%', '3FG%']
         
                 st.dataframe(
@@ -7417,7 +7413,7 @@ with tab2:
                         st.caption(f"Off: {worst_lineup['Off. Eff.']} | Def: {worst_lineup['Def. Eff.']} | {worst_lineup['Minutes']} min")
                 
                 # Top performers by category
-                st.write("**Top Performers by Category:**")
+                st.subheader("**Top Performers by Category:**")
                 
                 perf_col1, perf_col2, perf_col3 = st.columns(3)
                 
@@ -7859,7 +7855,7 @@ with tab4:
         team_col1, team_col2 = st.columns(2)
         
         with team_col1:
-            st.markdown("### Home Team (Season Totals)")
+            st.markdown("### Team (Season Totals)")
             
             st.metric("Total Points", season_home_shooting['total_points'])
             
@@ -7883,7 +7879,7 @@ with tab4:
             st.metric("Points off TO %", f"{home_pot_pct:.1f}%")
         
         with team_col2:
-            st.markdown("### Away Team (Season Totals)")
+            st.markdown("### Opp. Team (Season Totals)")
             
             st.metric("Total Points", season_away_shooting['total_points'])
             
@@ -7909,7 +7905,7 @@ with tab4:
         st.divider()
         
         # Individual Player Statistics (exact same table as Tab 2)
-        st.header("**Home Team Individual Player Season Statistics**")
+        st.header("**Player Season Statistics**")
         
         season_player_stats = defaultdict(lambda: {
             'games_played': 0, 'total_points': 0, 'total_minutes': 0,
@@ -8209,7 +8205,7 @@ with tab4:
         st.divider()
         
         # Lineup Statistics (exact same table as Tab 2)
-        st.header("**Home Team Lineup Season Statistics**")
+        st.header("**Lineup Season Statistics**")
         
         season_lineup_stats = defaultdict(lambda: {
             'total_appearances': 0, 'total_minutes': 0, 'total_points': 0,
