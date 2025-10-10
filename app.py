@@ -7285,11 +7285,11 @@ with tab2:
 
                 # ===== CORE LINEUP TABLE =====
                 st.subheader("**📊 Core Lineup Statistics**")
-                core_lineup_cols = ['Lineup', 'Minutes', '+/-', 'Off. Eff.', 'Def. Eff.', 'Total Points', 'PPP', 'Points/Min', 'TS%', 'TO/Min', 'Def Impact/Min']
+                core_lineup_cols = ['Lineup', 'Minutes', 'Plus/Minus', 'Off. Eff.', 'Def. Eff.', 'Total Points', 'PPP', 'Points/Min', 'TS%', 'TO/Min', 'Def Impact/Min']
         
                 st.dataframe(
                     lineup_df[core_lineup_cols].style.applymap(
-                        color_plus_minus, subset=['+/-']
+                        color_plus_minus, subset=['Plus/Minus']
                     ).applymap(
                         color_lineup_points, subset=['Total Points']
                     ).applymap(
