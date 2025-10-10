@@ -8454,8 +8454,8 @@ with tab4:
 
                 # ===== CORE SEASON LINEUP TABLE =====
                 st.subheader("**📊 Core Season Lineup Statistics**")
-                core_season_lineup_cols = ['Lineup', 'Games', 'Appearances', 'MPG', '+/-', 'Total Points', 
-                                           'PPG', 'PPP', 'FG%', '3FG%']
+                core_season_lineup_cols = ['Lineup', 'Games', 'Appearances', 'MPG', '+/-', 'Off. Eff.', 
+                                           'Def. Eff.', 'PPG', 'PPP', 'TO/G', 'Def Impact/Min']
         
                 st.dataframe(
                     lineup_season_df[core_season_lineup_cols].style.applymap(
@@ -8463,11 +8463,15 @@ with tab4:
                     ).applymap(
                         color_lineup_ppg, subset=['PPG']
                     ).applymap(
+                        color_offensive_efficiency_scores, subset=['Off. Eff.']
+                    ).applymap(
+                        color_defensive_efficiency_scores, subset=['Def. Eff.']
+                    ).applymap(
                         color_lineup_PPP, subset=['PPP']
                     ).applymap(
-                        color_fg_percentage, subset=['FG%']
+                        color_lineup_turnovers_per_game, subset=['TO/G']
                     ).applymap(
-                        color_3pt_percentage, subset=['3FG%']
+                        color_defensive_efficiency_scores, subset=['Def. Eff.']
                     ),
                     use_container_width=True,
                     hide_index=True
@@ -8514,10 +8518,13 @@ with tab4:
                                 color_lineup_PPP, subset=['PPP']
                             ).applymap(
                                 color_lineup_turnovers_per_game, subset=['TO/G']
+                            ).applymap(
+                                color_lineup_defensive_impact_per_minute, subset=['Def Impact/Min']
                             ),
                             use_container_width=True,
                             hide_index=True
                         )
+                        
                 with season_lineup_detail_col2:
                     with st.expander("🛡️ Season Lineup Defense"):
                         season_lineup_def = ['Lineup', 'Games', 'Def. Eff.', 'Def Impact/G', 'Def Impact/Min', 'Total Def Impact']
