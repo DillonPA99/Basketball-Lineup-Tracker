@@ -7285,7 +7285,7 @@ with tab2:
 
                 # ===== CORE LINEUP TABLE =====
                 st.subheader("**📊 Core Lineup Statistics**")
-                core_lineup_cols = ['Lineup', 'Appearances', 'Minutes', 'Plus/Minus', 'Total Points', 'PPP', 'FG%', '3FG%']
+                core_cols = ['Player', 'Minutes', '+/-', 'Off. Eff.', 'Def. Eff.', 'Points', 'PPP', 'Points/Min', 'TS%', 'TO/Min', 'Def Impact/Min']
         
                 st.dataframe(
                     lineup_df[core_lineup_cols].style.applymap(
@@ -7295,9 +7295,17 @@ with tab2:
                     ).applymap(
                         color_lineup_PPP, subset=['PPP']
                     ).applymap(
-                        color_fg_percentage, subset=['FG%']
+                        color_ts_percentage, subset=['TS%']
                     ).applymap(
-                        color_3pt_percentage, subset=['3FG%']
+                        color_offensive_efficiency_scores, subset=['Off. Eff.']
+                    ).applymap(
+                        color_defensive_efficiency_scores, subset=['Def. Eff.']
+                    ).applymap(
+                        color_lineup_points_per_minute, subset=['Points/Min']
+                    ).applymap(
+                        color_turnovers_lineup_per_min, subset=['TO/Min']
+                    ).applymap(
+                        color_lineup_defensive_impact_per_minute, subset=['Def Impact/Min']
                     ),
                     use_container_width=True,
                     hide_index=True
