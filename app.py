@@ -8498,7 +8498,7 @@ with tab4:
             
                     with st.expander("⚡ Season Lineup Efficiency"):
                         season_lineup_eff = ['Lineup', 'Games', 'MPG', 'Off. Eff.', 'Def. Eff.', 
-                                            'Points/Min', 'PPP']
+                                             'PPP', 'Points/Min', 'TO/G', 'Total TOs']
                         st.dataframe(
                             lineup_season_df[season_lineup_eff].style.applymap(
                                 color_offensive_efficiency_scores, subset=['Off. Eff.']
@@ -8508,18 +8508,18 @@ with tab4:
                                 color_lineup_points_per_minute, subset=['Points/Min']
                             ).applymap(
                                 color_lineup_PPP, subset=['PPP']
+                            ).applymap(
+                                color_lineup_turnovers_per_game, subset=['TO/G']
                             ),
                             use_container_width=True,
                             hide_index=True
                         )
                 with season_lineup_detail_col2:
                     with st.expander("🛡️ Season Lineup Defense & TOs"):
-                        season_lineup_def = ['Lineup', 'Games', 'Total TOs', 'TO/G', 'Total Def Impact', 
+                        season_lineup_def = ['Lineup', 'Games', 'Total Def Impact', 
                                             'Def Impact/G', 'Def Impact/Min']
                         st.dataframe(
                             lineup_season_df[season_lineup_def].style.applymap(
-                                color_lineup_turnovers_per_game, subset=['TO/G']
-                            ).applymap(
                                 color_lineup_defensive_impact, subset=['Def Impact/G']
                             ).applymap(
                                 color_lineup_defensive_impact_per_minute, subset=['Def Impact/Min']
