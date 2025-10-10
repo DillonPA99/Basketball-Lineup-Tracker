@@ -7062,7 +7062,7 @@ with tab2:
                                 hide_index=True
                             )
             
-                         with st.expander("📋 Complete Statistics (All Columns)"):
+                        with st.expander("📋 Complete Statistics (All Columns)"):
                             # Apply color styling to the dataframe
                             styled_player_df = player_shooting_df.style.applymap(
                                 color_plus_minus, subset=['+/-']
