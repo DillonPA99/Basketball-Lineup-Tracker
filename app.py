@@ -6980,7 +6980,7 @@ with tab2:
 
                     # ===== CORE STATISTICS TABLE =====
                     st.subheader("**📊 Core Statistics**")
-                    core_cols = ['Player', 'Minutes', '+/-', 'Off. Eff.', 'Def. Eff.', 'Points', 'PPP', 'Points/Min', 'TS%', 'TO/Min', 'Def/Min']
+                    core_cols = ['Player', 'Minutes', '+/-', 'Off. Eff.', 'Def. Eff.', 'Points', 'PPP', 'Points/Min', 'TS%', 'TO/Min', 'Def Impact/Min']
             
                     st.dataframe(
                         player_shooting_df[core_cols].style.applymap(
