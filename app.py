@@ -8089,7 +8089,7 @@ with tab4:
 
                 # ===== CORE SEASON TABLE =====
                 st.subheader("**📊 Core Season Statistics**")
-                core_season_cols = ['Player', 'GP', 'MPG', '+/-', 'Off. Eff.', 'Def. Eff.', 'PPG', 'PPP', 'TO/G', 'Def Impact/G']
+                core_season_cols = ['Player', 'GP', 'MPG', '+/-', 'Off. Eff.', 'Def. Eff.', 'PPG', 'PPP', 'TO/G', 'Def Impact/Min']
         
                 st.dataframe(
                     player_season_df[core_season_cols].style.applymap(
@@ -8105,7 +8105,7 @@ with tab4:
                     ).applymap(
                         color_PPP, subset=['PPP']
                     ).applymap(
-                        color_defensive_impact, subset=['Def Impact/G']
+                        color_defensive_impact_per_minute, subset=['Def Impact/Min']
                     ),
                     use_container_width=True,
                     hide_index=True
