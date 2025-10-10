@@ -7058,9 +7058,9 @@ with tab2:
                             elif event['type'] == 'lineup':
                                 lineup_event = event['data']
                                 
-                                # Record the lineup change with current score
+                                # Record the lineup change with current score AND the index position
                                 lineup_changes.append({
-                                    'Index': event_counter,
+                                    'Index': event_counter,  # This is the actual position in the timeline
                                     'Quarter': lineup_event.get('quarter', 'Unknown'),
                                     'Game Time': lineup_event.get('game_time', 'Unknown'),
                                     'Margin': current_home - current_away,
@@ -7101,7 +7101,7 @@ with tab2:
                             # Create the line chart
                             fig = go.Figure()
                             
-                            # Add margin line
+                            # Add margin line - USE Index for x-axis consistently
                             fig.add_trace(go.Scatter(
                                 x=timeline_df['Index'],
                                 y=timeline_df['Margin'],
@@ -7118,35 +7118,43 @@ with tab2:
                                 customdata=timeline_df[['Event', 'Quarter', 'Game Time', 'Home Score', 'Away Score']].values
                             ))
                             
-                            # Add vertical lines for lineup changes
+                            # Add vertical lines for lineup changes - NOW USING CORRECT Index
                             for lineup_change in lineup_changes:
                                 fig.add_vline(
-                                    x=lineup_change['Index'],
+                                    x=lineup_change['Index'],  # Use the Index from our timeline
                                     line_dash="dot",
                                     line_color="orange",
-                                    opacity=0.6,
-                                    annotation_text="Sub",
-                                    annotation_position="top",
-                                    annotation=dict(
-                                        font_size=10,
-                                        font_color="orange"
-                                    )
+                                    line_width=2,
+                                    opacity=0.7
+                                )
+                                # Add annotation at the top
+                                fig.add_annotation(
+                                    x=lineup_change['Index'],
+                                    y=timeline_df['Margin'].max() * 0.9,
+                                    text="SUB",
+                                    showarrow=False,
+                                    font=dict(size=9, color="orange"),
+                                    yshift=10
                                 )
                             
-                            # Add vertical lines for quarter ends
-                            quarter_end_indices = timeline_df[timeline_df['Event Type'] == 'Quarter End']['Index'].values
-                            for qe_index in quarter_end_indices:
+                            # Add vertical lines for quarter ends - NOW USING CORRECT Index
+                            quarter_end_rows = timeline_df[timeline_df['Event Type'] == 'Quarter End']
+                            for _, qe_row in quarter_end_rows.iterrows():
                                 fig.add_vline(
-                                    x=qe_index,
+                                    x=qe_row['Index'],  # Use the Index from the dataframe
                                     line_dash="dash",
                                     line_color="purple",
-                                    opacity=0.7,
-                                    annotation_text="Q End",
-                                    annotation_position="top",
-                                    annotation=dict(
-                                        font_size=10,
-                                        font_color="purple"
-                                    )
+                                    line_width=2,
+                                    opacity=0.7
+                                )
+                                # Add annotation
+                                fig.add_annotation(
+                                    x=qe_row['Index'],
+                                    y=timeline_df['Margin'].max() * 0.9,
+                                    text=qe_row['Event'],
+                                    showarrow=False,
+                                    font=dict(size=9, color="purple"),
+                                    yshift=25
                                 )
                             
                             # Add zero line (tie game)
@@ -7165,7 +7173,7 @@ with tab2:
                             # Update layout
                             fig.update_layout(
                                 title=f"Score Margin Throughout Game ({st.session_state.home_team_name} perspective)",
-                                xaxis_title="Game Progression (Orange dots = Substitutions, Purple lines = Quarter Ends)",
+                                xaxis_title="Game Progression (Orange lines = Substitutions, Purple lines = Quarter Ends)",
                                 yaxis_title="Point Margin (+ = Leading, - = Trailing)",
                                 hovermode='closest',
                                 height=500,
