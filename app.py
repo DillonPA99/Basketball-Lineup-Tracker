@@ -8432,24 +8432,21 @@ with tab4:
                     st.success(f"**Best +/- Lineup:** {best_season_pm['+/-']}")
                     st.caption(f"{best_season_pm['Games']} games | {best_season_pm['Minutes']} total min")
                     st.caption(f"Off: {best_season_pm['Off. Eff.']} | Def: {best_season_pm['Def. Eff.']}")
-                    with st.expander("View Lineup"):
-                        st.write(best_season_pm['Lineup'])
+                    st.write(best_season_pm['Lineup'])
         
                 with season_lineup_col2:
                     best_season_off = lineup_season_df.sort_values('numeric_off_eff', ascending=False).iloc[0]
                     st.info(f"**Best Offensive:** {best_season_off['Off. Eff.']} Eff")
                     st.caption(f"{best_season_off['Total Points']} pts | {best_season_off['PPG']} ppg")
                     st.caption(f"{best_season_off['Games']} games | {best_season_off['PPP']} PPP")
-                    with st.expander("View Lineup"):
-                        st.write(best_season_off['Lineup'])
+                    st.write(best_season_off['Lineup'])
         
                 with season_lineup_col3:
                     best_season_def = lineup_season_df.sort_values('numeric_def_eff', ascending=False).iloc[0]
                     st.info(f"**Best Defensive:** {best_season_def['Def. Eff.']} Eff")
                     st.caption(f"{best_season_def['Total Def Impact']} total impact")
                     st.caption(f"{best_season_def['Games']} games | {best_season_def['Def Impact/Min']}/min")
-                    with st.expander("View Lineup"):
-                        st.write(best_season_def['Lineup'])
+                    st.write(best_season_def['Lineup'])
         
                 st.divider()
 
