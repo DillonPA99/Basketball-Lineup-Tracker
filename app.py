@@ -7033,7 +7033,7 @@ with tab2:
                             )
 
                         with st.expander("⚡ Advanced Efficiency Metrics"):
-                            eff_cols = ['Player', 'Minutes', 'Off. Eff.', 'Def. Eff.', 'Points/Min', 'PPP']
+                            eff_cols = ['Player', 'Minutes', 'Off. Eff.', 'Def. Eff.', 'PPP', 'Points/Min', 'TO/Min', 'Total TOs' ]
                             st.dataframe(
                                 player_shooting_df[eff_cols].style.applymap(
                                     color_offensive_efficiency_scores, subset=['Off. Eff.']
@@ -7043,6 +7043,10 @@ with tab2:
                                     color_points_per_minute, subset=['Points/Min']
                                 ).applymap(
                                     color_PPP, subset=['PPP']
+                                ).applymap(                                
+                                    color_turnovers, subset=['Total TOs']
+                                ).applymap(
+                                    color_turnovers_per_min, subset=['TO/Min']
                                 ),
                                 use_container_width=True,
                                 hide_index=True
@@ -7050,13 +7054,9 @@ with tab2:
 
                     with detail_col2:
                         with st.expander("🛡️ Defense & Ball Security"):
-                            def_cols = ['Player', 'Minutes', 'Total TOs', 'TO/Min', 'Def Impact', 'Def Impact/Min']
+                            def_cols = ['Player', 'Minutes', 'Def Impact', 'Def Impact/Min']
                             st.dataframe(
                                 player_shooting_df[def_cols].style.applymap(
-                                    color_turnovers, subset=['Total TOs']
-                                ).applymap(
-                                    color_turnovers_per_min, subset=['TO/Min']
-                                ).applymap(
                                     color_defensive_impact, subset=['Def Impact']
                                 ).applymap(
                                     color_defensive_impact_per_minute, subset=['Def Impact/Min']
@@ -7336,7 +7336,7 @@ with tab2:
                         )
             
                     with st.expander("⚡ Lineup Efficiency Metrics"):
-                        lineup_eff_cols = ['Lineup', 'Minutes', 'Off. Eff.', 'Def. Eff.', 'Points/Min', 'PPP']
+                        lineup_eff_cols = ['Lineup', 'Minutes', 'Off. Eff.', 'Def. Eff.', 'PPP', 'Points/Min', 'TO/Min', 'Total TOs']
                         st.dataframe(
                             lineup_df[lineup_eff_cols].style.applymap(
                                 color_offensive_efficiency_scores, subset=['Off. Eff.']
@@ -7346,6 +7346,10 @@ with tab2:
                                 color_lineup_points_per_minute, subset=['Points/Min']
                             ).applymap(
                                 color_lineup_PPP, subset=['PPP']
+                            ).applymap(
+                                color_turnovers, subset=['Total TOs']
+                            ).applymap(
+                                color_turnovers_lineup_per_min, subset=['TO/Min']
                             ),
                             use_container_width=True,
                             hide_index=True
