@@ -6780,6 +6780,28 @@ with tab1:
         high_priority_suggestions = [s for s in suggestions if s['priority'] == 'high']
         if high_priority_suggestions:
             st.warning(f"💡 **AI Suggestion:** {high_priority_suggestions[0]['suggestion']}")
+
+        if len(st.session_state.score_history) >= 5:
+        st.divider()
+        
+        with st.container():
+            st.write("**🤖 AI Quick Insights**")
+            
+            pred_col1, pred_col2, pred_col3 = st.columns(3)
+            
+            with pred_col1:
+                win_prob, _ = calculate_win_probability()
+                delta_color = "normal" if 45 <= win_prob <= 55 else "inverse" if win_prob < 45 else "off"
+                st.metric("Win Probability", f"{win_prob}%", delta_color=delta_color)
+            
+            with pred_col2:
+                pred_home, pred_away, conf = predict_final_score()
+                st.metric("Predicted Final", f"{pred_home}-{pred_away}", f"{conf}% confidence")
+            
+            with pred_col3:
+                momentum_score, momentum_dir = calculate_momentum_score()
+                emoji = "🔥" if "positive" in momentum_dir else "❄️" if "negative" in momentum_dir else "➖"
+                st.metric("Momentum", f"{emoji} {momentum_dir.replace('_', ' ').title()}", f"{momentum_score:+.0f}")
     
     st.divider()
     
@@ -6999,27 +7021,7 @@ with tab1:
         if st.button(undo_text):
             undo_last_score()
 
-    if len(st.session_state.score_history) >= 5:
-        st.divider()
-        
-        with st.container():
-            st.write("**🤖 AI Quick Insights**")
-            
-            pred_col1, pred_col2, pred_col3 = st.columns(3)
-            
-            with pred_col1:
-                win_prob, _ = calculate_win_probability()
-                delta_color = "normal" if 45 <= win_prob <= 55 else "inverse" if win_prob < 45 else "off"
-                st.metric("Win Probability", f"{win_prob}%", delta_color=delta_color)
-            
-            with pred_col2:
-                pred_home, pred_away, conf = predict_final_score()
-                st.metric("Predicted Final", f"{pred_home}-{pred_away}", f"{conf}% confidence")
-            
-            with pred_col3:
-                momentum_score, momentum_dir = calculate_momentum_score()
-                emoji = "🔥" if "positive" in momentum_dir else "❄️" if "negative" in momentum_dir else "➖"
-                st.metric("Momentum", f"{emoji} {momentum_dir.replace('_', ' ').title()}", f"{momentum_score:+.0f}")
+
   
     
     turnover_col1, turnover_col2 = st.columns(2)
