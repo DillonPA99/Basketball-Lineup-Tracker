@@ -4848,7 +4848,12 @@ def calculate_scoring_efficiency_trend():
     x = np.arange(len(segments_ppp))
     y = np.array(segments_ppp)
     
-    if len(x) > 1 and len(y) > 1:
+    # FIXED: Check if we have enough data points for regression
+    if len(x) < 2 or len(y) < 2 or len(x) != len(y):
+        current_ppp = segments_ppp[-1] if segments_ppp else 0
+        return "stable", current_ppp, current_ppp
+    
+    try:
         slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
         
         # Current and projected PPP
@@ -4865,8 +4870,10 @@ def calculate_scoring_efficiency_trend():
         
         return trend, current_ppp, projected_ppp
     
-    return "stable", segments_ppp[-1] if segments_ppp else 0, segments_ppp[-1] if segments_ppp else 0
-
+    except Exception as e:
+        # Fallback if regression fails
+        current_ppp = segments_ppp[-1] if segments_ppp else 0
+        return "stable", current_ppp, current_ppp
 
 def predict_final_score():
     """
