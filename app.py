@@ -8089,7 +8089,7 @@ with tab2:
                 )
 
 # ------------------------------------------------------------------
-# Tab 3: Event Log
+# Tab 3: Event Log - FIXED VERSION
 # ------------------------------------------------------------------
 with tab3:
     st.header("Game Event Log")
@@ -8100,7 +8100,7 @@ with tab3:
         all_events = []
         
         # Add score events
-        for score in st.session_state.score_history:
+        for i, score in enumerate(st.session_state.score_history):
             event_time = score.get('timestamp', datetime.now())
             all_events.append({
                 'timestamp': event_time,
@@ -8112,45 +8112,12 @@ with tab3:
                 'details': f"Lineup: {' | '.join(score['lineup'])}",
                 'scorer': score.get('scorer', 'Team'),
                 'shot_type': score.get('shot_type', 'unknown'),
-                'made': score.get('made', True)
-            })
-        
-        # Add lineup events (excluding quarter-end snapshots)
-        for lineup in st.session_state.lineup_history:
-            if not lineup.get('is_quarter_end'):
-                event_time = lineup.get('timestamp', datetime.now())
-                all_events.append({
-                    'timestamp': event_time,
-                    'type': 'Lineup Change',
-                    'team': 'Home',
-                    'description': "Lineup substitution",
-                    'quarter': lineup['quarter'],
-                    'game_time': lineup.get('game_time', 'Unknown'),
-                    'details': f"New lineup: {' | '.join(lineup['new_lineup'])}",
-                    'previous_lineup': lineup.get('previous_lineup', [])
-                })
-        
-        # Add quarter end events
-        for quarter_end in st.session_state.quarter_end_history:
-            # Try to find timestamp from lineup history
-            event_time = datetime.now()
-            for lineup in st.session_state.lineup_history:
-                if lineup.get('is_quarter_end') and lineup.get('quarter') == quarter_end['quarter']:
-                    event_time = lineup.get('timestamp', datetime.now())
-                    break
-            
-            all_events.append({
-                'timestamp': event_time,
-                'type': 'Quarter End',
-                'team': 'Both',
-                'description': f"{quarter_end['quarter']} ended",
-                'quarter': quarter_end['quarter'],
-                'game_time': quarter_end.get('game_time', '0:00'),
-                'details': f"Final Score: {quarter_end['final_score']}"
+                'made': score.get('made', True),
+                'event_index': i  # Add index for stable sorting
             })
         
         # Add turnover events
-        for turnover in st.session_state.turnover_history:
+        for i, turnover in enumerate(st.session_state.turnover_history):
             event_time = turnover.get('timestamp', datetime.now())
             player_text = f" by {turnover['player']}" if turnover.get('player') else " (Team)"
             all_events.append({
@@ -8160,11 +8127,44 @@ with tab3:
                 'description': f"{turnover['team'].title()} turnover{player_text}",
                 'quarter': turnover['quarter'],
                 'game_time': turnover.get('game_time', 'Unknown'),
-                'details': f"Lineup: {' | '.join(turnover.get('lineup', []))}" if turnover.get('lineup') else "No lineup info"
+                'details': f"Lineup: {' | '.join(turnover.get('lineup', []))}" if turnover.get('lineup') else "No lineup info",
+                'event_index': i + len(st.session_state.score_history)
             })
         
-        # Sort all events by timestamp
-        all_events.sort(key=lambda x: x['timestamp'])
+        # Add lineup events (excluding quarter-end snapshots AND including their timestamps)
+        lineup_event_index = len(st.session_state.score_history) + len(st.session_state.turnover_history)
+        for i, lineup in enumerate(st.session_state.lineup_history):
+            # Get timestamp from lineup event itself
+            event_time = lineup.get('timestamp', datetime.now())
+            
+            if lineup.get('is_quarter_end'):
+                # This is a quarter end snapshot - treat it as quarter end
+                all_events.append({
+                    'timestamp': event_time,
+                    'type': 'Quarter End',
+                    'team': 'Both',
+                    'description': f"{lineup['quarter']} ended",
+                    'quarter': lineup['quarter'],
+                    'game_time': '0:00',
+                    'details': f"Final Score: {lineup.get('home_score', 0)}-{lineup.get('away_score', 0)}",
+                    'event_index': lineup_event_index + i
+                })
+            else:
+                # Regular lineup change
+                all_events.append({
+                    'timestamp': event_time,
+                    'type': 'Lineup Change',
+                    'team': 'Home',
+                    'description': "Lineup substitution",
+                    'quarter': lineup['quarter'],
+                    'game_time': lineup.get('game_time', 'Unknown'),
+                    'details': f"New lineup: {' | '.join(lineup['new_lineup'])}",
+                    'previous_lineup': lineup.get('previous_lineup', []),
+                    'event_index': lineup_event_index + i
+                })
+        
+        # Sort all events by timestamp AND event_index for stable ordering
+        all_events.sort(key=lambda x: (x['timestamp'], x.get('event_index', 0)))
         
         # Display events sequentially
         if all_events:
@@ -8215,11 +8215,13 @@ with tab3:
                         elif event['type'] == 'Lineup Change':
                             if event.get('previous_lineup'):
                                 st.write(f"**Players Out:** {len(event['previous_lineup'])}")
+                        elif event['type'] == 'Quarter End':
+                            st.write(f"**Status:** Quarter Completed")
                     
                     st.write(f"**Details:** {event['details']}")
                     
-                    # Show timestamp for debugging if needed
-                    # st.caption(f"Timestamp: {event['timestamp'].strftime('%H:%M:%S')}")
+                    # Show timestamp for debugging
+                    st.caption(f"Logged at: {event['timestamp'].strftime('%H:%M:%S')}")
         else:
             st.info("No events to display yet.")
 # ------------------------------------------------------------------
