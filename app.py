@@ -5773,37 +5773,6 @@ with st.sidebar:
 
     st.divider()
 
-    # Real-time AI Insights in Sidebar
-    if st.session_state.score_history and len(st.session_state.score_history) >= 5:
-        st.subheader("🤖 AI Insights")
-    
-        # Win probability
-        win_prob, _ = calculate_win_probability()
-        if win_prob >= 70:
-            st.success(f"**Win Prob:** {win_prob}%")
-        elif win_prob >= 45:
-            st.info(f"**Win Prob:** {win_prob}%")
-        else:
-            st.warning(f"**Win Prob:** {win_prob}%")
-    
-        # Predicted final score
-        pred_home, pred_away, confidence = predict_final_score()
-        st.metric("Predicted Final", f"{pred_home}-{pred_away}", f"{confidence}% conf.")
-    
-        # Critical alerts
-        critical_moments = identify_critical_moments()
-        for moment in critical_moments[:2]:  # Show top 2
-            if moment['urgency'] == 'high':
-                st.error(f"⚠️ {moment['message']}")
-    
-        # Quick suggestion
-        suggestions = get_ai_coaching_suggestion()
-        if suggestions:
-            top_suggestion = suggestions[0]
-            st.info(f"💡 {top_suggestion['suggestion']}")
-    
-        st.divider()
-
     # Show current roster info
     st.subheader("Team Roster")
     st.info(f"📋 {len(st.session_state.roster)} players")
