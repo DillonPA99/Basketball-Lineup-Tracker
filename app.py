@@ -7234,21 +7234,6 @@ with tab1:
 with tab2:
     st.header("Game Summary")
 
-    # Show game identification
-    game_id_text = ""
-    if st.session_state.custom_game_name:
-        game_id_text = f"📊 **{st.session_state.custom_game_name}** - "
-    game_id_text += f"**{st.session_state.home_team_name}** vs **{st.session_state.away_team_name}**"
-
-    if st.session_state.home_team_name != "HOME" or st.session_state.away_team_name != "AWAY" or st.session_state.custom_game_name:
-        st.info(game_id_text)
-
-    if not st.session_state.lineup_history and not st.session_state.quarter_end_history:
-        st.info("No game data available yet. Start tracking lineups to see analytics!")
-    
-    else:
-        st.divider()
-        display_game_flow_prediction()
         st.divider()
 
         col1, col2, col3, col4 = st.columns(4)
