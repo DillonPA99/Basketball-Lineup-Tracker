@@ -7234,8 +7234,6 @@ with tab1:
 with tab2:
     st.header("Game Summary")
 
-        st.divider()
-
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric("Quarters Completed", len(st.session_state.quarter_end_history))
