@@ -9,6 +9,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import hashlib
 import os
+import numpy as np
+from scipy import stats
 import time
 import logging
 from datetime import datetime, timedelta, timezone
@@ -4761,6 +4763,532 @@ Total Points: {total_points}
     email_body += "• Effective FG% = (FGM + 0.5×3PM) ÷ FGA\n"
     
     return email_subject, email_body
+
+# ============================================================================
+# PREDICTIVE GAME FLOW ANALYSIS - AI MODULE
+# Add this to your main app file after the helper functions section
+# ============================================================================
+
+def calculate_momentum_score(recent_events=10):
+    """
+    Calculate current momentum based on recent scoring events.
+    Returns: momentum_score (-100 to +100), momentum_direction
+    """
+    if len(st.session_state.score_history) < 2:
+        return 0, "neutral"
+    
+    # Get recent scoring events
+    recent_scores = st.session_state.score_history[-recent_events:]
+    
+    momentum_points = 0
+    time_weighted_points = 0
+    
+    for i, score in enumerate(recent_scores):
+        # Time weighting - more recent events matter more
+        recency_weight = (i + 1) / len(recent_scores)
+        
+        # Points contribution
+        points = score['points'] if score.get('made', True) else 0
+        
+        if score['team'] == 'home':
+            momentum_points += points * recency_weight
+            time_weighted_points += points * recency_weight
+        else:
+            momentum_points -= points * recency_weight
+            time_weighted_points -= points * recency_weight
+    
+    # Normalize to -100 to +100 scale
+    max_possible = recent_events * 3  # Max 3 points per possession
+    momentum_score = (momentum_points / max_possible) * 100
+    
+    # Determine direction
+    if momentum_score > 15:
+        direction = "strong_positive"
+    elif momentum_score > 5:
+        direction = "positive"
+    elif momentum_score < -15:
+        direction = "strong_negative"
+    elif momentum_score < -5:
+        direction = "negative"
+    else:
+        direction = "neutral"
+    
+    return momentum_score, direction
+
+
+def calculate_scoring_efficiency_trend():
+    """
+    Analyze if team is scoring more/less efficiently over time.
+    Returns: efficiency_trend, current_ppp, projected_ppp
+    """
+    if len(st.session_state.score_history) < 10:
+        return "insufficient_data", 0, 0
+    
+    # Split game into segments
+    total_events = len(st.session_state.score_history)
+    segment_size = max(5, total_events // 4)
+    
+    # Calculate PPP (Points Per Possession) for each segment
+    segments_ppp = []
+    
+    for i in range(0, total_events, segment_size):
+        segment = st.session_state.score_history[i:i+segment_size]
+        
+        home_points = sum(s['points'] for s in segment if s['team'] == 'home' and s.get('made', True))
+        home_possessions = len([s for s in segment if s['team'] == 'home'])
+        
+        if home_possessions > 0:
+            segment_ppp = home_points / home_possessions
+            segments_ppp.append(segment_ppp)
+    
+    if len(segments_ppp) < 2:
+        return "insufficient_data", 0, 0
+    
+    # Calculate trend using linear regression
+    x = np.arange(len(segments_ppp))
+    y = np.array(segments_ppp)
+    
+    if len(x) > 1 and len(y) > 1:
+        slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
+        
+        # Current and projected PPP
+        current_ppp = segments_ppp[-1]
+        projected_ppp = slope * (len(segments_ppp)) + intercept
+        
+        # Determine trend
+        if slope > 0.05:
+            trend = "improving"
+        elif slope < -0.05:
+            trend = "declining"
+        else:
+            trend = "stable"
+        
+        return trend, current_ppp, projected_ppp
+    
+    return "stable", segments_ppp[-1] if segments_ppp else 0, segments_ppp[-1] if segments_ppp else 0
+
+
+def predict_final_score():
+    """
+    Predict final score based on current pace and trends.
+    Returns: predicted_home, predicted_away, confidence_level
+    """
+    if not st.session_state.score_history:
+        return 0, 0, 0
+    
+    # Calculate current pace (points per minute)
+    current_home = st.session_state.home_score
+    current_away = st.session_state.away_score
+    
+    # Estimate game progress
+    quarter_map = {'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4, 'OT1': 4.25, 'OT2': 4.5, 'OT3': 4.75}
+    current_quarter_num = quarter_map.get(st.session_state.current_quarter, 1)
+    
+    # Parse game time to get minutes elapsed in current quarter
+    try:
+        time_parts = st.session_state.current_game_time.split(':')
+        minutes_remaining = int(time_parts[0])
+        quarter_length = st.session_state.quarter_length
+        minutes_elapsed_in_quarter = quarter_length - minutes_remaining
+    except:
+        minutes_elapsed_in_quarter = 0
+    
+    # Total minutes elapsed
+    total_minutes_elapsed = (current_quarter_num - 1) * st.session_state.quarter_length + minutes_elapsed_in_quarter
+    
+    # Total game minutes (4 quarters)
+    total_game_minutes = st.session_state.quarter_length * 4
+    
+    if total_minutes_elapsed <= 0:
+        return current_home, current_away, 0
+    
+    # Calculate pace-based projection
+    home_pace = current_home / total_minutes_elapsed
+    away_pace = current_away / total_minutes_elapsed
+    
+    pace_projected_home = home_pace * total_game_minutes
+    pace_projected_away = away_pace * total_game_minutes
+    
+    # Adjust for momentum
+    momentum_score, momentum_dir = calculate_momentum_score()
+    momentum_adjustment = momentum_score * 0.1  # Can swing prediction by up to ±10 points
+    
+    # Adjust for efficiency trend
+    eff_trend, current_ppp, projected_ppp = calculate_scoring_efficiency_trend()
+    
+    trend_adjustment = 0
+    if eff_trend == "improving":
+        trend_adjustment = 3  # Trending up, add points
+    elif eff_trend == "declining":
+        trend_adjustment = -3  # Trending down, subtract points
+    
+    # Final predictions
+    predicted_home = pace_projected_home + momentum_adjustment + trend_adjustment
+    predicted_away = pace_projected_away - momentum_adjustment
+    
+    # Calculate confidence based on game progress
+    confidence = min(95, (total_minutes_elapsed / total_game_minutes) * 100)
+    
+    return round(predicted_home), round(predicted_away), round(confidence)
+
+
+def calculate_win_probability():
+    """
+    Calculate probability of winning based on multiple factors.
+    Returns: win_probability (0-100), key_factors
+    """
+    if not st.session_state.score_history:
+        return 50, []
+    
+    factors = []
+    probability = 50  # Start neutral
+    
+    # Factor 1: Current Score Differential
+    score_diff = st.session_state.home_score - st.session_state.away_score
+    
+    # Estimate game progress
+    quarter_map = {'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4, 'OT1': 4.25}
+    current_quarter_num = quarter_map.get(st.session_state.current_quarter, 1)
+    game_progress = current_quarter_num / 4  # 0.25 to 1.0
+    
+    # Score differential impact increases with game progress
+    score_impact = score_diff * (5 + (game_progress * 10))
+    probability += score_impact
+    
+    if abs(score_diff) > 0:
+        factors.append({
+            'factor': f"{'Leading' if score_diff > 0 else 'Trailing'} by {abs(score_diff)}",
+            'impact': f"{'+' if score_diff > 0 else ''}{score_impact:.0f}%"
+        })
+    
+    # Factor 2: Momentum
+    momentum_score, momentum_dir = calculate_momentum_score()
+    momentum_impact = momentum_score * 0.15
+    probability += momentum_impact
+    
+    if abs(momentum_score) > 10:
+        factors.append({
+            'factor': f"{'Strong' if abs(momentum_score) > 20 else 'Moderate'} momentum",
+            'impact': f"{'+' if momentum_impact > 0 else ''}{momentum_impact:.0f}%"
+        })
+    
+    # Factor 3: Efficiency Trend
+    eff_trend, current_ppp, projected_ppp = calculate_scoring_efficiency_trend()
+    
+    if eff_trend == "improving":
+        probability += 8
+        factors.append({'factor': 'Improving efficiency', 'impact': '+8%'})
+    elif eff_trend == "declining":
+        probability -= 8
+        factors.append({'factor': 'Declining efficiency', 'impact': '-8%'})
+    
+    # Factor 4: Time Remaining (less time = harder to comeback if trailing)
+    try:
+        time_parts = st.session_state.current_game_time.split(':')
+        minutes_remaining = int(time_parts[0])
+        
+        if st.session_state.current_quarter in ['Q4', 'OT1', 'OT2']:
+            if score_diff < 0 and minutes_remaining < 3:
+                # Trailing in final minutes
+                comeback_difficulty = abs(score_diff) * 2
+                probability -= comeback_difficulty
+                factors.append({
+                    'factor': f'Trailing with {minutes_remaining}min left',
+                    'impact': f'-{comeback_difficulty:.0f}%'
+                })
+            elif score_diff > 0 and minutes_remaining < 3:
+                # Leading in final minutes
+                hold_advantage = score_diff * 1.5
+                probability += hold_advantage
+                factors.append({
+                    'factor': f'Leading with {minutes_remaining}min left',
+                    'impact': f'+{hold_advantage:.0f}%'
+                })
+    except:
+        pass
+    
+    # Factor 5: Turnover differential
+    home_tos, away_tos = get_team_turnovers()
+    to_diff = away_tos - home_tos  # Positive if we have fewer turnovers
+    
+    if abs(to_diff) >= 3:
+        to_impact = to_diff * 3
+        probability += to_impact
+        factors.append({
+            'factor': f"{'Fewer' if to_diff > 0 else 'More'} turnovers ({abs(to_diff)})",
+            'impact': f"{'+' if to_impact > 0 else ''}{to_impact:.0f}%"
+        })
+    
+    # Clamp probability between 1 and 99
+    probability = max(1, min(99, probability))
+    
+    return round(probability), factors
+
+
+def identify_critical_moments():
+    """
+    Identify upcoming critical game moments that require attention.
+    Returns: list of critical moments with recommendations
+    """
+    critical_moments = []
+    
+    # Parse current time
+    try:
+        time_parts = st.session_state.current_game_time.split(':')
+        minutes_remaining = int(time_parts[0])
+        seconds_remaining = int(time_parts[1]) if len(time_parts) > 1 else 0
+        total_seconds = minutes_remaining * 60 + seconds_remaining
+    except:
+        return critical_moments
+    
+    current_quarter = st.session_state.current_quarter
+    score_diff = st.session_state.home_score - st.session_state.away_score
+    
+    # Critical Moment 1: End of quarter approaching
+    if total_seconds <= 120 and current_quarter in ['Q1', 'Q2', 'Q3']:
+        critical_moments.append({
+            'type': 'quarter_ending',
+            'urgency': 'medium',
+            'message': f'Quarter ending soon - {minutes_remaining}:{seconds_remaining:02d} left',
+            'recommendation': 'Consider timeout to set up final possession or defensive assignment'
+        })
+    
+    # Critical Moment 2: Close game in Q4
+    if current_quarter in ['Q4', 'OT1'] and abs(score_diff) <= 5 and total_seconds <= 300:
+        critical_moments.append({
+            'type': 'clutch_time',
+            'urgency': 'high',
+            'message': f'CLUTCH TIME: Game within {abs(score_diff)} points, {minutes_remaining}:{seconds_remaining:02d} left',
+            'recommendation': 'Consider your best clutch performers and defensive lineup'
+        })
+    
+    # Critical Moment 3: Momentum swing detected
+    momentum_score, momentum_dir = calculate_momentum_score()
+    if momentum_dir in ['strong_negative']:
+        critical_moments.append({
+            'type': 'momentum_shift',
+            'urgency': 'high',
+            'message': 'MOMENTUM ALERT: Opponent has strong momentum',
+            'recommendation': 'Consider timeout to stop opponent run and reset'
+        })
+    
+    # Critical Moment 4: Large deficit that's still recoverable
+    if score_diff <= -10 and score_diff >= -15 and current_quarter in ['Q2', 'Q3']:
+        critical_moments.append({
+            'type': 'deficit_recovery',
+            'urgency': 'medium',
+            'message': f'Trailing by {abs(score_diff)} - still recoverable',
+            'recommendation': 'Focus on defensive stops and efficient possessions. Consider best offensive lineup.'
+        })
+    
+    # Critical Moment 5: Foul trouble (if implemented)
+    # This would require tracking fouls - placeholder for future
+    
+    return critical_moments
+
+
+def get_ai_coaching_suggestion():
+    """
+    Provide AI-driven coaching suggestions based on current game state.
+    Returns: suggestion text
+    """
+    suggestions = []
+    
+    # Analyze recent performance
+    momentum_score, momentum_dir = calculate_momentum_score()
+    eff_trend, current_ppp, projected_ppp = calculate_scoring_efficiency_trend()
+    win_prob, factors = calculate_win_probability()
+    
+    # Suggestion based on momentum
+    if momentum_dir == "strong_negative":
+        suggestions.append({
+            'category': 'Momentum',
+            'priority': 'high',
+            'suggestion': '🚨 Opponent on a run - consider immediate timeout',
+            'data': f'Last {min(10, len(st.session_state.score_history))} possessions trending negative'
+        })
+    elif momentum_dir == "strong_positive":
+        suggestions.append({
+            'category': 'Momentum',
+            'priority': 'medium',
+            'suggestion': '🔥 Riding hot streak - maintain current lineup',
+            'data': f'Momentum score: +{momentum_score:.0f}'
+        })
+    
+    # Suggestion based on efficiency
+    if eff_trend == "declining":
+        suggestions.append({
+            'category': 'Offense',
+            'priority': 'high',
+            'suggestion': '📉 Offensive efficiency declining - adjust strategy',
+            'data': f'PPP dropped from {current_ppp:.2f} to projected {projected_ppp:.2f}'
+        })
+    
+    # Suggestion based on turnovers
+    home_tos, away_tos = get_team_turnovers()
+    if home_tos >= 5:
+        recent_quarters = defaultdict(int)
+        for to in st.session_state.turnover_history:
+            if to['team'] == 'home':
+                recent_quarters[to['quarter']] += 1
+        
+        current_q_tos = recent_quarters.get(st.session_state.current_quarter, 0)
+        if current_q_tos >= 3:
+            suggestions.append({
+                'category': 'Ball Security',
+                'priority': 'high',
+                'suggestion': f'⚠️ {current_q_tos} turnovers this quarter - focus on ball security',
+                'data': f'Total game TOs: {home_tos}'
+            })
+    
+    # Suggestion based on shooting
+    if st.session_state.player_stats:
+        total_3pt_attempted = sum(stats.get('three_pointers_attempted', 0) 
+                                  for stats in st.session_state.player_stats.values())
+        total_3pt_made = sum(stats.get('three_pointers_made', 0) 
+                            for stats in st.session_state.player_stats.values())
+        
+        if total_3pt_attempted >= 5:
+            three_pct = (total_3pt_made / total_3pt_attempted) * 100
+            if three_pct < 25:
+                suggestions.append({
+                    'category': 'Shot Selection',
+                    'priority': 'medium',
+                    'suggestion': f'🎯 Cold from 3PT ({three_pct:.0f}%) - attack the paint',
+                    'data': f'{total_3pt_made}/{total_3pt_attempted} from three'
+                })
+    
+    # Suggestion based on win probability
+    if win_prob < 30:
+        suggestions.append({
+            'category': 'Strategy',
+            'priority': 'high',
+            'suggestion': f'⏰ Win probability low ({win_prob}%) - need aggressive adjustments',
+            'data': 'Consider high-risk, high-reward plays'
+        })
+    
+    return suggestions
+
+
+# ============================================================================
+# VISUALIZATION FUNCTIONS
+# ============================================================================
+
+def display_game_flow_prediction():
+    """
+    Main display function for AI Game Flow Analysis.
+    Add this to your Analytics tab.
+    """
+    st.header("🤖 AI Game Flow Prediction")
+    
+    if not st.session_state.score_history or len(st.session_state.score_history) < 5:
+        st.info("📊 Need at least 5 scoring events to generate predictions. Keep playing!")
+        return
+    
+    # Top metrics row
+    metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
+    
+    # Win Probability
+    win_prob, factors = calculate_win_probability()
+    with metric_col1:
+        if win_prob >= 70:
+            st.success(f"**Win Probability**\n### {win_prob}%")
+        elif win_prob >= 45:
+            st.info(f"**Win Probability**\n### {win_prob}%")
+        else:
+            st.warning(f"**Win Probability**\n### {win_prob}%")
+    
+    # Predicted Final Score
+    pred_home, pred_away, confidence = predict_final_score()
+    with metric_col2:
+        st.metric(
+            "Predicted Final",
+            f"{pred_home}-{pred_away}",
+            f"{confidence}% confidence"
+        )
+    
+    # Momentum
+    momentum_score, momentum_dir = calculate_momentum_score()
+    with metric_col3:
+        momentum_emoji = "🔥" if momentum_dir in ["strong_positive", "positive"] else "❄️" if momentum_dir in ["strong_negative", "negative"] else "➖"
+        st.metric(
+            "Momentum",
+            f"{momentum_emoji} {momentum_dir.replace('_', ' ').title()}",
+            f"{momentum_score:+.0f}"
+        )
+    
+    # Efficiency Trend
+    eff_trend, current_ppp, projected_ppp = calculate_scoring_efficiency_trend()
+    with metric_col4:
+        trend_emoji = "📈" if eff_trend == "improving" else "📉" if eff_trend == "declining" else "➡️"
+        ppp_change = projected_ppp - current_ppp
+        st.metric(
+            "Efficiency Trend",
+            f"{trend_emoji} {eff_trend.title()}",
+            f"{ppp_change:+.2f} PPP"
+        )
+    
+    st.divider()
+    
+    # Critical Moments Section
+    critical_moments = identify_critical_moments()
+    if critical_moments:
+        st.subheader("⚠️ Critical Moments")
+        for moment in critical_moments:
+            if moment['urgency'] == 'high':
+                st.error(f"**{moment['message']}**\n\n💡 {moment['recommendation']}")
+            else:
+                st.warning(f"**{moment['message']}**\n\n💡 {moment['recommendation']}")
+    
+    st.divider()
+    
+    # AI Coaching Suggestions
+    suggestions = get_ai_coaching_suggestion()
+    if suggestions:
+        st.subheader("🧠 AI Coaching Insights")
+        
+        # Sort by priority
+        high_priority = [s for s in suggestions if s['priority'] == 'high']
+        medium_priority = [s for s in suggestions if s['priority'] == 'medium']
+        
+        if high_priority:
+            st.write("**🔴 High Priority:**")
+            for suggestion in high_priority:
+                st.error(f"**{suggestion['category']}:** {suggestion['suggestion']}\n\n_{suggestion['data']}_")
+        
+        if medium_priority:
+            st.write("**🟡 Consider:**")
+            for suggestion in medium_priority:
+                st.warning(f"**{suggestion['category']}:** {suggestion['suggestion']}\n\n_{suggestion['data']}_")
+    
+    st.divider()
+    
+    # Win Probability Breakdown
+    st.subheader("📊 Win Probability Factors")
+    if factors:
+        factor_df = pd.DataFrame(factors)
+        st.dataframe(factor_df, use_container_width=True, hide_index=True)
+    
+    # Detailed Predictions
+    with st.expander("🔮 Detailed Predictions & Analysis"):
+        st.write("**Prediction Methodology:**")
+        st.write(f"""
+        - **Current Pace:** {st.session_state.home_score} - {st.session_state.away_score}
+        - **Pace-Based Projection:** Projects current scoring rate to game end
+        - **Momentum Adjustment:** ±{momentum_score * 0.1:.1f} points based on recent play
+        - **Efficiency Trend:** {eff_trend.title()} ({current_ppp:.2f} → {projected_ppp:.2f} PPP)
+        - **Confidence Level:** {confidence}% (increases as game progresses)
+        """)
+        
+        st.write("**Win Probability Calculation:**")
+        st.write(f"""
+        The {win_prob}% win probability is calculated from:
+        - Score differential impact
+        - Recent momentum (last 10 possessions)
+        - Offensive efficiency trends
+        - Time remaining context
+        - Turnover differential
+        """)
     
 # ------------------------------------------------------------------
 # User Authentication Gate
@@ -5237,6 +5765,37 @@ with st.sidebar:
                         st.error(f"{player.split('(')[0].strip()}\n{plus_minus}")
 
     st.divider()
+
+    # Real-time AI Insights in Sidebar
+    if st.session_state.score_history and len(st.session_state.score_history) >= 5:
+        st.subheader("🤖 AI Insights")
+    
+        # Win probability
+        win_prob, _ = calculate_win_probability()
+        if win_prob >= 70:
+            st.success(f"**Win Prob:** {win_prob}%")
+        elif win_prob >= 45:
+            st.info(f"**Win Prob:** {win_prob}%")
+        else:
+            st.warning(f"**Win Prob:** {win_prob}%")
+    
+        # Predicted final score
+        pred_home, pred_away, confidence = predict_final_score()
+        st.metric("Predicted Final", f"{pred_home}-{pred_away}", f"{confidence}% conf.")
+    
+        # Critical alerts
+        critical_moments = identify_critical_moments()
+        for moment in critical_moments[:2]:  # Show top 2
+            if moment['urgency'] == 'high':
+                st.error(f"⚠️ {moment['message']}")
+    
+        # Quick suggestion
+        suggestions = get_ai_coaching_suggestion()
+        if suggestions:
+            top_suggestion = suggestions[0]
+            st.info(f"💡 {top_suggestion['suggestion']}")
+    
+        st.divider()
 
     # Show current roster info
     st.subheader("Team Roster")
@@ -6201,6 +6760,22 @@ tab1, tab2, tab3, tab4 = st.tabs(["🏀 Live Game", "📊 Analytics", "📝 Even
 # ------------------------------------------------------------------
 with tab1:
     st.header("Live Game Management")
+
+    # Real-time AI alerts during live game
+    if st.session_state.score_history and len(st.session_state.score_history) >= 5:
+        critical_moments = identify_critical_moments()
+        for moment in critical_moments:
+            if moment['urgency'] == 'high':
+                st.error(f"🚨 **{moment['message']}** - {moment['recommendation']}")
+        
+        # Show top AI suggestion if available
+        suggestions = get_ai_coaching_suggestion()
+        high_priority_suggestions = [s for s in suggestions if s['priority'] == 'high']
+        if high_priority_suggestions:
+            st.warning(f"💡 **AI Suggestion:** {high_priority_suggestions[0]['suggestion']}")
+    
+    st.divider()
+    
     # Current game status
     status_col1, status_col2, status_col3, status_col4, status_col5 = st.columns([1, 1, 1, 1, 1])
     with status_col1:
@@ -6416,6 +6991,29 @@ with tab1:
 
         if st.button(undo_text):
             undo_last_score()
+
+    if len(st.session_state.score_history) >= 5:
+        st.divider()
+        
+        with st.container():
+            st.write("**🤖 AI Quick Insights**")
+            
+            pred_col1, pred_col2, pred_col3 = st.columns(3)
+            
+            with pred_col1:
+                win_prob, _ = calculate_win_probability()
+                delta_color = "normal" if 45 <= win_prob <= 55 else "inverse" if win_prob < 45 else "off"
+                st.metric("Win Probability", f"{win_prob}%", delta_color=delta_color)
+            
+            with pred_col2:
+                pred_home, pred_away, conf = predict_final_score()
+                st.metric("Predicted Final", f"{pred_home}-{pred_away}", f"{conf}% confidence")
+            
+            with pred_col3:
+                momentum_score, momentum_dir = calculate_momentum_score()
+                emoji = "🔥" if "positive" in momentum_dir else "❄️" if "negative" in momentum_dir else "➖"
+                st.metric("Momentum", f"{emoji} {momentum_dir.replace('_', ' ').title()}", f"{momentum_score:+.0f}")
+  
     
     turnover_col1, turnover_col2 = st.columns(2)
     
@@ -6640,8 +7238,11 @@ with tab2:
 
     if not st.session_state.lineup_history and not st.session_state.quarter_end_history:
         st.info("No game data available yet. Start tracking lineups to see analytics!")
+    
     else:
-        # Basic game stats
+        st.divider()
+        display_game_flow_prediction()
+        st.divider()
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
