@@ -597,6 +597,7 @@ def save_game_session(user_id, session_name, game_data):
             'current_game_time': game_data['current_game_time'],
             'last_activity': get_current_utc_time(),
             'total_events': len(game_data.get('lineup_history', [])) + len(game_data.get('score_history', [])),
+            'event_counter': game_data.get('event_counter', 0),
             'game_phase': 'In Progress' if game_data['current_quarter'] != 'Q4' else 'Final Quarter',
             'created_at': get_current_utc_time(),
             'updated_at': get_current_utc_time(),
@@ -763,7 +764,13 @@ def load_game_session(session_id):
         
         if 'last_turnover_event' not in session_data:
             session_data['last_turnover_event'] = None
-        
+    
+        # Load event counter or default to 0 for old games
+        if 'event_counter' in session_data:
+            st.session_state.event_counter = session_data['event_counter']
+        else:
+            st.session_state.event_counter = 0  # Default for games saved before this feature
+    
         return session_data
         
     except Exception as e:
@@ -1462,6 +1469,9 @@ if "turnover_history" not in st.session_state:
 
 if "player_turnovers" not in st.session_state:
     st.session_state.player_turnovers = defaultdict(int)
+
+if "event_counter" not in st.session_state:
+    st.session_state.event_counter = 0
     
 if "last_turnover_event" not in st.session_state:
     st.session_state.last_turnover_event = None
@@ -1571,6 +1581,8 @@ def reset_game(save_current=True):
         'free_throws_attempted': 0,
         'minutes_played': 0
     })
+
+    st.session_state.event_counter = 0
     
     # Reset points off turnover data
     st.session_state.points_off_turnovers = {'home': 0, 'away': 0}
@@ -1649,9 +1661,11 @@ def add_score_with_player(team, points, scorer_player=None, shot_type='field_goa
         'quarter': st.session_state.current_quarter,
         'lineup': st.session_state.current_lineup.copy(),
         'game_time': st.session_state.current_game_time,
-        'timestamp': datetime.now()
+        'timestamp': get_current_utc_time(),
+        'event_sequence': st.session_state.event_counter
     }
     st.session_state.score_history.append(score_event)
+    st.session_state.event_counter += 1  # ADD THIS NEW LINE
 
     # Update team score
     if team == "home":
@@ -1780,10 +1794,13 @@ def update_lineup(new_lineup, game_time):
             'new_lineup': new_lineup.copy(),
             'home_score': st.session_state.home_score,
             'away_score': st.session_state.away_score,
-            'is_quarter_end': False
+            'is_quarter_end': False,
+            'timestamp': get_current_utc_time(),
+            'event_sequence': st.session_state.event_counter
         }
 
         st.session_state.lineup_history.append(lineup_event)
+        st.session_state.event_counter += 1 
         st.session_state.current_lineup = new_lineup.copy()
         st.session_state.quarter_lineup_set = True
         st.session_state.current_game_time = game_time
@@ -2002,10 +2019,12 @@ def add_turnover(team, player=None):
         'quarter': st.session_state.current_quarter,
         'lineup': st.session_state.current_lineup.copy() if st.session_state.current_lineup else [],
         'game_time': st.session_state.current_game_time,
-        'timestamp': datetime.now()
+        'timestamp': get_current_utc_time(),  # CHANGE THIS
+        'event_sequence': st.session_state.event_counter  # ADD THIS
     }
     
     st.session_state.turnover_history.append(turnover_event)
+    st.session_state.event_counter += 1  # ADD THIS NEW LINE
     
     # Update individual player stats for home team only
     if team == "home" and player and player != "Team Turnover":
@@ -2014,7 +2033,7 @@ def add_turnover(team, player=None):
     st.session_state.last_turnover_event = {
         'turnover_team': team,
         'benefiting_team': 'away' if team == 'home' else 'home',
-        'turnover_timestamp': datetime.now(),
+        'turnover_timestamp': get_current_utc_time(),
         'turnover_quarter': st.session_state.current_quarter,
         'turnover_lineup': st.session_state.current_lineup.copy() if st.session_state.current_lineup else []
     }
@@ -2701,13 +2720,16 @@ def log_quarter_lineup_snapshot():
     lineup_event = {
         'quarter': st.session_state.current_quarter,
         'game_time': "0:00",  # force quarter end
-        'previous_lineup': st.session_state.current_lineup.copy(),  # same in + out
+        'previous_lineup': st.session_state.current_lineup.copy(),
         'new_lineup': st.session_state.current_lineup.copy(),
         'home_score': st.session_state.home_score,
         'away_score': st.session_state.away_score,
-        'is_quarter_end': True
+        'is_quarter_end': True,
+        'timestamp': get_current_utc_time(),
+        'event_sequence': st.session_state.event_counter
     }
     st.session_state.lineup_history.append(lineup_event)
+    st.session_state.event_counter += 1
 
 # ------------------------------------------------------------------
 # UPDATED: End quarter routine (logs 0:00 snapshot & advances period)
@@ -7029,7 +7051,7 @@ with tab2:
                                 })
                         
                         # Sort events by timestamp (or by order if no timestamp)
-                        all_events.sort(key=lambda x: x.get('timestamp', datetime.now()))
+                        all_events.sort(key=lambda x: (x['timestamp'], x.get('event_index', 0)))
                         
                         # Process all events in chronological order
                         for event in all_events:
@@ -8164,7 +8186,7 @@ with tab3:
                 })
         
         # Sort all events by timestamp AND event_index for stable ordering
-        all_events.sort(key=lambda x: (x['timestamp'], x.get('event_index', 0)))
+        all_events.sort(key=lambda x: x.get('event_sequence', 0))
         
         # Display events sequentially
         if all_events:
