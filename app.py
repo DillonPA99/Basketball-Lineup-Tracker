@@ -6781,7 +6781,6 @@ with tab1:
         if high_priority_suggestions:
             st.warning(f"💡 **AI Suggestion:** {high_priority_suggestions[0]['suggestion']}")
 
-        if len(st.session_state.score_history) >= 5:
         st.divider()
         
         with st.container():
