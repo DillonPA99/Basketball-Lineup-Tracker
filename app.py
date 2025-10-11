@@ -8096,50 +8096,132 @@ with tab3:
     if not st.session_state.score_history and not st.session_state.lineup_history and not st.session_state.quarter_end_history:
         st.info("No events logged yet.")
     else:
-        # Combine all events
+        # Combine all events with timestamps for proper chronological ordering
         all_events = []
+        
         # Add score events
         for score in st.session_state.score_history:
+            event_time = score.get('timestamp', datetime.now())
             all_events.append({
+                'timestamp': event_time,
                 'type': 'Score',
+                'team': score['team'].title(),
                 'description': f"{score['team'].title()} +{score['points']} points",
                 'quarter': score['quarter'],
                 'game_time': score.get('game_time', 'Unknown'),
-                'details': f"Lineup: {' | '.join(score['lineup'])}"
+                'details': f"Lineup: {' | '.join(score['lineup'])}",
+                'scorer': score.get('scorer', 'Team'),
+                'shot_type': score.get('shot_type', 'unknown'),
+                'made': score.get('made', True)
             })
-        # Add lineup events (including quarter-end snapshots)
+        
+        # Add lineup events (excluding quarter-end snapshots)
         for lineup in st.session_state.lineup_history:
-            if lineup.get('is_quarter_end'):
-                desc = f"{lineup['quarter']} ended (snapshot)"
-            else:
-                desc = "New lineup set"
-            all_events.append({
-                'type': 'Lineup Change' if not lineup.get('is_quarter_end') else 'Quarter End Snapshot',
-                'description': desc,
-                'quarter': lineup['quarter'],
-                'game_time': lineup.get('game_time', 'Unknown'),
-                'details': f"Players: {' | '.join(lineup['new_lineup'])}"
-            })
-        # Add quarter end events (legacy)
+            if not lineup.get('is_quarter_end'):
+                event_time = lineup.get('timestamp', datetime.now())
+                all_events.append({
+                    'timestamp': event_time,
+                    'type': 'Lineup Change',
+                    'team': 'Home',
+                    'description': "Lineup substitution",
+                    'quarter': lineup['quarter'],
+                    'game_time': lineup.get('game_time', 'Unknown'),
+                    'details': f"New lineup: {' | '.join(lineup['new_lineup'])}",
+                    'previous_lineup': lineup.get('previous_lineup', [])
+                })
+        
+        # Add quarter end events
         for quarter_end in st.session_state.quarter_end_history:
+            # Try to find timestamp from lineup history
+            event_time = datetime.now()
+            for lineup in st.session_state.lineup_history:
+                if lineup.get('is_quarter_end') and lineup.get('quarter') == quarter_end['quarter']:
+                    event_time = lineup.get('timestamp', datetime.now())
+                    break
+            
             all_events.append({
+                'timestamp': event_time,
                 'type': 'Quarter End',
+                'team': 'Both',
                 'description': f"{quarter_end['quarter']} ended",
                 'quarter': quarter_end['quarter'],
-                'game_time': quarter_end.get('game_time', 'Unknown'),
+                'game_time': quarter_end.get('game_time', '0:00'),
                 'details': f"Final Score: {quarter_end['final_score']}"
             })
         
-        # Display events sequentially numbered
-        for i, event in enumerate(all_events, 1):
-            st.subheader(f"{i}")
-            st.write(f"**Type:** {event['type']}")
-            st.write(f"**Quarter:** {event['quarter']}")
-            st.write(f"**Game Time:** {event['game_time']}")
-            st.write(f"**Description:** {event['description']}")
-            st.write(f"**Details:** {event['details']}")
-            st.divider()
-
+        # Add turnover events
+        for turnover in st.session_state.turnover_history:
+            event_time = turnover.get('timestamp', datetime.now())
+            player_text = f" by {turnover['player']}" if turnover.get('player') else " (Team)"
+            all_events.append({
+                'timestamp': event_time,
+                'type': 'Turnover',
+                'team': turnover['team'].title(),
+                'description': f"{turnover['team'].title()} turnover{player_text}",
+                'quarter': turnover['quarter'],
+                'game_time': turnover.get('game_time', 'Unknown'),
+                'details': f"Lineup: {' | '.join(turnover.get('lineup', []))}" if turnover.get('lineup') else "No lineup info"
+            })
+        
+        # Sort all events by timestamp
+        all_events.sort(key=lambda x: x['timestamp'])
+        
+        # Display events sequentially
+        if all_events:
+            st.info(f"📋 Showing {len(all_events)} game events in chronological order")
+            
+            for i, event in enumerate(all_events, 1):
+                # Create color-coded header based on event type
+                if event['type'] == 'Score':
+                    if event.get('made', True):
+                        header_color = "🟢" if event['team'] == 'Home' else "🔵"
+                    else:
+                        header_color = "⚪"  # Missed shot
+                elif event['type'] == 'Lineup Change':
+                    header_color = "🟠"
+                elif event['type'] == 'Quarter End':
+                    header_color = "🟣"
+                elif event['type'] == 'Turnover':
+                    header_color = "🔴"
+                else:
+                    header_color = "⚫"
+                
+                # Create expander with summary
+                summary = f"{header_color} **Event #{i}** - {event['type']}: {event['description']} ({event['quarter']} @ {event['game_time']})"
+                
+                with st.expander(summary, expanded=False):
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.write(f"**Type:** {event['type']}")
+                        st.write(f"**Team:** {event['team']}")
+                        st.write(f"**Quarter:** {event['quarter']}")
+                        st.write(f"**Game Time:** {event['game_time']}")
+                    
+                    with col2:
+                        if event['type'] == 'Score':
+                            shot_type_map = {
+                                'free_throw': 'Free Throw',
+                                'field_goal': '2-Point FG',
+                                'three_pointer': '3-Point FG'
+                            }
+                            shot_type = shot_type_map.get(event.get('shot_type', 'unknown'), 'Shot')
+                            result = "Made ✓" if event.get('made', True) else "Missed ✗"
+                            st.write(f"**Shot Type:** {shot_type}")
+                            st.write(f"**Result:** {result}")
+                            if event.get('scorer') and event['scorer'] != 'Team':
+                                scorer_name = event['scorer'].split('(')[0].strip() if '(' in event['scorer'] else event['scorer']
+                                st.write(f"**Scorer:** {scorer_name}")
+                        elif event['type'] == 'Lineup Change':
+                            if event.get('previous_lineup'):
+                                st.write(f"**Players Out:** {len(event['previous_lineup'])}")
+                    
+                    st.write(f"**Details:** {event['details']}")
+                    
+                    # Show timestamp for debugging if needed
+                    # st.caption(f"Timestamp: {event['timestamp'].strftime('%H:%M:%S')}")
+        else:
+            st.info("No events to display yet.")
 # ------------------------------------------------------------------
 # Tab 4: Season Statistics
 # ------------------------------------------------------------------
