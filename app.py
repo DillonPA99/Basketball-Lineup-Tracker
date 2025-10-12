@@ -8608,30 +8608,48 @@ with tab3:
         st.write("""
         **What you'll see here once the game progresses:**
         
-        🎯 **Win Probability** - Real-time winning chances based on score, momentum, and efficiency
+        🎯 **Win Probability** - Real-time chances of winning based on:
+        - Current score differential
+        - Recent momentum
+        - Offensive efficiency trends
+        - Time remaining
+        - Turnover differential
         
-        🔮 **Predicted Final Score** - Projected outcome using current pace and trends
+        🔮 **Predicted Final Score** - Projected outcome using:
+        - Current pace and scoring rate
+        - Momentum adjustments
+        - Efficiency trend analysis
         
         📈 **Momentum Analysis** - Track scoring runs and momentum shifts
         
-        ⚠️ **Critical Moments** - Automated alerts for key game situations
+        ⚠️ **Critical Moments** - Automated alerts for:
+        - Quarter endings
+        - Clutch time situations
+        - Momentum swings
+        - Comeback opportunities
         
-        💡 **AI Coaching Suggestions** - Strategic recommendations for optimal play
+        💡 **AI Coaching Suggestions** - Strategic recommendations based on:
+        - Momentum trends
+        - Offensive efficiency
+        - Turnover management
+        - Shot selection
+        - Win probability scenarios
         """)
     else:
-        # Main game flow prediction display
+        # Display the full AI game flow prediction section
         display_game_flow_prediction()
         
-        st.divider()
-        st.subheader("🧠 Detailed AI Analysis")
+        # Removed the st.divider() here
         
-        # Get all metrics once
+        # Additional AI Coaching Section
+        st.subheader("🧠 Detailed AI Coaching Analysis")
+        
+        # Get all AI insights
         momentum_score, momentum_dir = calculate_momentum_score()
         eff_trend, current_ppp, projected_ppp = calculate_scoring_efficiency_trend()
         win_prob, factors = calculate_win_probability()
         critical_moments = identify_critical_moments()
         suggestions = get_ai_coaching_suggestion()
-        home_tos, away_tos = get_team_turnovers()
         
         # Strategic Overview (moved to top for quick reference)
         col1, col2 = st.columns(2)
