@@ -8913,9 +8913,10 @@ with tab4:
         
         # Add score events
         for i, score in enumerate(st.session_state.score_history):
-            event_time = score.get('timestamp', datetime.now())
+            event_seq = score.get('event_sequence', i * 3)  # Use event_sequence if available, otherwise estimate
             all_events.append({
-                'timestamp': event_time,
+                'event_sequence': event_seq,
+                'timestamp': score.get('timestamp', datetime.now()),
                 'type': 'Score',
                 'team': score['team'].title(),
                 'description': f"{score['team'].title()} +{score['points']} points",
@@ -8924,58 +8925,55 @@ with tab4:
                 'details': f"Lineup: {' | '.join(score['lineup'])}",
                 'scorer': score.get('scorer', 'Team'),
                 'shot_type': score.get('shot_type', 'unknown'),
-                'made': score.get('made', True),
-                'event_index': i  # Add index for stable sorting
+                'made': score.get('made', True)
             })
         
         # Add turnover events
         for i, turnover in enumerate(st.session_state.turnover_history):
-            event_time = turnover.get('timestamp', datetime.now())
+            event_seq = turnover.get('event_sequence', (len(st.session_state.score_history) + i) * 3 + 1)
             player_text = f" by {turnover['player']}" if turnover.get('player') else " (Team)"
             all_events.append({
-                'timestamp': event_time,
+                'event_sequence': event_seq,
+                'timestamp': turnover.get('timestamp', datetime.now()),
                 'type': 'Turnover',
                 'team': turnover['team'].title(),
                 'description': f"{turnover['team'].title()} turnover{player_text}",
                 'quarter': turnover['quarter'],
                 'game_time': turnover.get('game_time', 'Unknown'),
-                'details': f"Lineup: {' | '.join(turnover.get('lineup', []))}" if turnover.get('lineup') else "No lineup info",
-                'event_index': i + len(st.session_state.score_history)
+                'details': f"Lineup: {' | '.join(turnover.get('lineup', []))}" if turnover.get('lineup') else "No lineup info"
             })
         
-        # Add lineup events (excluding quarter-end snapshots AND including their timestamps)
-        lineup_event_index = len(st.session_state.score_history) + len(st.session_state.turnover_history)
+        # Add lineup events (excluding quarter-end snapshots)
         for i, lineup in enumerate(st.session_state.lineup_history):
-            # Get timestamp from lineup event itself
-            event_time = lineup.get('timestamp', datetime.now())
+            event_seq = lineup.get('event_sequence', (len(st.session_state.score_history) + len(st.session_state.turnover_history) + i) * 3 + 2)
             
             if lineup.get('is_quarter_end'):
-                # This is a quarter end snapshot - treat it as quarter end
+                # Quarter end snapshot
                 all_events.append({
-                    'timestamp': event_time,
+                    'event_sequence': event_seq,
+                    'timestamp': lineup.get('timestamp', datetime.now()),
                     'type': 'Quarter End',
                     'team': 'Both',
                     'description': f"{lineup['quarter']} ended",
                     'quarter': lineup['quarter'],
                     'game_time': '0:00',
-                    'details': f"Final Score: {lineup.get('home_score', 0)}-{lineup.get('away_score', 0)}",
-                    'event_index': lineup_event_index + i
+                    'details': f"Final Score: {lineup.get('home_score', 0)}-{lineup.get('away_score', 0)}"
                 })
             else:
                 # Regular lineup change
                 all_events.append({
-                    'timestamp': event_time,
+                    'event_sequence': event_seq,
+                    'timestamp': lineup.get('timestamp', datetime.now()),
                     'type': 'Lineup Change',
                     'team': 'Home',
                     'description': "Lineup substitution",
                     'quarter': lineup['quarter'],
                     'game_time': lineup.get('game_time', 'Unknown'),
                     'details': f"New lineup: {' | '.join(lineup['new_lineup'])}",
-                    'previous_lineup': lineup.get('previous_lineup', []),
-                    'event_index': lineup_event_index + i
+                    'previous_lineup': lineup.get('previous_lineup', [])
                 })
         
-        # Sort all events by timestamp AND event_index for stable ordering
+        # Sort by event_sequence (which is reliable and always present)
         all_events.sort(key=lambda x: x.get('event_sequence', 0))
         
         # Display events sequentially
