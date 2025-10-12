@@ -7727,37 +7727,6 @@ with tab2:
                         
                         st.plotly_chart(fig, use_container_width=True)
                         
-                        # Show lineup change details
-                        if lineup_changes:
-                            with st.expander(f"🔄 Lineup Changes ({len(lineup_changes)} total)"):
-                                st.write("**Impact of Substitutions:**")
-                                
-                                for i, lc in enumerate(lineup_changes):
-                                    # Calculate margin change after this substitution
-                                    # Find the next few events after this lineup change
-                                    next_events = timeline_df[timeline_df['Index'] > lc['Index']].head(5)
-                                    
-                                    if len(next_events) > 0:
-                                        margin_before = lc['Margin']
-                                        margin_after = next_events['Margin'].iloc[-1]
-                                        margin_change = margin_after - margin_before
-                                        
-                                        col1, col2 = st.columns([3, 1])
-                                        
-                                        with col1:
-                                            st.write(f"**Sub #{i+1}** - {lc['Quarter']} at {lc['Game Time']}")
-                                            st.caption(f"New: {lc['New Lineup']}")
-                                            
-                                        with col2:
-                                            if margin_change > 0:
-                                                st.success(f"+{margin_change} pts")
-                                            elif margin_change < 0:
-                                                st.error(f"{margin_change} pts")
-                                            else:
-                                                st.info("Even")
-                                        
-                                        st.divider()
-                        
                         # Add quarter markers if available
                         if st.session_state.quarter_end_history:
                             st.write("**Quarter Snapshots:**")
