@@ -7521,7 +7521,7 @@ with tab2:
 
                 # Performance Over Time Graph
                 st.subheader("📈 Performance Over Time")
-
+                
                 if st.session_state.score_history or st.session_state.lineup_history:
                     # Create timeline data from score history
                     timeline_data = []
@@ -7554,7 +7554,8 @@ with tab2:
                             'type': 'score',
                             'data': score_event,
                             'index': i,
-                            'timestamp': score_event.get('timestamp', datetime.now())
+                            'timestamp': score_event.get('timestamp', datetime.now()),
+                            'event_sequence': score_event.get('event_sequence', i)
                         })
                     
                     # Add lineup change events (excluding quarter-end snapshots)
@@ -7564,11 +7565,12 @@ with tab2:
                                 'type': 'lineup',
                                 'data': lineup_event,
                                 'index': i,
-                                'timestamp': lineup_event.get('timestamp', datetime.now())
+                                'timestamp': lineup_event.get('timestamp', datetime.now()),
+                                'event_sequence': lineup_event.get('event_sequence', len(st.session_state.score_history) + i)
                             })
                     
-                    # Sort events by timestamp (or by order if no timestamp)
-                    all_events.sort(key=lambda x: (x['timestamp'], x.get('event_index', 0)))
+                    # Sort events by event_sequence for proper ordering
+                    all_events.sort(key=lambda x: x.get('event_sequence', 0))
                     
                     # Process all events in chronological order
                     for event in all_events:
@@ -7657,7 +7659,7 @@ with tab2:
                             customdata=timeline_df[['Event', 'Quarter', 'Game Time', 'Home Score', 'Away Score']].values
                         ))
                         
-                        # Add vertical lines for lineup changes - NOW USING CORRECT Index
+                        # Add vertical lines for lineup changes - USING CORRECT Index
                         for lineup_change in lineup_changes:
                             fig.add_vline(
                                 x=lineup_change['Index'],  # Use the Index from our timeline
@@ -7666,17 +7668,19 @@ with tab2:
                                 line_width=2,
                                 opacity=0.7
                             )
-                            # Add annotation at the top
+                            # Add annotation at consistent position
+                            max_margin = max(timeline_df['Margin'].max(), 10)  # Use at least 10 for positioning
                             fig.add_annotation(
                                 x=lineup_change['Index'],
-                                y=timeline_df['Margin'].max() * 0.9,
+                                y=max_margin * 0.95,  # Position near top
                                 text="SUB",
                                 showarrow=False,
                                 font=dict(size=9, color="orange"),
-                                yshift=10
+                                yshift=10,
+                                yanchor='bottom'
                             )
                         
-                        # Add vertical lines for quarter ends - NOW USING CORRECT Index
+                        # Add vertical lines for quarter ends - FIXED VERSION
                         quarter_end_rows = timeline_df[timeline_df['Event Type'] == 'Quarter End']
                         for _, qe_row in quarter_end_rows.iterrows():
                             fig.add_vline(
@@ -7686,14 +7690,16 @@ with tab2:
                                 line_width=2,
                                 opacity=0.7
                             )
-                            # Add annotation
+                            # Add annotation - FIXED positioning
+                            max_margin = max(timeline_df['Margin'].max(), 10)  # Use at least 10 for positioning
                             fig.add_annotation(
                                 x=qe_row['Index'],
-                                y=timeline_df['Margin'].max() * 0.9,
+                                y=max_margin * 0.95,  # Position near top, same as substitutions
                                 text=qe_row['Event'],
                                 showarrow=False,
                                 font=dict(size=9, color="purple"),
-                                yshift=25
+                                yshift=25,  # Additional shift up
+                                yanchor='bottom'  # Anchor to bottom so it grows upward
                             )
                         
                         # Add zero line (tie game)
@@ -7722,6 +7728,10 @@ with tab2:
                                 tickvals=list(range(0, len(timeline_df), max(1, len(timeline_df)//15))),
                                 ticktext=[f"{timeline_df.iloc[i]['Quarter']}\n{timeline_df.iloc[i]['Game Time']}" 
                                          for i in range(0, len(timeline_df), max(1, len(timeline_df)//15))]
+                            ),
+                            # Extend y-axis slightly to ensure annotations don't get cut off
+                            yaxis=dict(
+                                range=[min_margin * 1.1, max_margin * 1.15]
                             )
                         )
                         
