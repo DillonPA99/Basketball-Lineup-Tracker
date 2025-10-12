@@ -6759,6 +6759,115 @@ with tab1:
     if not st.session_state.quarter_lineup_set:
         st.warning("⚠️ Please set a starting lineup for this quarter before tracking home team player stats.")
 
+        # Lineup management section
+    st.subheader("Lineup Management")
+
+    # Show current quarter lineup status
+    if not st.session_state.quarter_lineup_set:
+        st.info(f"🏀 Please set the starting lineup for {st.session_state.current_quarter}")
+
+    # Available players (now from roster)
+    available_players = [f"{p['name']} (#{p['jersey']})" for p in st.session_state.roster]
+
+    # Current lineup display
+    if st.session_state.current_lineup:
+        st.write("**Players on Court:**")
+        lineup_cols = st.columns(5)
+        for i, player in enumerate(st.session_state.current_lineup):
+            with lineup_cols[i]:
+                st.info(f"🏀 {player}")
+    else:
+        st.warning("No players currently on court")
+
+    # Substitution Management (only if lineup is set)
+    if st.session_state.quarter_lineup_set:
+        st.write("**Make Substitutions:**")
+
+        # Two-column layout for substitutions
+        sub_col1, sub_col2 = st.columns(2)
+
+        with sub_col1:
+            st.write("**Players Coming Out:**")
+            players_out = st.multiselect(
+                "Select players to substitute out",
+                st.session_state.current_lineup,
+                key="players_out",
+                help="Choose players currently on court to substitute out"
+            )
+
+        with sub_col2:
+            st.write("**Players Coming In:**")
+            # Available players for substitution (not currently on court)
+            available_for_sub = [p for p in available_players if p not in st.session_state.current_lineup]
+            players_in = st.multiselect(
+                "Select players to substitute in",
+                available_for_sub,
+                key="players_in",
+                help="Choose players from bench to substitute in"
+            )
+
+        # Time input for substitution
+        game_time = st.text_input(
+            "Game Time (MM:SS)",
+            value=st.session_state.current_game_time,
+            help="Enter time remaining in current quarter (e.g., 5:30 for 5 minutes 30 seconds left)",
+            placeholder="MM:SS format (e.g., 5:30)"
+        )
+
+        # Show what the new lineup will be
+        if len(players_out) == len(players_in) and len(players_out) > 0:
+            new_lineup = [p for p in st.session_state.current_lineup if p not in players_out] + players_in
+            if len(new_lineup) == 5:
+                st.info(f"**New lineup will be:** {' | '.join(new_lineup)}")
+
+        if st.button("🔄 Make Substitution"):
+            if len(players_out) != len(players_in):
+                st.error("Number of players coming out must equal number coming in!")
+            elif len(players_out) == 0:
+                st.error("Please select at least one player to substitute!")
+            else:
+                # Validate game time before making substitution
+                is_valid_time, time_message = validate_game_time(game_time, st.session_state.quarter_length)
+                if not is_valid_time:
+                    st.error(f"Invalid game time: {time_message}")
+                else:
+                    new_lineup = [p for p in st.session_state.current_lineup if p not in players_out] + players_in
+                    if len(new_lineup) == 5:
+                        success, message = update_lineup(new_lineup, game_time)
+                        if success:
+                            st.success(f"✅ Substitution made! Game clock updated to {game_time}")
+                            st.info(f"Out: {', '.join(players_out)} | In: {', '.join(players_in)}")
+                            st.rerun()
+                        else:
+                            st.error(f"Error making substitution: {message}")
+                    else:
+                        st.error("Invalid lineup after substitution!")
+    else:
+        # Show lineup selection for new quarter
+        st.write("**Set Starting Lineup:**")
+        quick_lineup = st.multiselect(
+            "Choose 5 players for the court",
+            available_players,
+            max_selections=5,
+            key="quarter_lineup",
+            help="Select exactly 5 players to start the quarter"
+        )
+
+        if st.button("✅ Set Starting Lineup"):
+            if len(quick_lineup) != 5:
+                st.error("Please select exactly 5 players!")
+            else:
+                success, message = update_lineup(quick_lineup, st.session_state.current_game_time)
+                if success:
+                    st.success(f"Starting lineup set for {st.session_state.current_quarter}!")
+                    st.rerun()
+                else:
+                    st.error(f"Error setting lineup: {message}")
+
+    st.divider()
+    
+    display_lineup_recommendation()
+    
     # Side-by-side team scoring
     home_col, away_col = st.columns(2)
     
@@ -6950,10 +7059,7 @@ with tab1:
 
         if st.button(undo_text):
             undo_last_score()
-
-
-  
-    
+ 
     turnover_col1, turnover_col2 = st.columns(2)
     
     with turnover_col1:
@@ -7048,115 +7154,6 @@ with tab1:
             if undo_last_turnover():
                 st.success("Last turnover undone!")
                 st.rerun()
-
-    # Lineup management section
-    st.subheader("Lineup Management")
-
-    # Show current quarter lineup status
-    if not st.session_state.quarter_lineup_set:
-        st.info(f"🏀 Please set the starting lineup for {st.session_state.current_quarter}")
-
-    # Available players (now from roster)
-    available_players = [f"{p['name']} (#{p['jersey']})" for p in st.session_state.roster]
-
-    # Current lineup display
-    if st.session_state.current_lineup:
-        st.write("**Players on Court:**")
-        lineup_cols = st.columns(5)
-        for i, player in enumerate(st.session_state.current_lineup):
-            with lineup_cols[i]:
-                st.info(f"🏀 {player}")
-    else:
-        st.warning("No players currently on court")
-
-    # Substitution Management (only if lineup is set)
-    if st.session_state.quarter_lineup_set:
-        st.write("**Make Substitutions:**")
-
-        # Two-column layout for substitutions
-        sub_col1, sub_col2 = st.columns(2)
-
-        with sub_col1:
-            st.write("**Players Coming Out:**")
-            players_out = st.multiselect(
-                "Select players to substitute out",
-                st.session_state.current_lineup,
-                key="players_out",
-                help="Choose players currently on court to substitute out"
-            )
-
-        with sub_col2:
-            st.write("**Players Coming In:**")
-            # Available players for substitution (not currently on court)
-            available_for_sub = [p for p in available_players if p not in st.session_state.current_lineup]
-            players_in = st.multiselect(
-                "Select players to substitute in",
-                available_for_sub,
-                key="players_in",
-                help="Choose players from bench to substitute in"
-            )
-
-        # Time input for substitution
-        game_time = st.text_input(
-            "Game Time (MM:SS)",
-            value=st.session_state.current_game_time,
-            help="Enter time remaining in current quarter (e.g., 5:30 for 5 minutes 30 seconds left)",
-            placeholder="MM:SS format (e.g., 5:30)"
-        )
-
-        # Show what the new lineup will be
-        if len(players_out) == len(players_in) and len(players_out) > 0:
-            new_lineup = [p for p in st.session_state.current_lineup if p not in players_out] + players_in
-            if len(new_lineup) == 5:
-                st.info(f"**New lineup will be:** {' | '.join(new_lineup)}")
-
-        if st.button("🔄 Make Substitution"):
-            if len(players_out) != len(players_in):
-                st.error("Number of players coming out must equal number coming in!")
-            elif len(players_out) == 0:
-                st.error("Please select at least one player to substitute!")
-            else:
-                # Validate game time before making substitution
-                is_valid_time, time_message = validate_game_time(game_time, st.session_state.quarter_length)
-                if not is_valid_time:
-                    st.error(f"Invalid game time: {time_message}")
-                else:
-                    new_lineup = [p for p in st.session_state.current_lineup if p not in players_out] + players_in
-                    if len(new_lineup) == 5:
-                        success, message = update_lineup(new_lineup, game_time)
-                        if success:
-                            st.success(f"✅ Substitution made! Game clock updated to {game_time}")
-                            st.info(f"Out: {', '.join(players_out)} | In: {', '.join(players_in)}")
-                            st.rerun()
-                        else:
-                            st.error(f"Error making substitution: {message}")
-                    else:
-                        st.error("Invalid lineup after substitution!")
-    else:
-        # Show lineup selection for new quarter
-        st.write("**Set Starting Lineup:**")
-        quick_lineup = st.multiselect(
-            "Choose 5 players for the court",
-            available_players,
-            max_selections=5,
-            key="quarter_lineup",
-            help="Select exactly 5 players to start the quarter"
-        )
-
-        if st.button("✅ Set Starting Lineup"):
-            if len(quick_lineup) != 5:
-                st.error("Please select exactly 5 players!")
-            else:
-                success, message = update_lineup(quick_lineup, st.session_state.current_game_time)
-                if success:
-                    st.success(f"Starting lineup set for {st.session_state.current_quarter}!")
-                    st.rerun()
-                else:
-                    st.error(f"Error setting lineup: {message}")
-
-    st.divider()
-    
-    display_lineup_recommendation()
     
     st.divider()
     
