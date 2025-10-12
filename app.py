@@ -6779,13 +6779,13 @@ with tab1:
     else:
         st.warning("No players currently on court")
 
-    # Substitution Management (only if lineup is set)
+# Substitution Management (only if lineup is set)
     if st.session_state.quarter_lineup_set:
         st.write("**Make Substitutions:**")
-
+        
         # Two-column layout for substitutions
         sub_col1, sub_col2 = st.columns(2)
-
+        
         with sub_col1:
             st.write("**Players Coming Out:**")
             players_out = st.multiselect(
@@ -6794,7 +6794,7 @@ with tab1:
                 key="players_out",
                 help="Choose players currently on court to substitute out"
             )
-
+        
         with sub_col2:
             st.write("**Players Coming In:**")
             # Available players for substitution (not currently on court)
@@ -6805,21 +6805,64 @@ with tab1:
                 key="players_in",
                 help="Choose players from bench to substitute in"
             )
-
-        # Time input for substitution
-        game_time = st.text_input(
-            "Game Time (MM:SS)",
-            value=st.session_state.current_game_time,
-            help="Enter time remaining in current quarter (e.g., 5:30 for 5 minutes 30 seconds left)",
-            placeholder="MM:SS format (e.g., 5:30)"
+        
+        # ========== NEW TIME INPUT - iPhone-style scroll picker ==========
+        st.write("**Game Time:**")
+        
+        # Quick option: Use current clock
+        use_current = st.checkbox(
+            f"✓ Use current game clock ({st.session_state.current_game_time})", 
+            value=True,
+            key="use_current_clock"
         )
-
+        
+        if use_current:
+            game_time = st.session_state.current_game_time
+            st.info(f"⏱️ Substitution time: **{game_time}**")
+        else:
+            # Parse current time for defaults
+            try:
+                current_minutes = int(st.session_state.current_game_time.split(':')[0])
+                current_seconds = int(st.session_state.current_game_time.split(':')[1])
+            except:
+                current_minutes = st.session_state.quarter_length
+                current_seconds = 0
+            
+            st.write("**Select Time:**")
+            
+            # Create two columns for minutes and seconds
+            picker_col1, picker_col2 = st.columns(2)
+            
+            with picker_col1:
+                st.markdown("### Minutes")
+                minutes = st.selectbox(
+                    "min",
+                    options=list(range(st.session_state.quarter_length, -1, -1)),
+                    index=list(range(st.session_state.quarter_length, -1, -1)).index(current_minutes) if current_minutes in range(0, st.session_state.quarter_length + 1) else 0,
+                    key="sub_minutes_select",
+                    label_visibility="collapsed"
+                )
+            
+            with picker_col2:
+                st.markdown("### Seconds")
+                seconds = st.selectbox(
+                    "sec",
+                    options=list(range(59, -1, -1)),
+                    index=list(range(59, -1, -1)).index(current_seconds) if current_seconds in range(0, 60) else 0,
+                    key="sub_seconds_select",
+                    label_visibility="collapsed"
+                )
+            
+            game_time = f"{minutes}:{seconds:02d}"
+            st.success(f"⏱️ Substitution at: **{game_time}**")
+        # ========== END NEW TIME INPUT ==========
+        
         # Show what the new lineup will be
         if len(players_out) == len(players_in) and len(players_out) > 0:
             new_lineup = [p for p in st.session_state.current_lineup if p not in players_out] + players_in
             if len(new_lineup) == 5:
                 st.info(f"**New lineup will be:** {' | '.join(new_lineup)}")
-
+        
         if st.button("🔄 Make Substitution"):
             if len(players_out) != len(players_in):
                 st.error("Number of players coming out must equal number coming in!")
