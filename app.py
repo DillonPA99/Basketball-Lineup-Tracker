@@ -7638,7 +7638,7 @@ with tab2:
                             })
                     
                     # Sort events by timestamp (or by order if no timestamp)
-                    all_events.sort(key=lambda x: (x['timestamp'], x.get('event_index', 0)))
+                    all_events.sort(key=lambda x: x.get('event_sequence', 0))
                     
                     # Process all events in chronological order
                     for event in all_events:
