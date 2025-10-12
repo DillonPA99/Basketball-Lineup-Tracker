@@ -7213,6 +7213,11 @@ with tab2:
         st.metric("Scoring Plays", len(st.session_state.score_history))
     with col4:
         st.metric("Total Points", st.session_state.home_score + st.session_state.away_score)
+
+    # Team Shooting Comparison
+    pot_stats = get_points_off_turnovers_stats()
+    home_pot = pot_stats['team_stats'].get('home', 0)
+    away_pot = pot_stats['team_stats'].get('away', 0)
             
 
         # Shooting Statistics        
@@ -7279,11 +7284,6 @@ with tab2:
                     if made:
                         stats['three_pointers_made'] += 1
                         stats['field_goals_made'] += 1
-
-        # Team Shooting Comparison
-        pot_stats = get_points_off_turnovers_stats()
-        home_pot = pot_stats['team_stats'].get('home', 0)
-        away_pot = pot_stats['team_stats'].get('away', 0)
         
         team_col1, team_col2 = st.columns(2)
         
