@@ -6806,56 +6806,83 @@ with tab1:
                 help="Choose players from bench to substitute in"
             )
         
-        # ========== NEW TIME INPUT - iPhone-style scroll picker ==========
+        # Time input for substitution - iPhone-style scroll picker
         st.write("**Game Time:**")
         
-        # Quick option: Use current clock
-        use_current = st.checkbox(
-            f"✓ Use current game clock ({st.session_state.current_game_time})", 
-            value=True,
-            key="use_current_clock"
-        )
+        # Parse current time for defaults
+        try:
+            current_minutes = int(st.session_state.current_game_time.split(':')[0])
+            current_seconds = int(st.session_state.current_game_time.split(':')[1])
+        except:
+            current_minutes = st.session_state.quarter_length
+            current_seconds = 0
         
-        if use_current:
-            game_time = st.session_state.current_game_time
-            st.info(f"⏱️ Substitution time: **{game_time}**")
-        else:
-            # Parse current time for defaults
-            try:
-                current_minutes = int(st.session_state.current_game_time.split(':')[0])
-                current_seconds = int(st.session_state.current_game_time.split(':')[1])
-            except:
-                current_minutes = st.session_state.quarter_length
-                current_seconds = 0
+        # Ensure current_minutes doesn't exceed quarter_length
+        if current_minutes > st.session_state.quarter_length:
+            current_minutes = st.session_state.quarter_length
+        
+        # Determine the maximum allowed minute based on last substitution in this quarter
+        max_allowed_minutes = st.session_state.quarter_length
+        
+        if st.session_state.lineup_history:
+            # Find the most recent lineup change in the current quarter
+            current_quarter_subs = [
+                event for event in st.session_state.lineup_history 
+                if event.get('quarter') == st.session_state.current_quarter 
+                and not event.get('is_quarter_end')  # Exclude quarter-end snapshots
+            ]
             
-            st.write("**Select Time:**")
+            if current_quarter_subs:
+                # Get the last substitution time
+                last_sub = current_quarter_subs[-1]
+                last_sub_time = last_sub.get('game_time', f"{st.session_state.quarter_length}:00")
+                
+                try:
+                    last_sub_minutes = int(last_sub_time.split(':')[0])
+                    # Max minutes should be <= last substitution minutes
+                    max_allowed_minutes = min(last_sub_minutes, st.session_state.quarter_length)
+                except:
+                    max_allowed_minutes = st.session_state.quarter_length
+        
+        # Create two columns for minutes and seconds
+        picker_col1, picker_col2 = st.columns(2)
+        
+        with picker_col1:
+            st.markdown("### Minutes")
+            # Only show minutes from max_allowed_minutes down to 0
+            minute_options = list(range(max_allowed_minutes, -1, -1))
             
-            # Create two columns for minutes and seconds
-            picker_col1, picker_col2 = st.columns(2)
+            # Adjust current_minutes if it exceeds max_allowed
+            if current_minutes > max_allowed_minutes:
+                current_minutes = max_allowed_minutes
             
-            with picker_col1:
-                st.markdown("### Minutes")
-                minutes = st.selectbox(
-                    "min",
-                    options=list(range(st.session_state.quarter_length, -1, -1)),
-                    index=list(range(st.session_state.quarter_length, -1, -1)).index(current_minutes) if current_minutes in range(0, st.session_state.quarter_length + 1) else 0,
-                    key="sub_minutes_select",
-                    label_visibility="collapsed"
-                )
-            
-            with picker_col2:
-                st.markdown("### Seconds")
-                seconds = st.selectbox(
-                    "sec",
-                    options=list(range(59, -1, -1)),
-                    index=list(range(59, -1, -1)).index(current_seconds) if current_seconds in range(0, 60) else 0,
-                    key="sub_seconds_select",
-                    label_visibility="collapsed"
-                )
-            
-            game_time = f"{minutes}:{seconds:02d}"
+            minutes = st.selectbox(
+                "min",
+                options=minute_options,
+                index=minute_options.index(current_minutes) if current_minutes in minute_options else 0,
+                key="sub_minutes_select",
+                label_visibility="collapsed"
+            )
+        
+        with picker_col2:
+            st.markdown("### Seconds")
+            second_options = list(range(59, -1, -1))
+            seconds = st.selectbox(
+                "sec",
+                options=second_options,
+                index=second_options.index(current_seconds) if current_seconds in second_options else 0,
+                key="sub_seconds_select",
+                label_visibility="collapsed"
+            )
+        
+        game_time = f"{minutes}:{seconds:02d}"
+        
+        # Show selected time prominently with helpful context
+        if max_allowed_minutes < st.session_state.quarter_length:
             st.success(f"⏱️ Substitution at: **{game_time}**")
-        # ========== END NEW TIME INPUT ==========
+            st.caption(f"ℹ️ Time limited based on last sub at {current_quarter_subs[-1].get('game_time')}")
+        else:
+            st.success(f"⏱️ Substitution at: **{game_time}**")
         
         # Show what the new lineup will be
         if len(players_out) == len(players_in) and len(players_out) > 0:
