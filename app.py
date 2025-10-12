@@ -7521,7 +7521,7 @@ with tab2:
 
                 # Performance Over Time Graph
                 st.subheader("📈 Performance Over Time")
-                
+
                 if st.session_state.score_history or st.session_state.lineup_history:
                     # Create timeline data from score history
                     timeline_data = []
@@ -7554,8 +7554,7 @@ with tab2:
                             'type': 'score',
                             'data': score_event,
                             'index': i,
-                            'timestamp': score_event.get('timestamp', datetime.now()),
-                            'event_sequence': score_event.get('event_sequence', i)
+                            'timestamp': score_event.get('timestamp', datetime.now())
                         })
                     
                     # Add lineup change events (excluding quarter-end snapshots)
@@ -7565,12 +7564,11 @@ with tab2:
                                 'type': 'lineup',
                                 'data': lineup_event,
                                 'index': i,
-                                'timestamp': lineup_event.get('timestamp', datetime.now()),
-                                'event_sequence': lineup_event.get('event_sequence', len(st.session_state.score_history) + i)
+                                'timestamp': lineup_event.get('timestamp', datetime.now())
                             })
                     
-                    # Sort events by event_sequence for proper ordering
-                    all_events.sort(key=lambda x: x.get('event_sequence', 0))
+                    # Sort events by timestamp (or by order if no timestamp)
+                    all_events.sort(key=lambda x: (x['timestamp'], x.get('event_index', 0)))
                     
                     # Process all events in chronological order
                     for event in all_events:
