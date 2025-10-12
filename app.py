@@ -7153,10 +7153,7 @@ with tab1:
         if st.button(undo_text):
             if undo_last_turnover():
                 st.success("Last turnover undone!")
-                st.rerun()
-    
-    st.divider()
-    
+                st.rerun()    
 # ------------------------------------------------------------------
 # Tab 2: Analytics
 # ------------------------------------------------------------------
