@@ -7521,7 +7521,7 @@ with tab2:
 
                 # Performance Over Time Graph
                 st.subheader("📈 Performance Over Time")
-
+                
                 if st.session_state.score_history or st.session_state.lineup_history:
                     # Create timeline data from score history
                     timeline_data = []
@@ -7557,9 +7557,9 @@ with tab2:
                             'timestamp': score_event.get('timestamp', datetime.now())
                         })
                     
-                    # Add lineup change events (excluding quarter-end snapshots)
+                    # Add lineup change events (excluding quarter-end snapshots) - FILTER HERE
                     for i, lineup_event in enumerate(st.session_state.lineup_history):
-                        if not lineup_event.get('is_quarter_end', False):
+                        if not lineup_event.get('is_quarter_end', False):  # Only add non-quarter-end events
                             all_events.append({
                                 'type': 'lineup',
                                 'data': lineup_event,
@@ -7620,19 +7620,8 @@ with tab2:
                             })
                             event_counter += 1
                     
-                    # Add quarter end markers
-                    for qe in st.session_state.quarter_end_history:
-                        timeline_data.append({
-                            'Event': f"{qe['quarter']} End",
-                            'Quarter': qe['quarter'],
-                            'Game Time': '0:00',
-                            'Home Score': int(qe['final_score'].split('-')[0]),
-                            'Away Score': int(qe['final_score'].split('-')[1]),
-                            'Margin': int(qe['final_score'].split('-')[0]) - int(qe['final_score'].split('-')[1]),
-                            'Event Type': 'Quarter End',
-                            'Index': event_counter
-                        })
-                        event_counter += 1
+                    # NOTE: Quarter end markers are now removed from the graph
+                    # The quarter_end_history is not added to timeline_data anymore
                     
                     if len(timeline_data) > 1:
                         timeline_df = pd.DataFrame(timeline_data)
@@ -7657,10 +7646,10 @@ with tab2:
                             customdata=timeline_df[['Event', 'Quarter', 'Game Time', 'Home Score', 'Away Score']].values
                         ))
                         
-                        # Add vertical lines for lineup changes - NOW USING CORRECT Index
+                        # Add vertical lines for lineup changes
                         for lineup_change in lineup_changes:
                             fig.add_vline(
-                                x=lineup_change['Index'],  # Use the Index from our timeline
+                                x=lineup_change['Index'],
                                 line_dash="dot",
                                 line_color="orange",
                                 line_width=2,
@@ -7676,25 +7665,7 @@ with tab2:
                                 yshift=10
                             )
                         
-                        # Add vertical lines for quarter ends - NOW USING CORRECT Index
-                        quarter_end_rows = timeline_df[timeline_df['Event Type'] == 'Quarter End']
-                        for _, qe_row in quarter_end_rows.iterrows():
-                            fig.add_vline(
-                                x=qe_row['Index'],  # Use the Index from the dataframe
-                                line_dash="dash",
-                                line_color="purple",
-                                line_width=2,
-                                opacity=0.7
-                            )
-                            # Add annotation
-                            fig.add_annotation(
-                                x=qe_row['Index'],
-                                y=timeline_df['Margin'].max() * 0.9,
-                                text=qe_row['Event'],
-                                showarrow=False,
-                                font=dict(size=9, color="purple"),
-                                yshift=25
-                            )
+                        # Quarter end lines are removed - no longer adding them to the graph
                         
                         # Add zero line (tie game)
                         fig.add_hline(y=0, line_dash="dash", line_color="gray", 
@@ -7709,10 +7680,10 @@ with tab2:
                         fig.add_hrect(y0=min_margin, y1=0, 
                                      fillcolor="lightcoral", opacity=0.2, line_width=0)
                         
-                        # Update layout
+                        # Update layout - updated subtitle to reflect filtering
                         fig.update_layout(
                             title=f"Score Margin Throughout Game ({st.session_state.home_team_name} perspective)",
-                            xaxis_title="Game Progression (Orange lines = Substitutions, Purple lines = Quarter Ends)",
+                            xaxis_title="Game Progression (Orange lines = Substitutions)",
                             yaxis_title="Point Margin (+ = Leading, - = Trailing)",
                             hovermode='closest',
                             height=500,
