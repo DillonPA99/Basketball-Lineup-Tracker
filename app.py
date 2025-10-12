@@ -6759,7 +6759,7 @@ with tab1:
     if not st.session_state.quarter_lineup_set:
         st.warning("⚠️ Please set a starting lineup for this quarter before tracking home team player stats.")
 
-        # Lineup management section
+    # Lineup management section
     st.subheader("Lineup Management")
 
     # Show current quarter lineup status
@@ -6863,10 +6863,10 @@ with tab1:
                     st.rerun()
                 else:
                     st.error(f"Error setting lineup: {message}")
-
-    st.divider()
     
     display_lineup_recommendation()
+
+    st.divider()
     
     # Side-by-side team scoring
     home_col, away_col = st.columns(2)
