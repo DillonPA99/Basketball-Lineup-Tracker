@@ -315,6 +315,16 @@ def get_all_product_keys():
         st.error(f"Error fetching product keys: {str(e)}")
         return []
 
+@st.cache_data(ttl=300, show_spinner=False)
+def load_user_roster_cached(user_id):
+    """Cached version of load_user_roster - refreshes every 5 minutes"""
+    return load_user_roster(user_id)
+
+@st.cache_data(ttl=180, show_spinner=False)
+def get_user_game_sessions_cached(user_id, include_completed=True):
+    """Cached version of get_user_game_sessions - refreshes every 3 minutes"""
+    return get_user_game_sessions(user_id, include_completed)
+
 def toggle_product_key_status(key_id, is_active):
     """Enable/disable a product key."""
     try:
@@ -5323,7 +5333,7 @@ if not st.session_state.authenticated:
                             st.session_state.user_info = result
 
                             # Load roster if it exists
-                            roster_data, roster_name = load_user_roster(result['id'])
+                            roster_data, roster_name = load_user_roster_cached(result['id'])
                             if roster_data:
                                 st.session_state.roster = roster_data
                                 st.session_state.roster_set = True
@@ -5989,7 +5999,7 @@ with st.sidebar:
     # View all saved games
     with st.expander("📋 My Saved Games"):
         try:
-            saved_sessions = get_user_game_sessions(st.session_state.user_info['id'], include_completed=False)
+            saved_sessions = get_user_game_sessions_cached(st.session_state.user_info['id'], include_completed=False)
             
             if saved_sessions:
                 for session in saved_sessions[:5]:  # Show last 5
@@ -6271,6 +6281,14 @@ with st.sidebar:
         # Clear session
         for key in list(st.session_state.keys()):
             del st.session_state[key]
+        st.rerun()
+
+    with st.expander("⚡ App Performance"):
+    st.caption("If data seems outdated, clear the cache to force a refresh")
+    if st.button("🔄 Clear Cache & Refresh"):
+        st.cache_data.clear()
+        st.success("Cache cleared! Reloading...")
+        time.sleep(0.5)
         st.rerun()
         
     # Admin panel access
@@ -9041,10 +9059,20 @@ with tab5:
     st.header("🏆 Season Statistics")
     
     st.info("Season stats aggregate data from your saved games")
+
+    if 'season_stats_loaded' not in st.session_state:
+        st.session_state.season_stats_loaded = False
+    
+    if not st.session_state.season_stats_loaded:
+        if st.button("📊 Load Season Statistics", type="primary", use_container_width=True):
+            st.session_state.season_stats_loaded = True
+            st.rerun()
+        st.info("💡 Click above to load season statistics. This calculates aggregated data from all your games.")
+        st.stop()
     
     # Load ALL games first to show in filter
     with st.spinner("Loading your games..."):
-        all_available_games = get_user_game_sessions(st.session_state.user_info['id'], include_completed=False)
+        all_available_games = get_user_game_sessions_cached(st.session_state.user_info['id'], include_completed=False)
     
     if not all_available_games:
         st.warning("No saved games found. Save and track games to see season statistics.")
