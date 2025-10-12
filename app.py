@@ -6283,7 +6283,7 @@ with st.sidebar:
             del st.session_state[key]
         st.rerun()
 
-    with st.expander("⚡ App Performance"):
+with st.expander("⚡ App Performance"):
     st.caption("If data seems outdated, clear the cache to force a refresh")
     if st.button("🔄 Clear Cache & Refresh"):
         st.cache_data.clear()
