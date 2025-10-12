@@ -8022,64 +8022,6 @@ with tab2:
 
                 """)
                 
-                # Shooting Percentage Charts (keep existing charts unchanged)                    
-                chart_col1, chart_col2 = st.columns(2)
-                
-                with chart_col1:
-                    # Field Goal Percentage Chart
-                    fg_chart_data = []
-                    for _, row in player_shooting_df.iterrows():
-                        if '/' in row['FG'] and row['FG'] != '0/0':
-                            made, attempted = map(int, row['FG'].split('/'))
-                            if attempted > 0:
-                                fg_chart_data.append({
-                                    'Player': row['Player'],
-                                    'FG%': made/attempted*100,
-                                    'Attempts': attempted
-                                })
-                    
-                    if fg_chart_data:
-                        fg_chart_df = pd.DataFrame(fg_chart_data)
-                        fig_fg = px.bar(
-                            fg_chart_df,
-                            x='Player',
-                            y='FG%',
-                            title='Field Goal Percentage by Player',
-                            text='FG%',
-                            color='Attempts',
-                            color_continuous_scale='viridis'
-                        )
-                        fig_fg.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
-                        fig_fg.update_layout(yaxis_title='Field Goal %', yaxis_range=[0, 100])
-                        st.plotly_chart(fig_fg, use_container_width=True)
-                
-                with chart_col2:
-                    # 3-Point Percentage Chart
-                    three_pt_chart_data = []
-                    for _, row in player_shooting_df.iterrows():
-                        if '/' in row['3PT'] and row['3PT'] != '0/0':
-                            made, attempted = map(int, row['3PT'].split('/'))
-                            if attempted > 0:
-                                three_pt_chart_data.append({
-                                    'Player': row['Player'],
-                                    '3PT%': made/attempted*100,
-                                    'Attempts': attempted
-                                })
-                    
-                    if three_pt_chart_data:
-                        three_pt_chart_df = pd.DataFrame(three_pt_chart_data)
-                        fig_3pt = px.bar(
-                            three_pt_chart_df,
-                            x='Player',
-                            y='3PT%',
-                            title='3-Point Percentage by Player',
-                            text='3PT%',
-                            color='Attempts',
-                            color_continuous_scale='plasma'
-                        )
-                        fig_3pt.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
-                        fig_3pt.update_layout(yaxis_title='3-Point %', yaxis_range=[0, 100])
-                        st.plotly_chart(fig_3pt, use_container_width=True)
             else:
                 st.info("No individual player statistics available yet.")
         else:
