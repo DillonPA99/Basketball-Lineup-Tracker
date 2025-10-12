@@ -7220,808 +7220,736 @@ with tab2:
     away_pot = pot_stats['team_stats'].get('away', 0)
             
 
-        # Shooting Statistics        
-        # Initialize team shooting stats
-        home_shooting_stats = {
-            'free_throws_made': 0,
-            'free_throws_attempted': 0,
-            'field_goals_made': 0,
-            'field_goals_attempted': 0,
-            'three_pointers_made': 0,
-            'three_pointers_attempted': 0,
-            'total_points': 0
-        }
+    # Shooting Statistics        
+    # Initialize team shooting stats
+    home_shooting_stats = {
+        'free_throws_made': 0,
+        'free_throws_attempted': 0,
+        'field_goals_made': 0,
+        'field_goals_attempted': 0,
+        'three_pointers_made': 0,
+        'three_pointers_attempted': 0,
+        'total_points': 0
+    }
 
-        away_shooting_stats = {
-            'free_throws_made': 0,
-            'free_throws_attempted': 0,
-            'field_goals_made': 0,
-            'field_goals_attempted': 0,
-            'three_pointers_made': 0,
-            'three_pointers_attempted': 0,
-            'total_points': 0
-        }
+    away_shooting_stats = {
+        'free_throws_made': 0,
+        'free_throws_attempted': 0,
+        'field_goals_made': 0,
+        'field_goals_attempted': 0,
+        'three_pointers_made': 0,
+        'three_pointers_attempted': 0,
+        'total_points': 0
+    }
 
-        # Process score history for team stats with improved logic
-        for score_event in st.session_state.score_history:
-            team = score_event.get('team')
-            shot_type = score_event.get('shot_type', 'field_goal')
-            made = score_event.get('made', True)
-            attempted = score_event.get('attempted', True)
-            points = score_event.get('points', 0)
-            
-            # Only process if we have a valid team
-            if not team or team not in ['home', 'away']:
-                continue
-            
-            # Select the correct stats dictionary
-            if team == 'home':
-                stats = home_shooting_stats
-            elif team == 'away':
-                stats = away_shooting_stats
-            else:
-                continue  # Skip invalid teams
-            
-            # Add points to team total
-            stats['total_points'] += points
-            
-            # Only process shots that were actually attempted
-            if attempted:
-                if shot_type == 'free_throw':
-                    stats['free_throws_attempted'] += 1
-                    if made:
-                        stats['free_throws_made'] += 1
-                        
-                elif shot_type == 'field_goal':
-                    stats['field_goals_attempted'] += 1
-                    if made:
-                        stats['field_goals_made'] += 1
-                        
-                elif shot_type == 'three_pointer':
-                    # 3PT shots count as both 3PT and FG
-                    stats['three_pointers_attempted'] += 1
-                    stats['field_goals_attempted'] += 1
-                    if made:
-                        stats['three_pointers_made'] += 1
-                        stats['field_goals_made'] += 1
+    # Process score history for team stats with improved logic
+    for score_event in st.session_state.score_history:
+        team = score_event.get('team')
+        shot_type = score_event.get('shot_type', 'field_goal')
+        made = score_event.get('made', True)
+        attempted = score_event.get('attempted', True)
+        points = score_event.get('points', 0)
         
-        team_col1, team_col2 = st.columns(2)
+        # Only process if we have a valid team
+        if not team or team not in ['home', 'away']:
+            continue
         
-        with team_col1:
-            st.markdown("### Home Team")
-            
-            st.metric("Total Points", home_shooting_stats['total_points'])
-
-            # Total Field Goals
-            fg_pct = (home_shooting_stats['field_goals_made'] / home_shooting_stats['field_goals_attempted'] * 100) if home_shooting_stats['field_goals_attempted'] > 0 else 0
-            st.metric(
-                "Total FG", 
-                f"{home_shooting_stats['field_goals_made']}/{home_shooting_stats['field_goals_attempted']}", 
-                f"{fg_pct:.1f}%"
-            )
-            
-            # 2-Point Field Goals (FG - 3PT)
-            two_pt_made = home_shooting_stats['field_goals_made'] - home_shooting_stats['three_pointers_made']
-            two_pt_attempted = home_shooting_stats['field_goals_attempted'] - home_shooting_stats['three_pointers_attempted']
-            two_pt_pct = (two_pt_made / two_pt_attempted * 100) if two_pt_attempted > 0 else 0
-            st.metric(
-                "2-Point FG", 
-                f"{two_pt_made}/{two_pt_attempted}", 
-                f"{two_pt_pct:.1f}%"
-            )
-            
-            # 3-Point Field Goals
-            three_pt_pct = (home_shooting_stats['three_pointers_made'] / home_shooting_stats['three_pointers_attempted'] * 100) if home_shooting_stats['three_pointers_attempted'] > 0 else 0
-            st.metric(
-                "3-Point FG", 
-                f"{home_shooting_stats['three_pointers_made']}/{home_shooting_stats['three_pointers_attempted']}", 
-                f"{three_pt_pct:.1f}%"
-            )
-
-            # Free Throws
-            ft_pct = (home_shooting_stats['free_throws_made'] / home_shooting_stats['free_throws_attempted'] * 100) if home_shooting_stats['free_throws_attempted'] > 0 else 0
-            st.metric(
-                "Free Throws", 
-                f"{home_shooting_stats['free_throws_made']}/{home_shooting_stats['free_throws_attempted']}", 
-                f"{ft_pct:.1f}%"
-            )
-
-            # Points Off Turnovers
-            st.metric(
-                "Points off Turnovers", 
-                home_pot,
-                help="Points scored immediately following opponent turnovers"
-            )
-
-            # Points Off Turnovers Percentage
-            home_pot_percentage = (home_pot / home_shooting_stats['total_points'] * 100) if home_shooting_stats['total_points'] > 0 else 0
-            st.metric(
-                "Points off TO %", 
-                f"{home_pot_percentage:.1f}%",
-                help=f"{home_pot} points off TO out of {home_shooting_stats['total_points']} total points"
-            )
-            
-        with team_col2:
-            st.markdown("### Away Team")
-            
-            st.metric("Total Points", away_shooting_stats['total_points'])
-
-            # Total Field Goals
-            away_fg_pct = (away_shooting_stats['field_goals_made'] / away_shooting_stats['field_goals_attempted'] * 100) if away_shooting_stats['field_goals_attempted'] > 0 else 0
-            st.metric(
-                "Total FG", 
-                f"{away_shooting_stats['field_goals_made']}/{away_shooting_stats['field_goals_attempted']}", 
-                f"{away_fg_pct:.1f}%"
-            )
-
-            # 2-Point Field Goals
-            away_two_pt_made = away_shooting_stats['field_goals_made'] - away_shooting_stats['three_pointers_made']
-            away_two_pt_attempted = away_shooting_stats['field_goals_attempted'] - away_shooting_stats['three_pointers_attempted']
-            away_two_pt_pct = (away_two_pt_made / away_two_pt_attempted * 100) if away_two_pt_attempted > 0 else 0
-            st.metric(
-                "2-Point FG", 
-                f"{away_two_pt_made}/{away_two_pt_attempted}", 
-                f"{away_two_pt_pct:.1f}%"
-            )
-            
-            # 3-Point Field Goals
-            away_three_pt_pct = (away_shooting_stats['three_pointers_made'] / away_shooting_stats['three_pointers_attempted'] * 100) if away_shooting_stats['three_pointers_attempted'] > 0 else 0
-            st.metric(
-                "3-Point FG", 
-                f"{away_shooting_stats['three_pointers_made']}/{away_shooting_stats['three_pointers_attempted']}", 
-                f"{away_three_pt_pct:.1f}%"
-            )
-
-            # Free Throws
-            away_ft_pct = (away_shooting_stats['free_throws_made'] / away_shooting_stats['free_throws_attempted'] * 100) if away_shooting_stats['free_throws_attempted'] > 0 else 0
-            st.metric(
-                "Free Throws", 
-                f"{away_shooting_stats['free_throws_made']}/{away_shooting_stats['free_throws_attempted']}", 
-                f"{away_ft_pct:.1f}%"
-            )
-
-            # Points Off Turnovers
-            st.metric(
-                "Points off Turnovers", 
-                away_pot,
-                help="Points scored immediately following opponent turnovers"
-            )
+        # Select the correct stats dictionary
+        if team == 'home':
+            stats = home_shooting_stats
+        elif team == 'away':
+            stats = away_shooting_stats
+        else:
+            continue  # Skip invalid teams
+        
+        # Add points to team total
+        stats['total_points'] += points
+        
+        # Only process shots that were actually attempted
+        if attempted:
+            if shot_type == 'free_throw':
+                stats['free_throws_attempted'] += 1
+                if made:
+                    stats['free_throws_made'] += 1
+                    
+            elif shot_type == 'field_goal':
+                stats['field_goals_attempted'] += 1
+                if made:
+                    stats['field_goals_made'] += 1
+                    
+            elif shot_type == 'three_pointer':
+                # 3PT shots count as both 3PT and FG
+                stats['three_pointers_attempted'] += 1
+                stats['field_goals_attempted'] += 1
+                if made:
+                    stats['three_pointers_made'] += 1
+                    stats['field_goals_made'] += 1
     
-            # Points Off Turnovers Percentage
-            away_pot_percentage = (away_pot / away_shooting_stats['total_points'] * 100) if away_shooting_stats['total_points'] > 0 else 0
-            st.metric(
-                "Points off TO %", 
-                f"{away_pot_percentage:.1f}%",
-                help=f"{away_pot} points off TO out of {away_shooting_stats['total_points']} total points"
-            )
-                        
-        # Individual Home Team Player Statistics (now includes turnovers)
-        if st.session_state.player_stats or st.session_state.player_turnovers:
-            
-            # Get all players who have any stats (shooting or turnovers)
-            all_stat_players = set()
-            
-            # Add players with shooting stats
-            for player, stats in st.session_state.player_stats.items():
-                if any(stats[key] > 0 for key in ['points', 'field_goals_attempted', 'free_throws_attempted']):
-                    all_stat_players.add(player)
-            
-            # Add players with turnovers
-            for player, turnover_count in st.session_state.player_turnovers.items():
-                if turnover_count > 0:
-                    all_stat_players.add(player)
+    team_col1, team_col2 = st.columns(2)
+    
+    with team_col1:
+        st.markdown("### Home Team")
+        
+        st.metric("Total Points", home_shooting_stats['total_points'])
 
-            # Add players who have been on court (from lineup history)
-            for lineup_event in st.session_state.lineup_history:
-                for player in lineup_event.get('new_lineup', []):
-                    all_stat_players.add(player)
+        # Total Field Goals
+        fg_pct = (home_shooting_stats['field_goals_made'] / home_shooting_stats['field_goals_attempted'] * 100) if home_shooting_stats['field_goals_attempted'] > 0 else 0
+        st.metric(
+            "Total FG", 
+            f"{home_shooting_stats['field_goals_made']}/{home_shooting_stats['field_goals_attempted']}", 
+            f"{fg_pct:.1f}%"
+        )
+        
+        # 2-Point Field Goals (FG - 3PT)
+        two_pt_made = home_shooting_stats['field_goals_made'] - home_shooting_stats['three_pointers_made']
+        two_pt_attempted = home_shooting_stats['field_goals_attempted'] - home_shooting_stats['three_pointers_attempted']
+        two_pt_pct = (two_pt_made / two_pt_attempted * 100) if two_pt_attempted > 0 else 0
+        st.metric(
+            "2-Point FG", 
+            f"{two_pt_made}/{two_pt_attempted}", 
+            f"{two_pt_pct:.1f}%"
+        )
+        
+        # 3-Point Field Goals
+        three_pt_pct = (home_shooting_stats['three_pointers_made'] / home_shooting_stats['three_pointers_attempted'] * 100) if home_shooting_stats['three_pointers_attempted'] > 0 else 0
+        st.metric(
+            "3-Point FG", 
+            f"{home_shooting_stats['three_pointers_made']}/{home_shooting_stats['three_pointers_attempted']}", 
+            f"{three_pt_pct:.1f}%"
+        )
 
-            # Calculate plus/minus and defensive stats
-            individual_plus_minus = calculate_individual_plus_minus()
-            defensive_stats = calculate_individual_defensive_impact()
-            
-            if all_stat_players:
-                player_shooting_data = []
-                for player in all_stat_players:
-                    # Get shooting stats (default to 0 if player not in dict)
-                    stats = st.session_state.player_stats.get(player, {
-                        'points': 0,
-                        'field_goals_made': 0,
-                        'field_goals_attempted': 0,
-                        'three_pointers_made': 0,
-                        'three_pointers_attempted': 0,
-                        'free_throws_made': 0,
-                        'free_throws_attempted': 0,
-                        'minutes_played': 0
-                    })
+        # Free Throws
+        ft_pct = (home_shooting_stats['free_throws_made'] / home_shooting_stats['free_throws_attempted'] * 100) if home_shooting_stats['free_throws_attempted'] > 0 else 0
+        st.metric(
+            "Free Throws", 
+            f"{home_shooting_stats['free_throws_made']}/{home_shooting_stats['free_throws_attempted']}", 
+            f"{ft_pct:.1f}%"
+        )
+
+        # Points Off Turnovers
+        st.metric(
+            "Points off Turnovers", 
+            home_pot,
+            help="Points scored immediately following opponent turnovers"
+        )
+
+        # Points Off Turnovers Percentage
+        home_pot_percentage = (home_pot / home_shooting_stats['total_points'] * 100) if home_shooting_stats['total_points'] > 0 else 0
+        st.metric(
+            "Points off TO %", 
+            f"{home_pot_percentage:.1f}%",
+            help=f"{home_pot} points off TO out of {home_shooting_stats['total_points']} total points"
+        )
+        
+    with team_col2:
+        st.markdown("### Away Team")
+        
+        st.metric("Total Points", away_shooting_stats['total_points'])
+
+        # Total Field Goals
+        away_fg_pct = (away_shooting_stats['field_goals_made'] / away_shooting_stats['field_goals_attempted'] * 100) if away_shooting_stats['field_goals_attempted'] > 0 else 0
+        st.metric(
+            "Total FG", 
+            f"{away_shooting_stats['field_goals_made']}/{away_shooting_stats['field_goals_attempted']}", 
+            f"{away_fg_pct:.1f}%"
+        )
+
+        # 2-Point Field Goals
+        away_two_pt_made = away_shooting_stats['field_goals_made'] - away_shooting_stats['three_pointers_made']
+        away_two_pt_attempted = away_shooting_stats['field_goals_attempted'] - away_shooting_stats['three_pointers_attempted']
+        away_two_pt_pct = (away_two_pt_made / away_two_pt_attempted * 100) if away_two_pt_attempted > 0 else 0
+        st.metric(
+            "2-Point FG", 
+            f"{away_two_pt_made}/{away_two_pt_attempted}", 
+            f"{away_two_pt_pct:.1f}%"
+        )
+        
+        # 3-Point Field Goals
+        away_three_pt_pct = (away_shooting_stats['three_pointers_made'] / away_shooting_stats['three_pointers_attempted'] * 100) if away_shooting_stats['three_pointers_attempted'] > 0 else 0
+        st.metric(
+            "3-Point FG", 
+            f"{away_shooting_stats['three_pointers_made']}/{away_shooting_stats['three_pointers_attempted']}", 
+            f"{away_three_pt_pct:.1f}%"
+        )
+
+        # Free Throws
+        away_ft_pct = (away_shooting_stats['free_throws_made'] / away_shooting_stats['free_throws_attempted'] * 100) if away_shooting_stats['free_throws_attempted'] > 0 else 0
+        st.metric(
+            "Free Throws", 
+            f"{away_shooting_stats['free_throws_made']}/{away_shooting_stats['free_throws_attempted']}", 
+            f"{away_ft_pct:.1f}%"
+        )
+
+        # Points Off Turnovers
+        st.metric(
+            "Points off Turnovers", 
+            away_pot,
+            help="Points scored immediately following opponent turnovers"
+        )
+
+        # Points Off Turnovers Percentage
+        away_pot_percentage = (away_pot / away_shooting_stats['total_points'] * 100) if away_shooting_stats['total_points'] > 0 else 0
+        st.metric(
+            "Points off TO %", 
+            f"{away_pot_percentage:.1f}%",
+            help=f"{away_pot} points off TO out of {away_shooting_stats['total_points']} total points"
+        )
                     
-                    # Get turnover count
-                    turnovers = st.session_state.player_turnovers.get(player, 0)
+    # Individual Home Team Player Statistics (now includes turnovers)
+    if st.session_state.player_stats or st.session_state.player_turnovers:
+        
+        # Get all players who have any stats (shooting or turnovers)
+        all_stat_players = set()
+        
+        # Add players with shooting stats
+        for player, stats in st.session_state.player_stats.items():
+            if any(stats[key] > 0 for key in ['points', 'field_goals_attempted', 'free_throws_attempted']):
+                all_stat_players.add(player)
+        
+        # Add players with turnovers
+        for player, turnover_count in st.session_state.player_turnovers.items():
+            if turnover_count > 0:
+                all_stat_players.add(player)
 
-                    # Calculate minutes played from lineup history
-                    minutes_played = calculate_player_minutes_played(player)
-                    
-                    # Get plus/minus
-                    plus_minus = individual_plus_minus.get(player, {}).get('plus_minus', 0)
-                    
-                    # Get defensive impact
-                    def_stats = defensive_stats.get(player, {})
-                    def_impact_score = def_stats.get('weighted_defensive_events', 0)
+        # Add players who have been on court (from lineup history)
+        for lineup_event in st.session_state.lineup_history:
+            for player in lineup_event.get('new_lineup', []):
+                all_stat_players.add(player)
 
-                    # Calculate offensive efficiency score
-                    offensive_efficiency = calculate_player_efficiency_score(player)
-            
-                    # Calculate defensive efficiency score (defensive events per minute * 10)
-                    defensive_efficiency = 0
-                    defensive_impact_per_minute = 0
-                    if minutes_played > 0:
-                        defensive_impact_per_minute = def_stats.get('defensive_impact_per_minute', 0) 
-                        defensive_efficiency = defensive_impact_per_minute * 10
-                    
-                    # Calculate 2PT stats (FG - 3PT)
-                    two_pt_made = stats['field_goals_made'] - stats['three_pointers_made']
-                    two_pt_attempted = stats['field_goals_attempted'] - stats['three_pointers_attempted']
-
-                    efg_pct = 0
-                    if stats['field_goals_attempted'] > 0:
-                        efg_pct = ((stats['field_goals_made'] + 0.5 * stats['three_pointers_made']) / stats['field_goals_attempted']) * 100
-
-                    turnovers = st.session_state.player_turnovers.get(player, 0)
-
-                    ts_pct = 0
-                    if stats['field_goals_attempted'] > 0 or stats['free_throws_attempted'] > 0:
-                        true_shooting_attempts = stats['field_goals_attempted'] + (0.44 * stats['free_throws_attempted'])
-                        if true_shooting_attempts > 0:
-                            ts_pct = (stats['points'] / (2 * true_shooting_attempts)) * 100
-
-                    total_shot_attempts = stats['field_goals_attempted'] + (0.44 * stats['free_throws_attempted'])
-                    points_per_shot = stats['points'] / total_shot_attempts if total_shot_attempts > 0 else 0
-
-                    estimated_possessions = stats['field_goals_attempted'] + turnovers + (0.44 * stats['free_throws_attempted'])
-                    PPP = (stats['points'] / estimated_possessions) if estimated_possessions > 0 else 0
-                    
-                    player_shooting_data.append({
-                        'Player': player.split('(')[0].strip(),
-                        'Minutes': f"{minutes_played:.1f}",
-                        '+/-': f"+{plus_minus}" if plus_minus >= 0 else str(plus_minus),
-                        'Off. Eff.': f"{offensive_efficiency:.1f}", 
-                        'Def. Eff.': f"{defensive_efficiency:.1f}",
-                        'Points': stats['points'],
-                        'PPP': f"{PPP:.2f}",  
-                        'Points/Min': f"{stats['points'] / minutes_played:.2f}" if minutes_played > 0 else "0.00",
-                        'FT': f"{stats['free_throws_made']}/{stats['free_throws_attempted']}" if stats['free_throws_attempted'] > 0 else "0/0",
-                        'FT%': f"{stats['free_throws_made']/stats['free_throws_attempted']*100:.1f}%" if stats['free_throws_attempted'] > 0 else "0.0%",
-                        '2PT': f"{two_pt_made}/{two_pt_attempted}" if two_pt_attempted > 0 else "0/0",
-                        '2PT%': f"{two_pt_made/two_pt_attempted*100:.1f}%" if two_pt_attempted > 0 else "0.0%",
-                        '3PT': f"{stats['three_pointers_made']}/{stats['three_pointers_attempted']}" if stats['three_pointers_attempted'] > 0 else "0/0",
-                        '3PT%': f"{stats['three_pointers_made']/stats['three_pointers_attempted']*100:.1f}%" if stats['three_pointers_attempted'] > 0 else "0.0%",
-                        'FG': f"{stats['field_goals_made']}/{stats['field_goals_attempted']}" if stats['field_goals_attempted'] > 0 else "0/0",
-                        'FG%': f"{stats['field_goals_made']/stats['field_goals_attempted']*100:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%",
-                        'eFG%': f"{efg_pct:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%",
-                        'TS%': f"{ts_pct:.1f}%",
-                        'Total TOs': turnovers,
-                        'TO/Min': f"{turnovers / minutes_played:.2f}" if minutes_played > 0 else "0.00",
-                        'Def Impact/Min': f"{defensive_impact_per_minute:.2f}",
-                        'Def Impact': f"{def_impact_score:.1f}"
-                    })
+        # Calculate plus/minus and defensive stats
+        individual_plus_minus = calculate_individual_plus_minus()
+        defensive_stats = calculate_individual_defensive_impact()
+        
+        if all_stat_players:
+            player_shooting_data = []
+            for player in all_stat_players:
+                # Get shooting stats (default to 0 if player not in dict)
+                stats = st.session_state.player_stats.get(player, {
+                    'points': 0,
+                    'field_goals_made': 0,
+                    'field_goals_attempted': 0,
+                    'three_pointers_made': 0,
+                    'three_pointers_attempted': 0,
+                    'free_throws_made': 0,
+                    'free_throws_attempted': 0,
+                    'minutes_played': 0
+                })
                 
-                if player_shooting_data:
-                    player_shooting_df = pd.DataFrame(player_shooting_data)
-                    player_shooting_df = player_shooting_df.sort_values('Points', ascending=False)
+                # Get turnover count
+                turnovers = st.session_state.player_turnovers.get(player, 0)
 
-                    # ===== TOP PERFORMERS CARDS =====
-                    st.write("**🌟 Top Performers**")
-                    perf_col1, perf_col2, perf_col3, perf_col4 = st.columns(4)
+                # Calculate minutes played from lineup history
+                minutes_played = calculate_player_minutes_played(player)
+                
+                # Get plus/minus
+                plus_minus = individual_plus_minus.get(player, {}).get('plus_minus', 0)
+                
+                # Get defensive impact
+                def_stats = defensive_stats.get(player, {})
+                def_impact_score = def_stats.get('weighted_defensive_events', 0)
+
+                # Calculate offensive efficiency score
+                offensive_efficiency = calculate_player_efficiency_score(player)
+        
+                # Calculate defensive efficiency score (defensive events per minute * 10)
+                defensive_efficiency = 0
+                defensive_impact_per_minute = 0
+                if minutes_played > 0:
+                    defensive_impact_per_minute = def_stats.get('defensive_impact_per_minute', 0) 
+                    defensive_efficiency = defensive_impact_per_minute * 10
+                
+                # Calculate 2PT stats (FG - 3PT)
+                two_pt_made = stats['field_goals_made'] - stats['three_pointers_made']
+                two_pt_attempted = stats['field_goals_attempted'] - stats['three_pointers_attempted']
+
+                efg_pct = 0
+                if stats['field_goals_attempted'] > 0:
+                    efg_pct = ((stats['field_goals_made'] + 0.5 * stats['three_pointers_made']) / stats['field_goals_attempted']) * 100
+
+                turnovers = st.session_state.player_turnovers.get(player, 0)
+
+                ts_pct = 0
+                if stats['field_goals_attempted'] > 0 or stats['free_throws_attempted'] > 0:
+                    true_shooting_attempts = stats['field_goals_attempted'] + (0.44 * stats['free_throws_attempted'])
+                    if true_shooting_attempts > 0:
+                        ts_pct = (stats['points'] / (2 * true_shooting_attempts)) * 100
+
+                total_shot_attempts = stats['field_goals_attempted'] + (0.44 * stats['free_throws_attempted'])
+                points_per_shot = stats['points'] / total_shot_attempts if total_shot_attempts > 0 else 0
+
+                estimated_possessions = stats['field_goals_attempted'] + turnovers + (0.44 * stats['free_throws_attempted'])
+                PPP = (stats['points'] / estimated_possessions) if estimated_possessions > 0 else 0
+                
+                player_shooting_data.append({
+                    'Player': player.split('(')[0].strip(),
+                    'Minutes': f"{minutes_played:.1f}",
+                    '+/-': f"+{plus_minus}" if plus_minus >= 0 else str(plus_minus),
+                    'Off. Eff.': f"{offensive_efficiency:.1f}", 
+                    'Def. Eff.': f"{defensive_efficiency:.1f}",
+                    'Points': stats['points'],
+                    'PPP': f"{PPP:.2f}",  
+                    'Points/Min': f"{stats['points'] / minutes_played:.2f}" if minutes_played > 0 else "0.00",
+                    'FT': f"{stats['free_throws_made']}/{stats['free_throws_attempted']}" if stats['free_throws_attempted'] > 0 else "0/0",
+                    'FT%': f"{stats['free_throws_made']/stats['free_throws_attempted']*100:.1f}%" if stats['free_throws_attempted'] > 0 else "0.0%",
+                    '2PT': f"{two_pt_made}/{two_pt_attempted}" if two_pt_attempted > 0 else "0/0",
+                    '2PT%': f"{two_pt_made/two_pt_attempted*100:.1f}%" if two_pt_attempted > 0 else "0.0%",
+                    '3PT': f"{stats['three_pointers_made']}/{stats['three_pointers_attempted']}" if stats['three_pointers_attempted'] > 0 else "0/0",
+                    '3PT%': f"{stats['three_pointers_made']/stats['three_pointers_attempted']*100:.1f}%" if stats['three_pointers_attempted'] > 0 else "0.0%",
+                    'FG': f"{stats['field_goals_made']}/{stats['field_goals_attempted']}" if stats['field_goals_attempted'] > 0 else "0/0",
+                    'FG%': f"{stats['field_goals_made']/stats['field_goals_attempted']*100:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%",
+                    'eFG%': f"{efg_pct:.1f}%" if stats['field_goals_attempted'] > 0 else "0.0%",
+                    'TS%': f"{ts_pct:.1f}%",
+                    'Total TOs': turnovers,
+                    'TO/Min': f"{turnovers / minutes_played:.2f}" if minutes_played > 0 else "0.00",
+                    'Def Impact/Min': f"{defensive_impact_per_minute:.2f}",
+                    'Def Impact': f"{def_impact_score:.1f}"
+                })
             
-                    with perf_col1:
-                        top_scorer = player_shooting_df.iloc[0]
+            if player_shooting_data:
+                player_shooting_df = pd.DataFrame(player_shooting_data)
+                player_shooting_df = player_shooting_df.sort_values('Points', ascending=False)
+
+                # ===== TOP PERFORMERS CARDS =====
+                st.write("**🌟 Top Performers**")
+                perf_col1, perf_col2, perf_col3, perf_col4 = st.columns(4)
+        
+                with perf_col1:
+                    top_scorer = player_shooting_df.iloc[0]
+                    st.metric(
+                        "Leading Scorer",
+                        f"{top_scorer['Player']}",
+                        f"{top_scorer['Points']} pts"
+                    )
+        
+                with perf_col2:
+                    # Best shooter (minimum 3 attempts)
+                    shooters = player_shooting_df[player_shooting_df['FG%'] != '0.0%'].copy()
+                    if len(shooters) > 0:
+                        shooters['fg_numeric'] = shooters['FG%'].str.rstrip('%').astype(float)
+                        best_shooter = shooters.sort_values('fg_numeric', ascending=False).iloc[0]
                         st.metric(
-                            "Leading Scorer",
-                            f"{top_scorer['Player']}",
-                            f"{top_scorer['Points']} pts"
+                            "Best FG%",
+                            f"{best_shooter['Player']}",
+                            f"{best_shooter['FG%']}"
                         )
-            
-                    with perf_col2:
-                        # Best shooter (minimum 3 attempts)
-                        shooters = player_shooting_df[player_shooting_df['FG%'] != '0.0%'].copy()
-                        if len(shooters) > 0:
-                            shooters['fg_numeric'] = shooters['FG%'].str.rstrip('%').astype(float)
-                            best_shooter = shooters.sort_values('fg_numeric', ascending=False).iloc[0]
-                            st.metric(
-                                "Best FG%",
-                                f"{best_shooter['Player']}",
-                                f"{best_shooter['FG%']}"
-                            )
-                        else:
-                            st.metric("Best FG%", "N/A", "0.0%")
-            
-                    with perf_col3:
-                        # Best plus/minus
-                        player_shooting_df['pm_numeric'] = player_shooting_df['+/-'].apply(
-                            lambda x: int(x.replace('+', ''))
-                        )
-                        best_pm = player_shooting_df.sort_values('pm_numeric', ascending=False).iloc[0]
-                        st.metric(
-                            "Best +/-",
-                            f"{best_pm['Player']}",
-                            f"{best_pm['+/-']}"
-                        )
-            
-                    with perf_col4:
-                        # Most efficient (best PPP with minimum possessions)
-                        player_shooting_df['ppp_numeric'] = player_shooting_df['PPP'].astype(float)
-                        best_eff = player_shooting_df.sort_values('ppp_numeric', ascending=False).iloc[0]
-                        st.metric(
-                            "Best PPP",
-                            f"{best_eff['Player']}",
-                            f"{best_eff['PPP']}"
-                        )
-            
-                    st.divider()
+                    else:
+                        st.metric("Best FG%", "N/A", "0.0%")
+        
+                with perf_col3:
+                    # Best plus/minus
+                    player_shooting_df['pm_numeric'] = player_shooting_df['+/-'].apply(
+                        lambda x: int(x.replace('+', ''))
+                    )
+                    best_pm = player_shooting_df.sort_values('pm_numeric', ascending=False).iloc[0]
+                    st.metric(
+                        "Best +/-",
+                        f"{best_pm['Player']}",
+                        f"{best_pm['+/-']}"
+                    )
+        
+                with perf_col4:
+                    # Most efficient (best PPP with minimum possessions)
+                    player_shooting_df['ppp_numeric'] = player_shooting_df['PPP'].astype(float)
+                    best_eff = player_shooting_df.sort_values('ppp_numeric', ascending=False).iloc[0]
+                    st.metric(
+                        "Best PPP",
+                        f"{best_eff['Player']}",
+                        f"{best_eff['PPP']}"
+                    )
+        
+                st.divider()
 
-                    st.header("**Player Statistics**")
+                st.header("**Player Statistics**")
 
-                    st.divider()
+                st.divider()
 
-                    # Performance Over Time Graph
-                    st.subheader("📈 Performance Over Time")
+                # Performance Over Time Graph
+                st.subheader("📈 Performance Over Time")
 
-                    if st.session_state.score_history or st.session_state.lineup_history:
-                        # Create timeline data from score history
-                        timeline_data = []
-                        lineup_changes = []  # Track lineup changes separately
-                        
-                        # Start with initial state
-                        current_home = 0
-                        current_away = 0
-                        event_counter = 0
-                        
-                        # Add starting point
-                        timeline_data.append({
-                            'Event': 'Game Start',
-                            'Quarter': 'Q1',
-                            'Game Time': f"{st.session_state.quarter_length}:00",
-                            'Home Score': 0,
-                            'Away Score': 0,
-                            'Margin': 0,
-                            'Event Type': 'Start',
-                            'Index': event_counter
+                if st.session_state.score_history or st.session_state.lineup_history:
+                    # Create timeline data from score history
+                    timeline_data = []
+                    lineup_changes = []  # Track lineup changes separately
+                    
+                    # Start with initial state
+                    current_home = 0
+                    current_away = 0
+                    event_counter = 0
+                    
+                    # Add starting point
+                    timeline_data.append({
+                        'Event': 'Game Start',
+                        'Quarter': 'Q1',
+                        'Game Time': f"{st.session_state.quarter_length}:00",
+                        'Home Score': 0,
+                        'Away Score': 0,
+                        'Margin': 0,
+                        'Event Type': 'Start',
+                        'Index': event_counter
+                    })
+                    event_counter += 1
+                    
+                    # Create a combined timeline of all events (scores and lineups)
+                    all_events = []
+                    
+                    # Add score events
+                    for i, score_event in enumerate(st.session_state.score_history):
+                        all_events.append({
+                            'type': 'score',
+                            'data': score_event,
+                            'index': i,
+                            'timestamp': score_event.get('timestamp', datetime.now())
                         })
-                        event_counter += 1
-                        
-                        # Create a combined timeline of all events (scores and lineups)
-                        all_events = []
-                        
-                        # Add score events
-                        for i, score_event in enumerate(st.session_state.score_history):
+                    
+                    # Add lineup change events (excluding quarter-end snapshots)
+                    for i, lineup_event in enumerate(st.session_state.lineup_history):
+                        if not lineup_event.get('is_quarter_end', False):
                             all_events.append({
-                                'type': 'score',
-                                'data': score_event,
+                                'type': 'lineup',
+                                'data': lineup_event,
                                 'index': i,
-                                'timestamp': score_event.get('timestamp', datetime.now())
+                                'timestamp': lineup_event.get('timestamp', datetime.now())
                             })
-                        
-                        # Add lineup change events (excluding quarter-end snapshots)
-                        for i, lineup_event in enumerate(st.session_state.lineup_history):
-                            if not lineup_event.get('is_quarter_end', False):
-                                all_events.append({
-                                    'type': 'lineup',
-                                    'data': lineup_event,
-                                    'index': i,
-                                    'timestamp': lineup_event.get('timestamp', datetime.now())
-                                })
-                        
-                        # Sort events by timestamp (or by order if no timestamp)
-                        all_events.sort(key=lambda x: (x['timestamp'], x.get('event_index', 0)))
-                        
-                        # Process all events in chronological order
-                        for event in all_events:
-                            if event['type'] == 'score':
-                                score_event = event['data']
-                                
-                                if score_event['team'] == 'home':
-                                    current_home += score_event['points']
-                                else:
-                                    current_away += score_event['points']
-                                
-                                margin = current_home - current_away
-                                
-                                timeline_data.append({
-                                    'Event': f"Score #{event['index']+1}",
-                                    'Quarter': score_event['quarter'],
-                                    'Game Time': score_event.get('game_time', 'Unknown'),
-                                    'Home Score': current_home,
-                                    'Away Score': current_away,
-                                    'Margin': margin,
-                                    'Event Type': 'Score',
-                                    'Index': event_counter
-                                })
-                                event_counter += 1
-                                
-                            elif event['type'] == 'lineup':
-                                lineup_event = event['data']
-                                
-                                # Record the lineup change with current score AND the index position
-                                lineup_changes.append({
-                                    'Index': event_counter,  # This is the actual position in the timeline
-                                    'Quarter': lineup_event.get('quarter', 'Unknown'),
-                                    'Game Time': lineup_event.get('game_time', 'Unknown'),
-                                    'Margin': current_home - current_away,
-                                    'New Lineup': ' | '.join(lineup_event.get('new_lineup', [])),
-                                    'Previous Lineup': ' | '.join(lineup_event.get('previous_lineup', []))
-                                })
-                                
-                                # Add lineup change to timeline
-                                timeline_data.append({
-                                    'Event': f"Lineup Change",
-                                    'Quarter': lineup_event.get('quarter', 'Unknown'),
-                                    'Game Time': lineup_event.get('game_time', 'Unknown'),
-                                    'Home Score': current_home,
-                                    'Away Score': current_away,
-                                    'Margin': current_home - current_away,
-                                    'Event Type': 'Lineup',
-                                    'Index': event_counter
-                                })
-                                event_counter += 1
-                        
-                        # Add quarter end markers
-                        for qe in st.session_state.quarter_end_history:
+                    
+                    # Sort events by timestamp (or by order if no timestamp)
+                    all_events.sort(key=lambda x: (x['timestamp'], x.get('event_index', 0)))
+                    
+                    # Process all events in chronological order
+                    for event in all_events:
+                        if event['type'] == 'score':
+                            score_event = event['data']
+                            
+                            if score_event['team'] == 'home':
+                                current_home += score_event['points']
+                            else:
+                                current_away += score_event['points']
+                            
+                            margin = current_home - current_away
+                            
                             timeline_data.append({
-                                'Event': f"{qe['quarter']} End",
-                                'Quarter': qe['quarter'],
-                                'Game Time': '0:00',
-                                'Home Score': int(qe['final_score'].split('-')[0]),
-                                'Away Score': int(qe['final_score'].split('-')[1]),
-                                'Margin': int(qe['final_score'].split('-')[0]) - int(qe['final_score'].split('-')[1]),
-                                'Event Type': 'Quarter End',
+                                'Event': f"Score #{event['index']+1}",
+                                'Quarter': score_event['quarter'],
+                                'Game Time': score_event.get('game_time', 'Unknown'),
+                                'Home Score': current_home,
+                                'Away Score': current_away,
+                                'Margin': margin,
+                                'Event Type': 'Score',
                                 'Index': event_counter
                             })
                             event_counter += 1
+                            
+                        elif event['type'] == 'lineup':
+                            lineup_event = event['data']
+                            
+                            # Record the lineup change with current score AND the index position
+                            lineup_changes.append({
+                                'Index': event_counter,  # This is the actual position in the timeline
+                                'Quarter': lineup_event.get('quarter', 'Unknown'),
+                                'Game Time': lineup_event.get('game_time', 'Unknown'),
+                                'Margin': current_home - current_away,
+                                'New Lineup': ' | '.join(lineup_event.get('new_lineup', [])),
+                                'Previous Lineup': ' | '.join(lineup_event.get('previous_lineup', []))
+                            })
+                            
+                            # Add lineup change to timeline
+                            timeline_data.append({
+                                'Event': f"Lineup Change",
+                                'Quarter': lineup_event.get('quarter', 'Unknown'),
+                                'Game Time': lineup_event.get('game_time', 'Unknown'),
+                                'Home Score': current_home,
+                                'Away Score': current_away,
+                                'Margin': current_home - current_away,
+                                'Event Type': 'Lineup',
+                                'Index': event_counter
+                            })
+                            event_counter += 1
+                    
+                    # Add quarter end markers
+                    for qe in st.session_state.quarter_end_history:
+                        timeline_data.append({
+                            'Event': f"{qe['quarter']} End",
+                            'Quarter': qe['quarter'],
+                            'Game Time': '0:00',
+                            'Home Score': int(qe['final_score'].split('-')[0]),
+                            'Away Score': int(qe['final_score'].split('-')[1]),
+                            'Margin': int(qe['final_score'].split('-')[0]) - int(qe['final_score'].split('-')[1]),
+                            'Event Type': 'Quarter End',
+                            'Index': event_counter
+                        })
+                        event_counter += 1
+                    
+                    if len(timeline_data) > 1:
+                        timeline_df = pd.DataFrame(timeline_data)
                         
-                        if len(timeline_data) > 1:
-                            timeline_df = pd.DataFrame(timeline_data)
-                            
-                            # Create the line chart
-                            fig = go.Figure()
-                            
-                            # Add margin line - USE Index for x-axis consistently
-                            fig.add_trace(go.Scatter(
-                                x=timeline_df['Index'],
-                                y=timeline_df['Margin'],
-                                mode='lines+markers',
-                                name='Score Margin',
-                                line=dict(color='#1f77b4', width=3),
-                                marker=dict(size=8, color='#1f77b4'),
-                                hovertemplate='<b>%{customdata[0]}</b><br>' +
-                                             'Quarter: %{customdata[1]}<br>' +
-                                             'Time: %{customdata[2]}<br>' +
-                                             'Score: %{customdata[3]}-%{customdata[4]}<br>' +
-                                             'Margin: %{y:+d}<br>' +
-                                             '<extra></extra>',
-                                customdata=timeline_df[['Event', 'Quarter', 'Game Time', 'Home Score', 'Away Score']].values
-                            ))
-                            
-                            # Add vertical lines for lineup changes - NOW USING CORRECT Index
-                            for lineup_change in lineup_changes:
-                                fig.add_vline(
-                                    x=lineup_change['Index'],  # Use the Index from our timeline
-                                    line_dash="dot",
-                                    line_color="orange",
-                                    line_width=2,
-                                    opacity=0.7
-                                )
-                                # Add annotation at the top
-                                fig.add_annotation(
-                                    x=lineup_change['Index'],
-                                    y=timeline_df['Margin'].max() * 0.9,
-                                    text="SUB",
-                                    showarrow=False,
-                                    font=dict(size=9, color="orange"),
-                                    yshift=10
-                                )
-                            
-                            # Add vertical lines for quarter ends - NOW USING CORRECT Index
-                            quarter_end_rows = timeline_df[timeline_df['Event Type'] == 'Quarter End']
-                            for _, qe_row in quarter_end_rows.iterrows():
-                                fig.add_vline(
-                                    x=qe_row['Index'],  # Use the Index from the dataframe
-                                    line_dash="dash",
-                                    line_color="purple",
-                                    line_width=2,
-                                    opacity=0.7
-                                )
-                                # Add annotation
-                                fig.add_annotation(
-                                    x=qe_row['Index'],
-                                    y=timeline_df['Margin'].max() * 0.9,
-                                    text=qe_row['Event'],
-                                    showarrow=False,
-                                    font=dict(size=9, color="purple"),
-                                    yshift=25
-                                )
-                            
-                            # Add zero line (tie game)
-                            fig.add_hline(y=0, line_dash="dash", line_color="gray", 
-                                         annotation_text="Tie Game", annotation_position="right")
-                            
-                            # Add shaded regions for winning/losing
-                            max_margin = max(timeline_df['Margin'].max(), 10)
-                            min_margin = min(timeline_df['Margin'].min(), -10)
-                            
-                            fig.add_hrect(y0=0, y1=max_margin, 
-                                         fillcolor="lightgreen", opacity=0.2, line_width=0)
-                            fig.add_hrect(y0=min_margin, y1=0, 
-                                         fillcolor="lightcoral", opacity=0.2, line_width=0)
-                            
-                            # Update layout
-                            fig.update_layout(
-                                title=f"Score Margin Throughout Game ({st.session_state.home_team_name} perspective)",
-                                xaxis_title="Game Progression (Orange lines = Substitutions, Purple lines = Quarter Ends)",
-                                yaxis_title="Point Margin (+ = Leading, - = Trailing)",
-                                hovermode='closest',
-                                height=500,
-                                showlegend=True,
-                                xaxis=dict(
-                                    tickmode='array',
-                                    tickvals=list(range(0, len(timeline_df), max(1, len(timeline_df)//15))),
-                                    ticktext=[f"{timeline_df.iloc[i]['Quarter']}\n{timeline_df.iloc[i]['Game Time']}" 
-                                             for i in range(0, len(timeline_df), max(1, len(timeline_df)//15))]
-                                )
+                        # Create the line chart
+                        fig = go.Figure()
+                        
+                        # Add margin line - USE Index for x-axis consistently
+                        fig.add_trace(go.Scatter(
+                            x=timeline_df['Index'],
+                            y=timeline_df['Margin'],
+                            mode='lines+markers',
+                            name='Score Margin',
+                            line=dict(color='#1f77b4', width=3),
+                            marker=dict(size=8, color='#1f77b4'),
+                            hovertemplate='<b>%{customdata[0]}</b><br>' +
+                                         'Quarter: %{customdata[1]}<br>' +
+                                         'Time: %{customdata[2]}<br>' +
+                                         'Score: %{customdata[3]}-%{customdata[4]}<br>' +
+                                         'Margin: %{y:+d}<br>' +
+                                         '<extra></extra>',
+                            customdata=timeline_df[['Event', 'Quarter', 'Game Time', 'Home Score', 'Away Score']].values
+                        ))
+                        
+                        # Add vertical lines for lineup changes - NOW USING CORRECT Index
+                        for lineup_change in lineup_changes:
+                            fig.add_vline(
+                                x=lineup_change['Index'],  # Use the Index from our timeline
+                                line_dash="dot",
+                                line_color="orange",
+                                line_width=2,
+                                opacity=0.7
                             )
-                            
-                            st.plotly_chart(fig, use_container_width=True)
-                            
-                            # Show lineup change details
-                            if lineup_changes:
-                                with st.expander(f"🔄 Lineup Changes ({len(lineup_changes)} total)"):
-                                    st.write("**Impact of Substitutions:**")
+                            # Add annotation at the top
+                            fig.add_annotation(
+                                x=lineup_change['Index'],
+                                y=timeline_df['Margin'].max() * 0.9,
+                                text="SUB",
+                                showarrow=False,
+                                font=dict(size=9, color="orange"),
+                                yshift=10
+                            )
+                        
+                        # Add vertical lines for quarter ends - NOW USING CORRECT Index
+                        quarter_end_rows = timeline_df[timeline_df['Event Type'] == 'Quarter End']
+                        for _, qe_row in quarter_end_rows.iterrows():
+                            fig.add_vline(
+                                x=qe_row['Index'],  # Use the Index from the dataframe
+                                line_dash="dash",
+                                line_color="purple",
+                                line_width=2,
+                                opacity=0.7
+                            )
+                            # Add annotation
+                            fig.add_annotation(
+                                x=qe_row['Index'],
+                                y=timeline_df['Margin'].max() * 0.9,
+                                text=qe_row['Event'],
+                                showarrow=False,
+                                font=dict(size=9, color="purple"),
+                                yshift=25
+                            )
+                        
+                        # Add zero line (tie game)
+                        fig.add_hline(y=0, line_dash="dash", line_color="gray", 
+                                     annotation_text="Tie Game", annotation_position="right")
+                        
+                        # Add shaded regions for winning/losing
+                        max_margin = max(timeline_df['Margin'].max(), 10)
+                        min_margin = min(timeline_df['Margin'].min(), -10)
+                        
+                        fig.add_hrect(y0=0, y1=max_margin, 
+                                     fillcolor="lightgreen", opacity=0.2, line_width=0)
+                        fig.add_hrect(y0=min_margin, y1=0, 
+                                     fillcolor="lightcoral", opacity=0.2, line_width=0)
+                        
+                        # Update layout
+                        fig.update_layout(
+                            title=f"Score Margin Throughout Game ({st.session_state.home_team_name} perspective)",
+                            xaxis_title="Game Progression (Orange lines = Substitutions, Purple lines = Quarter Ends)",
+                            yaxis_title="Point Margin (+ = Leading, - = Trailing)",
+                            hovermode='closest',
+                            height=500,
+                            showlegend=True,
+                            xaxis=dict(
+                                tickmode='array',
+                                tickvals=list(range(0, len(timeline_df), max(1, len(timeline_df)//15))),
+                                ticktext=[f"{timeline_df.iloc[i]['Quarter']}\n{timeline_df.iloc[i]['Game Time']}" 
+                                         for i in range(0, len(timeline_df), max(1, len(timeline_df)//15))]
+                            )
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                        
+                        # Show lineup change details
+                        if lineup_changes:
+                            with st.expander(f"🔄 Lineup Changes ({len(lineup_changes)} total)"):
+                                st.write("**Impact of Substitutions:**")
+                                
+                                for i, lc in enumerate(lineup_changes):
+                                    # Calculate margin change after this substitution
+                                    # Find the next few events after this lineup change
+                                    next_events = timeline_df[timeline_df['Index'] > lc['Index']].head(5)
                                     
-                                    for i, lc in enumerate(lineup_changes):
-                                        # Calculate margin change after this substitution
-                                        # Find the next few events after this lineup change
-                                        next_events = timeline_df[timeline_df['Index'] > lc['Index']].head(5)
+                                    if len(next_events) > 0:
+                                        margin_before = lc['Margin']
+                                        margin_after = next_events['Margin'].iloc[-1]
+                                        margin_change = margin_after - margin_before
                                         
-                                        if len(next_events) > 0:
-                                            margin_before = lc['Margin']
-                                            margin_after = next_events['Margin'].iloc[-1]
-                                            margin_change = margin_after - margin_before
-                                            
-                                            col1, col2 = st.columns([3, 1])
-                                            
-                                            with col1:
-                                                st.write(f"**Sub #{i+1}** - {lc['Quarter']} at {lc['Game Time']}")
-                                                st.caption(f"New: {lc['New Lineup']}")
-                                                
-                                            with col2:
-                                                if margin_change > 0:
-                                                    st.success(f"+{margin_change} pts")
-                                                elif margin_change < 0:
-                                                    st.error(f"{margin_change} pts")
-                                                else:
-                                                    st.info("Even")
-                                            
-                                            st.divider()
-                            
-                            # Add quarter markers if available
-                            if st.session_state.quarter_end_history:
-                                st.write("**Quarter Snapshots:**")
-                                quarter_cols = st.columns(len(st.session_state.quarter_end_history))
-                                
-                                for i, qe in enumerate(st.session_state.quarter_end_history):
-                                    with quarter_cols[i]:
-                                        home, away = map(int, qe['final_score'].split('-'))
-                                        margin = home - away
+                                        col1, col2 = st.columns([3, 1])
                                         
-                                        if margin > 0:
-                                            st.success(f"**{qe['quarter']}**: {qe['final_score']} (+{margin})")
-                                        elif margin < 0:
-                                            st.error(f"**{qe['quarter']}**: {qe['final_score']} ({margin})")
-                                        else:
-                                            st.info(f"**{qe['quarter']}**: {qe['final_score']} (Tied)")
-                            
-                            # Performance summary
-                            summary_col1, summary_col2, summary_col3, summary_col4 = st.columns(4)
-                            
-                            with summary_col1:
-                                largest_lead = timeline_df['Margin'].max()
-                                st.metric("Largest Lead", f"+{largest_lead}" if largest_lead > 0 else "0")
-                            
-                            with summary_col2:
-                                largest_deficit = timeline_df['Margin'].min()
-                                st.metric("Largest Deficit", f"{largest_deficit}" if largest_deficit < 0 else "0")
-                            
-                            with summary_col3:
-                                current_margin = timeline_df['Margin'].iloc[-1]
-                                if current_margin > 0:
-                                    st.metric("Current Status", "Leading", f"+{current_margin}")
-                                elif current_margin < 0:
-                                    st.metric("Current Status", "Trailing", f"{current_margin}")
-                                else:
-                                    st.metric("Current Status", "Tied", "0")
-                            
-                            with summary_col4:
-                                st.metric("Lineup Changes", len(lineup_changes))
-                            
-                            # Trend analysis
-                            with st.expander("📊 Performance Trends & Lineup Analysis"):
-                                if len(timeline_df) >= 10:
-                                    # Calculate momentum (last 5 events vs previous 5 events)
-                                    recent_margin_change = timeline_df['Margin'].iloc[-1] - timeline_df['Margin'].iloc[-6] if len(timeline_df) > 6 else 0
-                                    
-                                    st.write("**Recent Momentum:**")
-                                    if recent_margin_change > 0:
-                                        st.success(f"🔥 Positive momentum! Score margin improved by {recent_margin_change} points in recent possessions")
-                                    elif recent_margin_change < 0:
-                                        st.warning(f"⚠️ Negative momentum. Score margin decreased by {abs(recent_margin_change)} points in recent possessions")
-                                    else:
-                                        st.info("Holding steady with no significant margin change")
-                                
-                                # Lead changes
-                                lead_changes = 0
-                                for i in range(1, len(timeline_df)):
-                                    if (timeline_df['Margin'].iloc[i] > 0 and timeline_df['Margin'].iloc[i-1] <= 0) or \
-                                       (timeline_df['Margin'].iloc[i] < 0 and timeline_df['Margin'].iloc[i-1] >= 0):
-                                        lead_changes += 1
-                                
-                                st.write(f"**Lead Changes:** {lead_changes}")
-                                
-                                # Lineup change effectiveness
-                                if lineup_changes:
-                                    st.write("**Lineup Change Effectiveness:**")
-                                    
-                                    positive_subs = 0
-                                    negative_subs = 0
-                                    
-                                    for lc in lineup_changes:
-                                        next_events = timeline_df[timeline_df['Index'] > lc['Index']].head(5)
-                                        if len(next_events) > 0:
-                                            margin_change = next_events['Margin'].iloc[-1] - lc['Margin']
+                                        with col1:
+                                            st.write(f"**Sub #{i+1}** - {lc['Quarter']} at {lc['Game Time']}")
+                                            st.caption(f"New: {lc['New Lineup']}")
+                                            
+                                        with col2:
                                             if margin_change > 0:
-                                                positive_subs += 1
+                                                st.success(f"+{margin_change} pts")
                                             elif margin_change < 0:
-                                                negative_subs += 1
-                                    
-                                    sub_col1, sub_col2, sub_col3 = st.columns(3)
-                                    with sub_col1:
-                                        st.metric("Positive Impact", positive_subs)
-                                    with sub_col2:
-                                        st.metric("Negative Impact", negative_subs)
-                                    with sub_col3:
-                                        neutral = len(lineup_changes) - positive_subs - negative_subs
-                                        st.metric("Neutral Impact", neutral)
-                                
-                                # Time spent leading/trailing/tied
-                                leading_events = sum(1 for m in timeline_df['Margin'] if m > 0)
-                                trailing_events = sum(1 for m in timeline_df['Margin'] if m < 0)
-                                tied_events = sum(1 for m in timeline_df['Margin'] if m == 0)
-                                total_events = len(timeline_df)
-                                
-                                st.write("**Time Distribution:**")
-                                trend_col1, trend_col2, trend_col3 = st.columns(3)
-                                
-                                with trend_col1:
-                                    st.metric("Time Leading", f"{leading_events/total_events*100:.1f}%")
-                                with trend_col2:
-                                    st.metric("Time Trailing", f"{trailing_events/total_events*100:.1f}%")
-                                with trend_col3:
-                                    st.metric("Time Tied", f"{tied_events/total_events*100:.1f}%")
+                                                st.error(f"{margin_change} pts")
+                                            else:
+                                                st.info("Even")
+                                        
+                                        st.divider()
                         
-                        else:
-                            st.info("More game events needed to generate performance timeline")
+                        # Add quarter markers if available
+                        if st.session_state.quarter_end_history:
+                            st.write("**Quarter Snapshots:**")
+                            quarter_cols = st.columns(len(st.session_state.quarter_end_history))
+                            
+                            for i, qe in enumerate(st.session_state.quarter_end_history):
+                                with quarter_cols[i]:
+                                    home, away = map(int, qe['final_score'].split('-'))
+                                    margin = home - away
+                                    
+                                    if margin > 0:
+                                        st.success(f"**{qe['quarter']}**: {qe['final_score']} (+{margin})")
+                                    elif margin < 0:
+                                        st.error(f"**{qe['quarter']}**: {qe['final_score']} ({margin})")
+                                    else:
+                                        st.info(f"**{qe['quarter']}**: {qe['final_score']} (Tied)")
+                        
+                        # Performance summary
+                        summary_col1, summary_col2, summary_col3, summary_col4 = st.columns(4)
+                        
+                        with summary_col1:
+                            largest_lead = timeline_df['Margin'].max()
+                            st.metric("Largest Lead", f"+{largest_lead}" if largest_lead > 0 else "0")
+                        
+                        with summary_col2:
+                            largest_deficit = timeline_df['Margin'].min()
+                            st.metric("Largest Deficit", f"{largest_deficit}" if largest_deficit < 0 else "0")
+                        
+                        with summary_col3:
+                            current_margin = timeline_df['Margin'].iloc[-1]
+                            if current_margin > 0:
+                                st.metric("Current Status", "Leading", f"+{current_margin}")
+                            elif current_margin < 0:
+                                st.metric("Current Status", "Trailing", f"{current_margin}")
+                            else:
+                                st.metric("Current Status", "Tied", "0")
+                        
+                        with summary_col4:
+                            st.metric("Lineup Changes", len(lineup_changes))
+                        
+                        # Trend analysis
+                        with st.expander("📊 Performance Trends & Lineup Analysis"):
+                            if len(timeline_df) >= 10:
+                                # Calculate momentum (last 5 events vs previous 5 events)
+                                recent_margin_change = timeline_df['Margin'].iloc[-1] - timeline_df['Margin'].iloc[-6] if len(timeline_df) > 6 else 0
+                                
+                                st.write("**Recent Momentum:**")
+                                if recent_margin_change > 0:
+                                    st.success(f"🔥 Positive momentum! Score margin improved by {recent_margin_change} points in recent possessions")
+                                elif recent_margin_change < 0:
+                                    st.warning(f"⚠️ Negative momentum. Score margin decreased by {abs(recent_margin_change)} points in recent possessions")
+                                else:
+                                    st.info("Holding steady with no significant margin change")
+                            
+                            # Lead changes
+                            lead_changes = 0
+                            for i in range(1, len(timeline_df)):
+                                if (timeline_df['Margin'].iloc[i] > 0 and timeline_df['Margin'].iloc[i-1] <= 0) or \
+                                   (timeline_df['Margin'].iloc[i] < 0 and timeline_df['Margin'].iloc[i-1] >= 0):
+                                    lead_changes += 1
+                            
+                            st.write(f"**Lead Changes:** {lead_changes}")
+                            
+                            # Lineup change effectiveness
+                            if lineup_changes:
+                                st.write("**Lineup Change Effectiveness:**")
+                                
+                                positive_subs = 0
+                                negative_subs = 0
+                                
+                                for lc in lineup_changes:
+                                    next_events = timeline_df[timeline_df['Index'] > lc['Index']].head(5)
+                                    if len(next_events) > 0:
+                                        margin_change = next_events['Margin'].iloc[-1] - lc['Margin']
+                                        if margin_change > 0:
+                                            positive_subs += 1
+                                        elif margin_change < 0:
+                                            negative_subs += 1
+                                
+                                sub_col1, sub_col2, sub_col3 = st.columns(3)
+                                with sub_col1:
+                                    st.metric("Positive Impact", positive_subs)
+                                with sub_col2:
+                                    st.metric("Negative Impact", negative_subs)
+                                with sub_col3:
+                                    neutral = len(lineup_changes) - positive_subs - negative_subs
+                                    st.metric("Neutral Impact", neutral)
+                            
+                            # Time spent leading/trailing/tied
+                            leading_events = sum(1 for m in timeline_df['Margin'] if m > 0)
+                            trailing_events = sum(1 for m in timeline_df['Margin'] if m < 0)
+                            tied_events = sum(1 for m in timeline_df['Margin'] if m == 0)
+                            total_events = len(timeline_df)
+                            
+                            st.write("**Time Distribution:**")
+                            trend_col1, trend_col2, trend_col3 = st.columns(3)
+                            
+                            with trend_col1:
+                                st.metric("Time Leading", f"{leading_events/total_events*100:.1f}%")
+                            with trend_col2:
+                                st.metric("Time Trailing", f"{trailing_events/total_events*100:.1f}%")
+                            with trend_col3:
+                                st.metric("Time Tied", f"{tied_events/total_events*100:.1f}%")
+                    
                     else:
-                        st.info("Start tracking scores to see performance over time")
+                        st.info("More game events needed to generate performance timeline")
+                else:
+                    st.info("Start tracking scores to see performance over time")
 
-                    st.divider()
+                st.divider()
 
 
-                    # ===== CORE STATISTICS TABLE =====
-                    st.subheader("**📊 Core Statistics**")
-                    core_cols = ['Player', 'Minutes', '+/-', 'Off. Eff.', 'Def. Eff.', 'Points', 'PPP', 'Points/Min', 'TS%', 'TO/Min', 'Def Impact/Min']
-            
-                    st.dataframe(
-                        player_shooting_df[core_cols].style.applymap(
-                            color_plus_minus, subset=['+/-']
-                        ).applymap(
-                            color_points, subset=['Points']
-                        ).applymap(
-                            color_ts_percentage, subset=['TS%']
-                        ).applymap(
-                            color_points_per_minute, subset=['Points/Min']
-                        ).applymap(
-                            color_defensive_impact_per_minute, subset=['Def Impact/Min']
-                        ).applymap(
-                            color_PPP, subset=['PPP']
-                        ).applymap(
-                            color_turnovers_per_min, subset=['TO/Min']
-                        ).applymap(
-                            color_offensive_efficiency_scores, subset=['Off. Eff.']
-                        ).applymap(
-                            color_defensive_efficiency_scores, subset=['Def. Eff.']
-                        ),
-                        use_container_width=True,
-                        hide_index=True
-                    )
+                # ===== CORE STATISTICS TABLE =====
+                st.subheader("**📊 Core Statistics**")
+                core_cols = ['Player', 'Minutes', '+/-', 'Off. Eff.', 'Def. Eff.', 'Points', 'PPP', 'Points/Min', 'TS%', 'TO/Min', 'Def Impact/Min']
+        
+                st.dataframe(
+                    player_shooting_df[core_cols].style.applymap(
+                        color_plus_minus, subset=['+/-']
+                    ).applymap(
+                        color_points, subset=['Points']
+                    ).applymap(
+                        color_ts_percentage, subset=['TS%']
+                    ).applymap(
+                        color_points_per_minute, subset=['Points/Min']
+                    ).applymap(
+                        color_defensive_impact_per_minute, subset=['Def Impact/Min']
+                    ).applymap(
+                        color_PPP, subset=['PPP']
+                    ).applymap(
+                        color_turnovers_per_min, subset=['TO/Min']
+                    ).applymap(
+                        color_offensive_efficiency_scores, subset=['Off. Eff.']
+                    ).applymap(
+                        color_defensive_efficiency_scores, subset=['Def. Eff.']
+                    ),
+                    use_container_width=True,
+                    hide_index=True
+                )
 
-                    # ===== DETAILED STATS IN EXPANDABLE SECTIONS =====
-                    detail_col1, detail_col2 = st.columns(2)
-            
-                    with detail_col1:
-                        with st.expander("🎯 Complete Shooting Breakdown"):
-                            shooting_cols = ['Player', 'Off. Eff.', 'eFG%', 'TS%', 'FG', 'FG%', 'FT', 'FT%', '2PT', '2PT%', '3PT', '3PT%']
-                            st.dataframe(
-                                player_shooting_df[shooting_cols].style.applymap(
-                                    color_ft_percentage, subset=['FT%']
-                                ).applymap(
-                                    color_2pt_percentage, subset=['2PT%']
-                                ).applymap(
-                                    color_3pt_percentage, subset=['3PT%']
-                                ).applymap(
-                                    color_fg_percentage, subset=['FG%']
-                                ).applymap(
-                                    color_efg_percentage, subset=['eFG%']
-                                ).applymap(
-                                    color_ts_percentage, subset=['TS%']
-                                ).applymap(                               
-                                    color_offensive_efficiency_scores, subset=['Off. Eff.']
-                                ),
-                                use_container_width=True,
-                                hide_index=True
-                            )
-
-                        with st.expander("⚡ Advanced Efficiency Metrics"):
-                            eff_cols = ['Player', 'Minutes', 'Off. Eff.', 'Def. Eff.', 'PPP', 'Points/Min', 'TO/Min', 'Total TOs' ]
-                            st.dataframe(
-                                player_shooting_df[eff_cols].style.applymap(
-                                    color_offensive_efficiency_scores, subset=['Off. Eff.']
-                                ).applymap(
-                                    color_defensive_efficiency_scores, subset=['Def. Eff.']
-                                ).applymap(
-                                    color_points_per_minute, subset=['Points/Min']
-                                ).applymap(
-                                    color_PPP, subset=['PPP']
-                                ).applymap(                                
-                                    color_turnovers, subset=['Total TOs']
-                                ).applymap(
-                                    color_turnovers_per_min, subset=['TO/Min']
-                                ),
-                                use_container_width=True,
-                                hide_index=True
-                            )
-
-                    with detail_col2:
-                        with st.expander("🛡️ Defense"):
-                            def_cols = ['Player', 'Minutes', 'Def. Eff.', 'Def Impact/Min', 'Def Impact']
-                            st.dataframe(
-                                player_shooting_df[def_cols].style.applymap(
-                                    color_defensive_impact, subset=['Def Impact']
-                                ).applymap(
-                                    color_defensive_impact_per_minute, subset=['Def Impact/Min']
-                                ).applymap(
-                                    color_defensive_efficiency_scores, subset=['Def. Eff.']
-                                ),
-                                use_container_width=True,
-                                hide_index=True
-                            )
-            
-                        with st.expander("📋 Complete Statistics (All Columns)"):
-                            # Apply color styling to the dataframe
-                            styled_player_df = player_shooting_df.style.applymap(
-                                color_plus_minus, subset=['+/-']
-                            ).applymap(
-                                color_defensive_impact, subset=['Def Impact']
-                            ).applymap(
-                                color_defensive_impact_per_minute, subset=['Def Impact/Min']
-                            ).applymap(
-                                color_points_per_minute, subset=['Points/Min']
-                            ).applymap(
-                                color_PPP, subset=['PPP']
-                            ).applymap(
-                                color_offensive_efficiency_scores, subset=['Off. Eff.']
-                            ).applymap(
-                                color_defensive_efficiency_scores, subset=['Def. Eff.']
-                            ).applymap(
-                                color_points, subset=['Points']
-                            ).applymap(
+                # ===== DETAILED STATS IN EXPANDABLE SECTIONS =====
+                detail_col1, detail_col2 = st.columns(2)
+        
+                with detail_col1:
+                    with st.expander("🎯 Complete Shooting Breakdown"):
+                        shooting_cols = ['Player', 'Off. Eff.', 'eFG%', 'TS%', 'FG', 'FG%', 'FT', 'FT%', '2PT', '2PT%', '3PT', '3PT%']
+                        st.dataframe(
+                            player_shooting_df[shooting_cols].style.applymap(
                                 color_ft_percentage, subset=['FT%']
                             ).applymap(
                                 color_2pt_percentage, subset=['2PT%']
@@ -8033,643 +7961,715 @@ with tab2:
                                 color_efg_percentage, subset=['eFG%']
                             ).applymap(
                                 color_ts_percentage, subset=['TS%']
-                            ).applymap(
-                                color_turnovers, subset=['Total TOs']
-                            ).applymap(
-                                color_turnovers_per_min, subset=['TO/Min']
-                            )
-
-                            st.dataframe(styled_player_df, use_container_width=True, hide_index=True)
-
-                    # Advanced Metric Explanations
-                    with st.expander("ℹ️ Advanced Metric Explanations"):
-                        st.write("""
-                        **POSSESSION ESTIMATION:**
-                        
-                        **Formula: Estimated Possessions = FGA + TO + (0.44 * FTA)**
-                        - **Field Goal Attempts (FGA)**: Each shot attempt typically ends a possession
-                        - **Turnovers (TO)**: Each turnover ends a possession without a shot
-                        - **Free Throw Attempts (FTA * 0.44)**: The 0.44 factor accounts for:
-                          - Most free throws come in pairs (2-shot fouls)
-                          - Some come in sets of 3 (3-point shooting fouls)
-                          - "And-one" free throws (after made shots)
-                          - Technical free throws (1 shot)
-                          - The 0.44 multiplier converts FTA into estimated possessions that ended in free throws
-                        
-                        **What This Captures:**
-                        - Possessions ending in a shot attempt (made or missed)
-                        - Possessions ending in a turnover
-                        - Possessions ending in free throws (approximately)
-                        
-                        **What This Doesn't Capture:**
-                        - Offensive rebounds (which extend possessions)
-                        - Team rebounds
-                        - Defensive stops where you didn't take a shot                        
-                        
-                        **EFFICIENCY METRICS:**
-                        
-                        **Offensive Efficiency Score:**
-                        - Comprehensive measure combining shooting efficiency, volume, and ball security
-                        - Formula: (True Shooting % * 15) + (Usage Rate * 3) - (Turnover Rate * 5)
-                        - Components:
-                          - True Shooting %: Accounts for all scoring (2PT, 3PT, FT) in one metric
-                          - Usage Rate: Shot attempts per minute (measures offensive involvement)
-                          - Turnover Rate: Turnovers per minute (penalty for poor ball security)
-                        
-                        **Defensive Efficiency Score:**
-                        - Measures impact on opponent's offensive possessions
-                        - Formula: Defensive Impact per Minute * 5
-                        - Based on weighted defensive events:
-                          - Opponent turnovers forced: weighted 1.5x (most valuable)
-                          - Opponent missed shots: weighted 1.0x
-
-                        **SHOOTING EFFICIENCY METRICS:**
-                        
-                        **True Shooting % (TS%):**
-                        - Most accurate overall shooting efficiency metric
-                        - Formula: Points ÷ (2 * (FGA + 0.44 * FTA))
-                        - Accounts for:
-                          - 2-point field goals (worth 2 points)
-                          - 3-point field goals (worth 3 points, weighted appropriately)
-                          - Free throws (0.44 factor accounts for and-ones and technical FTs)
-                        - Superior to FG% because it properly weights 3-pointers and free throws
-                        
-                        **Effective Field Goal % (eFG%):**
-                        - Adjusts FG% to account for 3-pointers being worth more
-                        - Formula: (FGM + 0.5 * 3PM) ÷ FGA * 100
-                        - Does not include free throws (unlike TS%)
-                        
-                        **POSSESSION & VOLUME METRICS:**
-                        
-                        **Points Per Possession (PPP):**
-                        - Measures scoring efficiency per offensive possession
-                        - Formula: Points ÷ Estimated Possessions
-                        - Estimated Possessions = FGA + TO + (0.44 * FTA)
-                        - League average is typically around 1.0 PPP
-                        - Higher values indicate more efficient scoring
-                        
-                        **Points Per Minute:**
-                        - Raw scoring rate while on court
-                        - Shows offensive production regardless of efficiency
-                        
-                        **DEFENSIVE METRICS:**
-                        
-                        **Defensive Impact Score:**
-                        - Total weighted defensive events while on court
-                        - Formula: (Opponent Turnovers * 1.5) + (Opponent Missed Shots * 1.0)
-                        - Shows cumulative defensive contribution
-                        
-                        **Defensive Impact per Minute:**
-                        - Rate of defensive impact normalized by playing time
-                        - Formula: Total Defensive Impact ÷ Minutes Played
-                        - Allows fair comparison between players with different minutes
-
-                    """)
-                    
-                    # Shooting Percentage Charts (keep existing charts unchanged)                    
-                    chart_col1, chart_col2 = st.columns(2)
-                    
-                    with chart_col1:
-                        # Field Goal Percentage Chart
-                        fg_chart_data = []
-                        for _, row in player_shooting_df.iterrows():
-                            if '/' in row['FG'] and row['FG'] != '0/0':
-                                made, attempted = map(int, row['FG'].split('/'))
-                                if attempted > 0:
-                                    fg_chart_data.append({
-                                        'Player': row['Player'],
-                                        'FG%': made/attempted*100,
-                                        'Attempts': attempted
-                                    })
-                        
-                        if fg_chart_data:
-                            fg_chart_df = pd.DataFrame(fg_chart_data)
-                            fig_fg = px.bar(
-                                fg_chart_df,
-                                x='Player',
-                                y='FG%',
-                                title='Field Goal Percentage by Player',
-                                text='FG%',
-                                color='Attempts',
-                                color_continuous_scale='viridis'
-                            )
-                            fig_fg.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
-                            fig_fg.update_layout(yaxis_title='Field Goal %', yaxis_range=[0, 100])
-                            st.plotly_chart(fig_fg, use_container_width=True)
-                    
-                    with chart_col2:
-                        # 3-Point Percentage Chart
-                        three_pt_chart_data = []
-                        for _, row in player_shooting_df.iterrows():
-                            if '/' in row['3PT'] and row['3PT'] != '0/0':
-                                made, attempted = map(int, row['3PT'].split('/'))
-                                if attempted > 0:
-                                    three_pt_chart_data.append({
-                                        'Player': row['Player'],
-                                        '3PT%': made/attempted*100,
-                                        'Attempts': attempted
-                                    })
-                        
-                        if three_pt_chart_data:
-                            three_pt_chart_df = pd.DataFrame(three_pt_chart_data)
-                            fig_3pt = px.bar(
-                                three_pt_chart_df,
-                                x='Player',
-                                y='3PT%',
-                                title='3-Point Percentage by Player',
-                                text='3PT%',
-                                color='Attempts',
-                                color_continuous_scale='plasma'
-                            )
-                            fig_3pt.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
-                            fig_3pt.update_layout(yaxis_title='3-Point %', yaxis_range=[0, 100])
-                            st.plotly_chart(fig_3pt, use_container_width=True)
-                else:
-                    st.info("No individual player statistics available yet.")
-            else:
-                st.info("No individual player statistics available yet.")
-
-        # Lineup Plus/Minus
-        st.header("**Lineup Statistics**")
-        lineup_stats = calculate_lineup_plus_minus_with_time()
-        
-        if lineup_stats:
-            # Get efficiency data using the new consistent functions
-            lineup_offensive_efficiency = calculate_lineup_offensive_efficiency()
-            lineup_defensive_efficiency = calculate_lineup_defensive_efficiency()
-            
-            lineup_plus_minus_data = []
-            for lineup, stats in lineup_stats.items():
-                # Get offensive efficiency (using same methodology as individual players)
-                off_stats = lineup_offensive_efficiency.get(lineup, {}) or {}
-                offensive_efficiency = off_stats.get('offensive_efficiency', 0)
-                
-                # Get defensive efficiency (using same methodology as individual players) 
-                def_stats = lineup_defensive_efficiency.get(lineup, {}) or {}
-                defensive_efficiency = def_stats.get('defensive_efficiency', 0)
-                
-                # Get total points scored by this lineup
-                total_points = stats.get('points_scored', 0)
-                minutes_played = stats['minutes']
-
-                # Get detailed shooting stats from offensive efficiency calculation
-                fg_made = off_stats.get('field_goals_made', 0)
-                fg_attempted = off_stats.get('field_goals_attempted', 0)
-                fg_percentage = off_stats.get('fg_percentage', 0)
-        
-                two_pt_made = off_stats.get('two_pt_made', 0)
-                two_pt_attempted = off_stats.get('two_pt_attempted', 0)
-                two_pt_percentage = off_stats.get('two_pt_percentage', 0)
-        
-                three_pt_made = off_stats.get('three_pointers_made', 0)
-                three_pt_attempted = off_stats.get('three_pointers_attempted', 0)
-                three_pt_percentage = off_stats.get('three_pt_percentage', 0)
-
-                ft_made = off_stats.get('free_throws_made', 0)
-                ft_attempted = off_stats.get('free_throws_attempted', 0)
-                ft_percentage = off_stats.get('ft_percentage', 0)
-        
-                efg_percentage = off_stats.get('efg_percentage', 0)
-
-                total_turnovers = off_stats.get('total_turnovers', 0)
-                defensive_impact_per_minute = def_stats.get('defensive_impact_per_minute', 0)
-                total_defensive_impact = def_stats.get('total_defensive_events', 0)
-
-                total_shot_attempts = fg_attempted + (0.44 * ft_attempted)
-                lineup_points_per_shot = total_points / total_shot_attempts if total_shot_attempts > 0 else 0
-
-                estimated_possessions = fg_attempted + total_turnovers + (0.44 * ft_attempted)
-                lineup_PPP = (total_points / estimated_possessions) if estimated_possessions > 0 else 0
-                
-                lineup_plus_minus_data.append({
-                    "Lineup": lineup,
-                    "Appearances": stats['appearances'],
-                    "Plus/Minus": f"+{stats['plus_minus']}" if stats['plus_minus'] >= 0 else str(stats['plus_minus']),
-                    "Minutes": f"{stats['minutes']:.1f}",
-                    "Off. Eff.": f"{offensive_efficiency:.1f}",
-                    "Def. Eff.": f"{defensive_efficiency:.1f}",
-                    "Total Points": total_points,
-                    "PPP": f"{lineup_PPP:.2f}",
-                    "Points/Min": f"{total_points / minutes_played:.2f}" if minutes_played > 0 else "0.0",
-                    "FT": f"{ft_made}/{ft_attempted}" if ft_attempted > 0 else "0/0",
-                    "FT%": f"{ft_percentage:.1f}%" if ft_attempted > 0 else "0.0%",
-                    "FG": f"{fg_made}/{fg_attempted}" if fg_attempted > 0 else "0/0",
-                    "FG%": f"{fg_percentage:.1f}%" if fg_attempted > 0 else "0.0%",
-                    "2FG": f"{two_pt_made}/{two_pt_attempted}" if two_pt_attempted > 0 else "0/0",
-                    "2FG%": f"{two_pt_percentage:.1f}%" if two_pt_attempted > 0 else "0.0%",
-                    "3FG": f"{three_pt_made}/{three_pt_attempted}" if three_pt_attempted > 0 else "0/0",
-                    "3FG%": f"{three_pt_percentage:.1f}%" if three_pt_attempted > 0 else "0.0%",
-                    "eFG%": f"{efg_percentage:.1f}%" if fg_attempted > 0 else "0.0%",
-                    "TS%": f"{off_stats.get('true_shooting_percentage', 0):.1f}%" if (off_stats and off_stats.get('true_shooting_percentage', 0) > 0) else "0.0%",
-                    "Total TOs": total_turnovers,
-                    "TO/Min": f"{total_turnovers / stats['minutes']:.2f}" if stats['minutes'] > 0 else "0.00",
-                    "Def Impact/Min": f"{defensive_impact_per_minute:.2f}",
-                    "Total Def Impact": f"{total_defensive_impact:.1f}",
-                    "numeric_plus_minus": stats['plus_minus'],
-                    "numeric_off_eff": offensive_efficiency,
-                    "numeric_def_eff": defensive_efficiency,
-                    "numeric_points": total_points,
-                    "numeric_ppp": lineup_PPP
-                })
-            
-            if lineup_plus_minus_data:
-                lineup_df = pd.DataFrame(lineup_plus_minus_data)
-                lineup_df = lineup_df.sort_values('numeric_plus_minus', ascending=False)
-
-                # ===== TOP PERFORMING LINEUPS =====
-                st.write("**🌟 Top Performing Lineups**")
-        
-                lineup_perf_col1, lineup_perf_col2, lineup_perf_col3 = st.columns(3)
-        
-                with lineup_perf_col1:
-                    best_pm = lineup_df.iloc[0]
-                    st.success(f"**Best +/- Lineup:** {best_pm['Plus/Minus']}")
-                    st.caption(f"{best_pm['Minutes']} min | {best_pm['Appearances']} apps")
-                    st.caption(f"Off: {best_pm['Off. Eff.']} | Def: {best_pm['Def. Eff.']}")
-                    st.write(best_pm['Lineup'])
-        
-                with lineup_perf_col2:
-                    best_off = lineup_df.sort_values('numeric_off_eff', ascending=False).iloc[0]
-                    st.info(f"**Best Offensive:** {best_off['Off. Eff.']} Eff")
-                    st.caption(f"{best_off['Total Points']} pts | {best_off['PPP']} PPP")
-                    st.caption(f"{best_off['Minutes']} min | {best_off['Appearances']} apps")
-                    st.write(best_off['Lineup'])
-        
-                with lineup_perf_col3:
-                    best_def = lineup_df.sort_values('numeric_def_eff', ascending=False).iloc[0]
-                    st.info(f"**Best Defensive:** {best_def['Def. Eff.']} Eff")
-                    st.caption(f"{best_def['Total Def Impact']} impact | {best_def['Def Impact/Min']}/min")
-                    st.caption(f"{best_def['Minutes']} min | {best_def['Appearances']} apps")
-                    st.write(best_def['Lineup'])
-        
-                st.divider()
-
-                # ===== CORE LINEUP TABLE =====
-                st.subheader("**📊 Core Lineup Statistics**")
-                core_lineup_cols = ['Lineup', 'Minutes', 'Plus/Minus', 'Off. Eff.', 'Def. Eff.', 'Total Points', 'PPP', 'Points/Min', 'TS%', 'TO/Min', 'Def Impact/Min']
-        
-                st.dataframe(
-                    lineup_df[core_lineup_cols].style.applymap(
-                        color_plus_minus, subset=['Plus/Minus']
-                    ).applymap(
-                        color_lineup_points, subset=['Total Points']
-                    ).applymap(
-                        color_lineup_PPP, subset=['PPP']
-                    ).applymap(
-                        color_ts_percentage, subset=['TS%']
-                    ).applymap(
-                        color_offensive_efficiency_scores, subset=['Off. Eff.']
-                    ).applymap(
-                        color_defensive_efficiency_scores, subset=['Def. Eff.']
-                    ).applymap(
-                        color_lineup_points_per_minute, subset=['Points/Min']
-                    ).applymap(
-                        color_turnovers_lineup_per_min, subset=['TO/Min']
-                    ).applymap(
-                        color_lineup_defensive_impact_per_minute, subset=['Def Impact/Min']
-                    ),
-                    use_container_width=True,
-                    hide_index=True
-                )
-
-                 # ===== DETAILED LINEUP STATS =====
-                lineup_detail_col1, lineup_detail_col2 = st.columns(2)
-        
-                with lineup_detail_col1:
-                    with st.expander("🎯 Lineup Shooting Details"):
-                        lineup_shooting_cols = ['Lineup', 'Off. Eff.', 'eFG%', 'TS%', 'FG', 'FG%', 'FT', 'FT%', '2FG', '2FG%', '3FG', '3FG%']
-                        st.dataframe(
-                            lineup_df[lineup_shooting_cols].style.applymap(
-                                color_ft_percentage, subset=['FT%']
-                            ).applymap(
-                                color_2pt_percentage, subset=['2FG%']
-                            ).applymap(
-                                color_3pt_percentage, subset=['3FG%']
-                            ).applymap(
-                                color_fg_percentage, subset=['FG%']
-                            ).applymap(
-                                color_efg_percentage, subset=['eFG%']
-                            ).applymap(
-                                color_ts_percentage, subset=['TS%']
-                            ).applymap(
+                            ).applymap(                               
                                 color_offensive_efficiency_scores, subset=['Off. Eff.']
                             ),
                             use_container_width=True,
                             hide_index=True
                         )
-            
-                    with st.expander("⚡ Lineup Efficiency Metrics"):
-                        lineup_eff_cols = ['Lineup', 'Minutes', 'Off. Eff.', 'Def. Eff.', 'PPP', 'Points/Min', 'TO/Min', 'Total TOs']
+
+                    with st.expander("⚡ Advanced Efficiency Metrics"):
+                        eff_cols = ['Player', 'Minutes', 'Off. Eff.', 'Def. Eff.', 'PPP', 'Points/Min', 'TO/Min', 'Total TOs' ]
                         st.dataframe(
-                            lineup_df[lineup_eff_cols].style.applymap(
+                            player_shooting_df[eff_cols].style.applymap(
                                 color_offensive_efficiency_scores, subset=['Off. Eff.']
                             ).applymap(
                                 color_defensive_efficiency_scores, subset=['Def. Eff.']
                             ).applymap(
-                                color_lineup_points_per_minute, subset=['Points/Min']
+                                color_points_per_minute, subset=['Points/Min']
                             ).applymap(
-                                color_lineup_PPP, subset=['PPP']
-                            ).applymap(
+                                color_PPP, subset=['PPP']
+                            ).applymap(                                
                                 color_turnovers, subset=['Total TOs']
                             ).applymap(
-                                color_turnovers_lineup_per_min, subset=['TO/Min']
+                                color_turnovers_per_min, subset=['TO/Min']
                             ),
                             use_container_width=True,
                             hide_index=True
                         )
 
-                with lineup_detail_col2:
-                    with st.expander("🛡️ Lineup Defense"):
-                        lineup_def_cols = ['Lineup', 'Def. Eff.', 'Def Impact/Min', 'Total Def Impact']
+                with detail_col2:
+                    with st.expander("🛡️ Defense"):
+                        def_cols = ['Player', 'Minutes', 'Def. Eff.', 'Def Impact/Min', 'Def Impact']
                         st.dataframe(
-                            lineup_df[lineup_def_cols].style.applymap(
-                                color_defensive_efficiency_scores, subset=["Def. Eff."]
+                            player_shooting_df[def_cols].style.applymap(
+                                color_defensive_impact, subset=['Def Impact']
                             ).applymap(
-                                color_lineup_defensive_impact, subset=['Total Def Impact']
+                                color_defensive_impact_per_minute, subset=['Def Impact/Min']
                             ).applymap(
-                                color_lineup_defensive_impact_per_minute, subset=['Def Impact/Min']
+                                color_defensive_efficiency_scores, subset=['Def. Eff.']
                             ),
                             use_container_width=True,
                             hide_index=True
                         )
-            
-                    with st.expander("📋 Complete Lineup Stats (All Columns)"):
-                        main_columns = ["Lineup", "Appearances", "Minutes", "Off. Eff.", "Def. Eff.", "Plus/Minus", "Total Points", "PPP",  "Points/Min", "FT", "FT%", "FG", "FG%", "2FG", "2FG%", "3FG", "3FG%", "eFG%", "TS%", "Total TOs", "TO/Min" , "Def Impact/Min", "Total Def Impact"]
-                
-                        st.dataframe(
-                            lineup_df[main_columns].style.applymap(
-                                color_plus_minus, subset=["Plus/Minus"]
-                            ).applymap(
-                                color_lineup_points, subset=["Total Points"]
-                            ).applymap(
-                                color_lineup_PPP, subset=["PPP"]
-                            ).applymap(
-                                color_offensive_efficiency_scores, subset=["Off. Eff."]
-                            ).applymap(
-                                color_defensive_efficiency_scores, subset=["Def. Eff."]
-                            ).applymap(
-                                color_lineup_points_per_minute, subset=["Points/Min"]                   
-                            ).applymap(
-                                color_ft_percentage, subset=['FT%']
-                            ).applymap(
-                                color_fg_percentage, subset=["FG%"]
-                            ).applymap(
-                                color_2pt_percentage, subset=["2FG%"]
-                            ).applymap(
-                                color_3pt_percentage, subset=["3FG%"]
-                            ).applymap(
-                                color_efg_percentage, subset=["eFG%"]
-                            ).applymap(
-                                color_ts_percentage, subset=["TS%"]
-                            ).applymap(
-                                color_turnovers, subset=["Total TOs"] 
-                            ).applymap(
-                                color_turnovers_lineup_per_min, subset=["TO/Min"] 
-                            ).applymap(
-                                color_lineup_defensive_impact_per_minute, subset=["Def Impact/Min"]
-                            ).applymap(
-                                color_lineup_defensive_impact, subset=["Total Def Impact"]
-                            ),
-                            use_container_width=True,
-                            hide_index=True
-                        )
-                
-                # Enhanced Best and Worst Lineups
-                if len(lineup_df) > 0:
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        best_lineup = lineup_df.iloc[0]
-                        st.success(f"**Best +/- Lineup:** {best_lineup['Plus/Minus']}")
-                        st.write(f"_{best_lineup['Lineup']}_")
-                        st.caption(f"Off: {best_lineup['Off. Eff.']} | Def: {best_lineup['Def. Eff.']} | {best_lineup['Minutes']} min")
-
-                    with col2:
-                        worst_lineup = lineup_df.iloc[-1]
-                        st.error(f"**Worst +/- Lineup:** {worst_lineup['Plus/Minus']}")
-                        st.write(f"_{worst_lineup['Lineup']}_")
-                        st.caption(f"Off: {worst_lineup['Off. Eff.']} | Def: {worst_lineup['Def. Eff.']} | {worst_lineup['Minutes']} min")
-                
-                # Top performers by category
-                st.subheader("**Top Performers by Category:**")
-                
-                perf_col1, perf_col2, perf_col3 = st.columns(3)
-                
-                with perf_col1:
-                    # Best Offensive Lineup - using PPP (Points Per Possession) as primary metric
-                    best_offense = lineup_df.sort_values("numeric_off_eff", ascending=False).iloc[0]
-                    best_offense_lineup_key = best_offense['Lineup']
-                    
-                    # Get detailed offensive stats
-                    off_details = lineup_offensive_efficiency.get(best_offense_lineup_key, {})
-                    
-                    st.info("🔥 **Best Offensive Lineup**")
-                    st.write(f"**{best_offense['Off. Eff.']}** Off. Efficiency")
-                    
-                    # Show key offensive metrics
-                    ppp = float(best_offense['PPP'])
-                    ts_pct = off_details.get('true_shooting_percentage', 0)
-                    to_rate = float(best_offense['TO/Min'])
-                    
-                    st.caption(f"PPP: {ppp:.2f} | TS%: {ts_pct:.1f}% | TO/min: {to_rate:.2f}")
-                    st.caption(f"{best_offense['Total Points']} pts in {best_offense['Minutes']} min")
-                    st.write(f"_{best_offense['Lineup']}_")
-                
-                with perf_col2:
-                    # Best Defensive Lineup - using Defensive Impact per Minute
-                    best_defense = lineup_df.sort_values("numeric_def_eff", ascending=False).iloc[0]
-                    best_def_lineup_key = best_defense['Lineup']
-                    
-                    # Get detailed defensive stats
-                    def_details = lineup_defensive_efficiency.get(best_def_lineup_key, {})
-                    
-                    st.info("🛡️ **Best Defensive Lineup**")
-                    st.write(f"**{best_defense['Def. Eff.']}** Def. Efficiency")
-                    
-                    # Show detailed defensive breakdown
-                    opp_tos = def_details.get('total_opponent_turnovers', 0)
-                    opp_misses = def_details.get('total_opponent_missed_shots', 0)
-                    def_impact_per_min = def_details.get('defensive_impact_per_minute', 0)
-                    
-                    st.caption(f"Def/min: {def_impact_per_min:.2f} | Total: {best_defense['Total Def Impact']}")
-                    st.caption(f"Opp TOs: {opp_tos} | Opp Misses: {opp_misses}")
-                    st.write(f"_{best_defense['Lineup']}_")
-                
-                with perf_col3:
-                    # Most Efficient Scoring Lineup - best PPP with minimum minutes threshold
-                    qualified_lineups = lineup_df[lineup_df['Minutes'].astype(float) >= 3.0].copy()  # At least 3 minutes
-                    
-                    if len(qualified_lineups) > 0:
-                        # Convert PPP to numeric for sorting
-                        qualified_lineups['numeric_ppp'] = qualified_lineups['PPP'].astype(float)
-                        best_efficiency = qualified_lineups.sort_values("numeric_ppp", ascending=False).iloc[0]
-                        
-                        st.info("⚡ **Most Efficient Scoring**")
-                        st.write(f"**{best_efficiency['PPP']}** PPP")
-                        
-                        # Show context - safely access the plus/minus value
-                        points = best_efficiency['Total Points']
-                        minutes = best_efficiency['Minutes']
-                        ts_pct = float(best_efficiency['TS%'].rstrip('%'))
-                        plus_minus = best_efficiency.get('Plus/Minus', best_efficiency.get('+/-', '0'))
-                        
-                        st.caption(f"TS%: {ts_pct:.1f}% | +/-: {plus_minus}")
-                        st.caption(f"{points} pts in {minutes} min")
-                        st.write(f"_{best_efficiency['Lineup']}_")
-                    else:
-                        st.info("⚡ **Most Efficient Scoring**")
-                        st.caption("No lineups meet 3-minute minimum")
-                
-                # Add a second row for additional insights
-                insight_col1, insight_col2, insight_col3 = st.columns(3)
-                
-                with insight_col1:
-                    # Most Balanced Lineup (best combined offense + defense)
-                    lineup_df_balanced = lineup_df.copy()
-                    lineup_df_balanced['balance_score'] = (
-                        lineup_df_balanced['numeric_off_eff'] + 
-                        lineup_df_balanced['numeric_def_eff']
-                    ) / 2
-                    best_balanced = lineup_df_balanced.sort_values("balance_score", ascending=False).iloc[0]
-                    
-                    st.success("⚖️ **Most Balanced Lineup**")
-                    st.write(f"**{best_balanced['balance_score']:.1f}** Combined Score")
-                    st.caption(f"Off: {best_balanced['Off. Eff.']} | Def: {best_balanced['Def. Eff.']}")
-                    st.caption(f"{best_balanced['Minutes']} min | {best_balanced['Appearances']} appearances")
-                    st.write(f"_{best_balanced['Lineup']}_")
-                
-                with insight_col2:
-                    # Best Ball Security (lowest TO/Min with minimum minutes)
-                    qualified_security = lineup_df[lineup_df['Minutes'].astype(float) >= 3.0].copy()
-                    
-                    if len(qualified_security) > 0:
-                        # Convert TO/Min to numeric for sorting
-                        qualified_security['numeric_to_min'] = qualified_security['TO/Min'].astype(float)
-                        best_security = qualified_security.sort_values("numeric_to_min", ascending=True).iloc[0]
-                        
-                        st.success("🎯 **Best Ball Security**")
-                        st.write(f"**{best_security['TO/Min']}** TO/min")
-                        st.caption(f"{best_security['Total TOs']} total TOs in {best_security['Minutes']} min")
-                        st.write(f"_{best_security['Lineup']}_")
-                    else:
-                        st.success("🎯 **Best Ball Security**")
-                        st.caption("No lineups meet 3-minute minimum")
-                
-                with insight_col3:
-                    # Highest Scoring Output (total points with minutes context)
-                    # Convert Total Points to numeric for sorting
-                    lineup_df_with_numeric = lineup_df.copy()
-                    lineup_df_with_numeric['numeric_total_points'] = lineup_df_with_numeric['Total Points'].astype(int)
-                    highest_scoring = lineup_df_with_numeric.sort_values("numeric_total_points", ascending=False).iloc[0]
-                    
-                    st.success("💪 **Highest Scoring Output**")
-                    st.write(f"**{highest_scoring['Total Points']}** Total Points")
-                    st.caption(f"{highest_scoring['Points/Min']}/min | {highest_scoring['Minutes']} min")
-                    st.write(f"_{highest_scoring['Lineup']}_")
-                
-                # Efficiency explanation
-                with st.expander("ℹ️ Consistent Lineup Efficiency Metrics"):
-                    st.write("""
-                    **Top Performer Categories Explained:**
-                    
-                    **Best Offensive Lineup:**
-                    - Primary metric: Offensive Efficiency Score
-                    - Formula: (True Shooting % * 15) + (Usage Rate * 3) - (Turnover Rate * 5)
-                    - Shows: PPP (Points Per Possession), TS%, and TO/min
-                    - Best overall offensive impact per possession
-                    
-                    **Best Defensive Lineup:**
-                    - Primary metric: Defensive Efficiency Score
-                    - Formula: Defensive Impact per Minute * 5
-                    - Shows: Opponent turnovers forced and missed shots caused
-                    - Measures disruption of opponent offense
-                    
-                    **Most Efficient Scoring:**
-                    - Primary metric: Points Per Possession (PPP)
-                    - Minimum: 3 minutes played (ensures meaningful sample)
-                    - Shows: True Shooting % and Plus/Minus for context
-                    - Best points scored per possession used
-                    
-                    **Most Balanced Lineup:**
-                    - Primary metric: Combined Efficiency Score
-                    - Formula: (Offensive Efficiency + Defensive Efficiency) / 2
-                    - Shows: Both offensive and defensive efficiency scores
-                    - Identifies the most complete two-way lineup
-                    - Great for finding your "go-to" unit that excels at both ends
-                    
-                    **Best Ball Security:**
-                    - Primary metric: Turnovers per Minute (lowest)
-                    - Minimum: 3 minutes played
-                    - Shows: Total turnovers and playing time
-                    - Best at protecting the basketball
-                    
-                    **Highest Scoring Output:**
-                    - Primary metric: Total Points scored
-                    - Shows: Points per minute rate
-                    - Raw scoring production (volume metric)
-                    
-                    **Why These Metrics Matter:**
-                    - **Offensive Efficiency**: Comprehensive offensive evaluation
-                    - **Defensive Efficiency**: Measures defensive disruption
-                    - **PPP**: Most accurate scoring efficiency (accounts for possessions)
-                    - **Balanced Score**: Two-way excellence - offense AND defense
-                    - **Ball Security**: Crucial for offensive success
-                    - **Scoring Output**: Shows high-volume production capability
-                    
-                    **Note:** All efficiency formulas explained in detail above in "Advanced Metric Explanations"
-                    """)
-        else:
-            st.info("No lineup plus/minus data available yet.")
         
-        display_defensive_analytics()
+                    with st.expander("📋 Complete Statistics (All Columns)"):
+                        # Apply color styling to the dataframe
+                        styled_player_df = player_shooting_df.style.applymap(
+                            color_plus_minus, subset=['+/-']
+                        ).applymap(
+                            color_defensive_impact, subset=['Def Impact']
+                        ).applymap(
+                            color_defensive_impact_per_minute, subset=['Def Impact/Min']
+                        ).applymap(
+                            color_points_per_minute, subset=['Points/Min']
+                        ).applymap(
+                            color_PPP, subset=['PPP']
+                        ).applymap(
+                            color_offensive_efficiency_scores, subset=['Off. Eff.']
+                        ).applymap(
+                            color_defensive_efficiency_scores, subset=['Def. Eff.']
+                        ).applymap(
+                            color_points, subset=['Points']
+                        ).applymap(
+                            color_ft_percentage, subset=['FT%']
+                        ).applymap(
+                            color_2pt_percentage, subset=['2PT%']
+                        ).applymap(
+                            color_3pt_percentage, subset=['3PT%']
+                        ).applymap(
+                            color_fg_percentage, subset=['FG%']
+                        ).applymap(
+                            color_efg_percentage, subset=['eFG%']
+                        ).applymap(
+                            color_ts_percentage, subset=['TS%']
+                        ).applymap(
+                            color_turnovers, subset=['Total TOs']
+                        ).applymap(
+                            color_turnovers_per_min, subset=['TO/Min']
+                        )
 
-            # Quarter end history (legacy / optional)
-        if st.session_state.quarter_end_history:
-            st.subheader("Quarter End Records")
+                        st.dataframe(styled_player_df, use_container_width=True, hide_index=True)
 
-            quarter_end_data = []
-            for quarter_end in st.session_state.quarter_end_history:
-                quarter_end_data.append({
-                    "Quarter": quarter_end.get("quarter", "Unknown"),
-                    "Final Score": quarter_end.get("final_score", "0-0"),
-                    "Final Lineup": " | ".join(quarter_end.get("final_lineup", [])),
-                })
+                # Advanced Metric Explanations
+                with st.expander("ℹ️ Advanced Metric Explanations"):
+                    st.write("""
+                    **POSSESSION ESTIMATION:**
+                    
+                    **Formula: Estimated Possessions = FGA + TO + (0.44 * FTA)**
+                    - **Field Goal Attempts (FGA)**: Each shot attempt typically ends a possession
+                    - **Turnovers (TO)**: Each turnover ends a possession without a shot
+                    - **Free Throw Attempts (FTA * 0.44)**: The 0.44 factor accounts for:
+                      - Most free throws come in pairs (2-shot fouls)
+                      - Some come in sets of 3 (3-point shooting fouls)
+                      - "And-one" free throws (after made shots)
+                      - Technical free throws (1 shot)
+                      - The 0.44 multiplier converts FTA into estimated possessions that ended in free throws
+                    
+                    **What This Captures:**
+                    - Possessions ending in a shot attempt (made or missed)
+                    - Possessions ending in a turnover
+                    - Possessions ending in free throws (approximately)
+                    
+                    **What This Doesn't Capture:**
+                    - Offensive rebounds (which extend possessions)
+                    - Team rebounds
+                    - Defensive stops where you didn't take a shot                        
+                    
+                    **EFFICIENCY METRICS:**
+                    
+                    **Offensive Efficiency Score:**
+                    - Comprehensive measure combining shooting efficiency, volume, and ball security
+                    - Formula: (True Shooting % * 15) + (Usage Rate * 3) - (Turnover Rate * 5)
+                    - Components:
+                      - True Shooting %: Accounts for all scoring (2PT, 3PT, FT) in one metric
+                      - Usage Rate: Shot attempts per minute (measures offensive involvement)
+                      - Turnover Rate: Turnovers per minute (penalty for poor ball security)
+                    
+                    **Defensive Efficiency Score:**
+                    - Measures impact on opponent's offensive possessions
+                    - Formula: Defensive Impact per Minute * 5
+                    - Based on weighted defensive events:
+                      - Opponent turnovers forced: weighted 1.5x (most valuable)
+                      - Opponent missed shots: weighted 1.0x
 
-            if quarter_end_data:
-                quarter_end_df = pd.DataFrame(quarter_end_data)
-                st.dataframe(
-                    quarter_end_df,
-                    use_container_width=True,
-                    hide_index=True
-                )
+                    **SHOOTING EFFICIENCY METRICS:**
+                    
+                    **True Shooting % (TS%):**
+                    - Most accurate overall shooting efficiency metric
+                    - Formula: Points ÷ (2 * (FGA + 0.44 * FTA))
+                    - Accounts for:
+                      - 2-point field goals (worth 2 points)
+                      - 3-point field goals (worth 3 points, weighted appropriately)
+                      - Free throws (0.44 factor accounts for and-ones and technical FTs)
+                    - Superior to FG% because it properly weights 3-pointers and free throws
+                    
+                    **Effective Field Goal % (eFG%):**
+                    - Adjusts FG% to account for 3-pointers being worth more
+                    - Formula: (FGM + 0.5 * 3PM) ÷ FGA * 100
+                    - Does not include free throws (unlike TS%)
+                    
+                    **POSSESSION & VOLUME METRICS:**
+                    
+                    **Points Per Possession (PPP):**
+                    - Measures scoring efficiency per offensive possession
+                    - Formula: Points ÷ Estimated Possessions
+                    - Estimated Possessions = FGA + TO + (0.44 * FTA)
+                    - League average is typically around 1.0 PPP
+                    - Higher values indicate more efficient scoring
+                    
+                    **Points Per Minute:**
+                    - Raw scoring rate while on court
+                    - Shows offensive production regardless of efficiency
+                    
+                    **DEFENSIVE METRICS:**
+                    
+                    **Defensive Impact Score:**
+                    - Total weighted defensive events while on court
+                    - Formula: (Opponent Turnovers * 1.5) + (Opponent Missed Shots * 1.0)
+                    - Shows cumulative defensive contribution
+                    
+                    **Defensive Impact per Minute:**
+                    - Rate of defensive impact normalized by playing time
+                    - Formula: Total Defensive Impact ÷ Minutes Played
+                    - Allows fair comparison between players with different minutes
 
-            # Optional cleanup button
-            if st.button("🗑️ Clear Quarter End Records"):
-                st.session_state.quarter_end_history.clear()
-                st.rerun()
+                """)
+                
+                # Shooting Percentage Charts (keep existing charts unchanged)                    
+                chart_col1, chart_col2 = st.columns(2)
+                
+                with chart_col1:
+                    # Field Goal Percentage Chart
+                    fg_chart_data = []
+                    for _, row in player_shooting_df.iterrows():
+                        if '/' in row['FG'] and row['FG'] != '0/0':
+                            made, attempted = map(int, row['FG'].split('/'))
+                            if attempted > 0:
+                                fg_chart_data.append({
+                                    'Player': row['Player'],
+                                    'FG%': made/attempted*100,
+                                    'Attempts': attempted
+                                })
+                    
+                    if fg_chart_data:
+                        fg_chart_df = pd.DataFrame(fg_chart_data)
+                        fig_fg = px.bar(
+                            fg_chart_df,
+                            x='Player',
+                            y='FG%',
+                            title='Field Goal Percentage by Player',
+                            text='FG%',
+                            color='Attempts',
+                            color_continuous_scale='viridis'
+                        )
+                        fig_fg.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+                        fig_fg.update_layout(yaxis_title='Field Goal %', yaxis_range=[0, 100])
+                        st.plotly_chart(fig_fg, use_container_width=True)
+                
+                with chart_col2:
+                    # 3-Point Percentage Chart
+                    three_pt_chart_data = []
+                    for _, row in player_shooting_df.iterrows():
+                        if '/' in row['3PT'] and row['3PT'] != '0/0':
+                            made, attempted = map(int, row['3PT'].split('/'))
+                            if attempted > 0:
+                                three_pt_chart_data.append({
+                                    'Player': row['Player'],
+                                    '3PT%': made/attempted*100,
+                                    'Attempts': attempted
+                                })
+                    
+                    if three_pt_chart_data:
+                        three_pt_chart_df = pd.DataFrame(three_pt_chart_data)
+                        fig_3pt = px.bar(
+                            three_pt_chart_df,
+                            x='Player',
+                            y='3PT%',
+                            title='3-Point Percentage by Player',
+                            text='3PT%',
+                            color='Attempts',
+                            color_continuous_scale='plasma'
+                        )
+                        fig_3pt.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+                        fig_3pt.update_layout(yaxis_title='3-Point %', yaxis_range=[0, 100])
+                        st.plotly_chart(fig_3pt, use_container_width=True)
+            else:
+                st.info("No individual player statistics available yet.")
+        else:
+            st.info("No individual player statistics available yet.")
 
-        # Lineup history (now also shows end-of-quarter snapshots)
-        if st.session_state.lineup_history:
-            st.subheader("Lineup History (includes End-of-Quarter 0:00 snapshots)")
+    # Lineup Plus/Minus
+    st.header("**Lineup Statistics**")
+    lineup_stats = calculate_lineup_plus_minus_with_time()
+    
+    if lineup_stats:
+        # Get efficiency data using the new consistent functions
+        lineup_offensive_efficiency = calculate_lineup_offensive_efficiency()
+        lineup_defensive_efficiency = calculate_lineup_defensive_efficiency()
+        
+        lineup_plus_minus_data = []
+        for lineup, stats in lineup_stats.items():
+            # Get offensive efficiency (using same methodology as individual players)
+            off_stats = lineup_offensive_efficiency.get(lineup, {}) or {}
+            offensive_efficiency = off_stats.get('offensive_efficiency', 0)
+            
+            # Get defensive efficiency (using same methodology as individual players) 
+            def_stats = lineup_defensive_efficiency.get(lineup, {}) or {}
+            defensive_efficiency = def_stats.get('defensive_efficiency', 0)
+            
+            # Get total points scored by this lineup
+            total_points = stats.get('points_scored', 0)
+            minutes_played = stats['minutes']
 
-            lineup_data = []
-            for i, lineup_event in enumerate(st.session_state.lineup_history):
-                label = f"{lineup_event.get('quarter','?')} End" if lineup_event.get("is_quarter_end") else i + 1
-                lineup_data.append({
-                    "Lineup #": label,
-                    "Quarter": lineup_event.get("quarter", "Unknown"),
-                    "Game Time": lineup_event.get("game_time", "Unknown"),
-                    "Score": f"{lineup_event.get('home_score', 0)}-{lineup_event.get('away_score', 0)}",
-                    "Lineup": " | ".join(lineup_event.get("new_lineup", [])),
-                })
+            # Get detailed shooting stats from offensive efficiency calculation
+            fg_made = off_stats.get('field_goals_made', 0)
+            fg_attempted = off_stats.get('field_goals_attempted', 0)
+            fg_percentage = off_stats.get('fg_percentage', 0)
+    
+            two_pt_made = off_stats.get('two_pt_made', 0)
+            two_pt_attempted = off_stats.get('two_pt_attempted', 0)
+            two_pt_percentage = off_stats.get('two_pt_percentage', 0)
+    
+            three_pt_made = off_stats.get('three_pointers_made', 0)
+            three_pt_attempted = off_stats.get('three_pointers_attempted', 0)
+            three_pt_percentage = off_stats.get('three_pt_percentage', 0)
 
-            if lineup_data:
-                lineup_df = pd.DataFrame(lineup_data)
-                st.dataframe(
-                    lineup_df,
-                    use_container_width=True,
-                    hide_index=True
-                )
+            ft_made = off_stats.get('free_throws_made', 0)
+            ft_attempted = off_stats.get('free_throws_attempted', 0)
+            ft_percentage = off_stats.get('ft_percentage', 0)
+    
+            efg_percentage = off_stats.get('efg_percentage', 0)
+
+            total_turnovers = off_stats.get('total_turnovers', 0)
+            defensive_impact_per_minute = def_stats.get('defensive_impact_per_minute', 0)
+            total_defensive_impact = def_stats.get('total_defensive_events', 0)
+
+            total_shot_attempts = fg_attempted + (0.44 * ft_attempted)
+            lineup_points_per_shot = total_points / total_shot_attempts if total_shot_attempts > 0 else 0
+
+            estimated_possessions = fg_attempted + total_turnovers + (0.44 * ft_attempted)
+            lineup_PPP = (total_points / estimated_possessions) if estimated_possessions > 0 else 0
+            
+            lineup_plus_minus_data.append({
+                "Lineup": lineup,
+                "Appearances": stats['appearances'],
+                "Plus/Minus": f"+{stats['plus_minus']}" if stats['plus_minus'] >= 0 else str(stats['plus_minus']),
+                "Minutes": f"{stats['minutes']:.1f}",
+                "Off. Eff.": f"{offensive_efficiency:.1f}",
+                "Def. Eff.": f"{defensive_efficiency:.1f}",
+                "Total Points": total_points,
+                "PPP": f"{lineup_PPP:.2f}",
+                "Points/Min": f"{total_points / minutes_played:.2f}" if minutes_played > 0 else "0.0",
+                "FT": f"{ft_made}/{ft_attempted}" if ft_attempted > 0 else "0/0",
+                "FT%": f"{ft_percentage:.1f}%" if ft_attempted > 0 else "0.0%",
+                "FG": f"{fg_made}/{fg_attempted}" if fg_attempted > 0 else "0/0",
+                "FG%": f"{fg_percentage:.1f}%" if fg_attempted > 0 else "0.0%",
+                "2FG": f"{two_pt_made}/{two_pt_attempted}" if two_pt_attempted > 0 else "0/0",
+                "2FG%": f"{two_pt_percentage:.1f}%" if two_pt_attempted > 0 else "0.0%",
+                "3FG": f"{three_pt_made}/{three_pt_attempted}" if three_pt_attempted > 0 else "0/0",
+                "3FG%": f"{three_pt_percentage:.1f}%" if three_pt_attempted > 0 else "0.0%",
+                "eFG%": f"{efg_percentage:.1f}%" if fg_attempted > 0 else "0.0%",
+                "TS%": f"{off_stats.get('true_shooting_percentage', 0):.1f}%" if (off_stats and off_stats.get('true_shooting_percentage', 0) > 0) else "0.0%",
+                "Total TOs": total_turnovers,
+                "TO/Min": f"{total_turnovers / stats['minutes']:.2f}" if stats['minutes'] > 0 else "0.00",
+                "Def Impact/Min": f"{defensive_impact_per_minute:.2f}",
+                "Total Def Impact": f"{total_defensive_impact:.1f}",
+                "numeric_plus_minus": stats['plus_minus'],
+                "numeric_off_eff": offensive_efficiency,
+                "numeric_def_eff": defensive_efficiency,
+                "numeric_points": total_points,
+                "numeric_ppp": lineup_PPP
+            })
+        
+        if lineup_plus_minus_data:
+            lineup_df = pd.DataFrame(lineup_plus_minus_data)
+            lineup_df = lineup_df.sort_values('numeric_plus_minus', ascending=False)
+
+            # ===== TOP PERFORMING LINEUPS =====
+            st.write("**🌟 Top Performing Lineups**")
+    
+            lineup_perf_col1, lineup_perf_col2, lineup_perf_col3 = st.columns(3)
+    
+            with lineup_perf_col1:
+                best_pm = lineup_df.iloc[0]
+                st.success(f"**Best +/- Lineup:** {best_pm['Plus/Minus']}")
+                st.caption(f"{best_pm['Minutes']} min | {best_pm['Appearances']} apps")
+                st.caption(f"Off: {best_pm['Off. Eff.']} | Def: {best_pm['Def. Eff.']}")
+                st.write(best_pm['Lineup'])
+    
+            with lineup_perf_col2:
+                best_off = lineup_df.sort_values('numeric_off_eff', ascending=False).iloc[0]
+                st.info(f"**Best Offensive:** {best_off['Off. Eff.']} Eff")
+                st.caption(f"{best_off['Total Points']} pts | {best_off['PPP']} PPP")
+                st.caption(f"{best_off['Minutes']} min | {best_off['Appearances']} apps")
+                st.write(best_off['Lineup'])
+    
+            with lineup_perf_col3:
+                best_def = lineup_df.sort_values('numeric_def_eff', ascending=False).iloc[0]
+                st.info(f"**Best Defensive:** {best_def['Def. Eff.']} Eff")
+                st.caption(f"{best_def['Total Def Impact']} impact | {best_def['Def Impact/Min']}/min")
+                st.caption(f"{best_def['Minutes']} min | {best_def['Appearances']} apps")
+                st.write(best_def['Lineup'])
+    
+            st.divider()
+
+            # ===== CORE LINEUP TABLE =====
+            st.subheader("**📊 Core Lineup Statistics**")
+            core_lineup_cols = ['Lineup', 'Minutes', 'Plus/Minus', 'Off. Eff.', 'Def. Eff.', 'Total Points', 'PPP', 'Points/Min', 'TS%', 'TO/Min', 'Def Impact/Min']
+    
+            st.dataframe(
+                lineup_df[core_lineup_cols].style.applymap(
+                    color_plus_minus, subset=['Plus/Minus']
+                ).applymap(
+                    color_lineup_points, subset=['Total Points']
+                ).applymap(
+                    color_lineup_PPP, subset=['PPP']
+                ).applymap(
+                    color_ts_percentage, subset=['TS%']
+                ).applymap(
+                    color_offensive_efficiency_scores, subset=['Off. Eff.']
+                ).applymap(
+                    color_defensive_efficiency_scores, subset=['Def. Eff.']
+                ).applymap(
+                    color_lineup_points_per_minute, subset=['Points/Min']
+                ).applymap(
+                    color_turnovers_lineup_per_min, subset=['TO/Min']
+                ).applymap(
+                    color_lineup_defensive_impact_per_minute, subset=['Def Impact/Min']
+                ),
+                use_container_width=True,
+                hide_index=True
+            )
+
+             # ===== DETAILED LINEUP STATS =====
+            lineup_detail_col1, lineup_detail_col2 = st.columns(2)
+    
+            with lineup_detail_col1:
+                with st.expander("🎯 Lineup Shooting Details"):
+                    lineup_shooting_cols = ['Lineup', 'Off. Eff.', 'eFG%', 'TS%', 'FG', 'FG%', 'FT', 'FT%', '2FG', '2FG%', '3FG', '3FG%']
+                    st.dataframe(
+                        lineup_df[lineup_shooting_cols].style.applymap(
+                            color_ft_percentage, subset=['FT%']
+                        ).applymap(
+                            color_2pt_percentage, subset=['2FG%']
+                        ).applymap(
+                            color_3pt_percentage, subset=['3FG%']
+                        ).applymap(
+                            color_fg_percentage, subset=['FG%']
+                        ).applymap(
+                            color_efg_percentage, subset=['eFG%']
+                        ).applymap(
+                            color_ts_percentage, subset=['TS%']
+                        ).applymap(
+                            color_offensive_efficiency_scores, subset=['Off. Eff.']
+                        ),
+                        use_container_width=True,
+                        hide_index=True
+                    )
+        
+                with st.expander("⚡ Lineup Efficiency Metrics"):
+                    lineup_eff_cols = ['Lineup', 'Minutes', 'Off. Eff.', 'Def. Eff.', 'PPP', 'Points/Min', 'TO/Min', 'Total TOs']
+                    st.dataframe(
+                        lineup_df[lineup_eff_cols].style.applymap(
+                            color_offensive_efficiency_scores, subset=['Off. Eff.']
+                        ).applymap(
+                            color_defensive_efficiency_scores, subset=['Def. Eff.']
+                        ).applymap(
+                            color_lineup_points_per_minute, subset=['Points/Min']
+                        ).applymap(
+                            color_lineup_PPP, subset=['PPP']
+                        ).applymap(
+                            color_turnovers, subset=['Total TOs']
+                        ).applymap(
+                            color_turnovers_lineup_per_min, subset=['TO/Min']
+                        ),
+                        use_container_width=True,
+                        hide_index=True
+                    )
+
+            with lineup_detail_col2:
+                with st.expander("🛡️ Lineup Defense"):
+                    lineup_def_cols = ['Lineup', 'Def. Eff.', 'Def Impact/Min', 'Total Def Impact']
+                    st.dataframe(
+                        lineup_df[lineup_def_cols].style.applymap(
+                            color_defensive_efficiency_scores, subset=["Def. Eff."]
+                        ).applymap(
+                            color_lineup_defensive_impact, subset=['Total Def Impact']
+                        ).applymap(
+                            color_lineup_defensive_impact_per_minute, subset=['Def Impact/Min']
+                        ),
+                        use_container_width=True,
+                        hide_index=True
+                    )
+        
+                with st.expander("📋 Complete Lineup Stats (All Columns)"):
+                    main_columns = ["Lineup", "Appearances", "Minutes", "Off. Eff.", "Def. Eff.", "Plus/Minus", "Total Points", "PPP",  "Points/Min", "FT", "FT%", "FG", "FG%", "2FG", "2FG%", "3FG", "3FG%", "eFG%", "TS%", "Total TOs", "TO/Min" , "Def Impact/Min", "Total Def Impact"]
+            
+                    st.dataframe(
+                        lineup_df[main_columns].style.applymap(
+                            color_plus_minus, subset=["Plus/Minus"]
+                        ).applymap(
+                            color_lineup_points, subset=["Total Points"]
+                        ).applymap(
+                            color_lineup_PPP, subset=["PPP"]
+                        ).applymap(
+                            color_offensive_efficiency_scores, subset=["Off. Eff."]
+                        ).applymap(
+                            color_defensive_efficiency_scores, subset=["Def. Eff."]
+                        ).applymap(
+                            color_lineup_points_per_minute, subset=["Points/Min"]                   
+                        ).applymap(
+                            color_ft_percentage, subset=['FT%']
+                        ).applymap(
+                            color_fg_percentage, subset=["FG%"]
+                        ).applymap(
+                            color_2pt_percentage, subset=["2FG%"]
+                        ).applymap(
+                            color_3pt_percentage, subset=["3FG%"]
+                        ).applymap(
+                            color_efg_percentage, subset=["eFG%"]
+                        ).applymap(
+                            color_ts_percentage, subset=["TS%"]
+                        ).applymap(
+                            color_turnovers, subset=["Total TOs"] 
+                        ).applymap(
+                            color_turnovers_lineup_per_min, subset=["TO/Min"] 
+                        ).applymap(
+                            color_lineup_defensive_impact_per_minute, subset=["Def Impact/Min"]
+                        ).applymap(
+                            color_lineup_defensive_impact, subset=["Total Def Impact"]
+                        ),
+                        use_container_width=True,
+                        hide_index=True
+                    )
+            
+            # Enhanced Best and Worst Lineups
+            if len(lineup_df) > 0:
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    best_lineup = lineup_df.iloc[0]
+                    st.success(f"**Best +/- Lineup:** {best_lineup['Plus/Minus']}")
+                    st.write(f"_{best_lineup['Lineup']}_")
+                    st.caption(f"Off: {best_lineup['Off. Eff.']} | Def: {best_lineup['Def. Eff.']} | {best_lineup['Minutes']} min")
+
+                with col2:
+                    worst_lineup = lineup_df.iloc[-1]
+                    st.error(f"**Worst +/- Lineup:** {worst_lineup['Plus/Minus']}")
+                    st.write(f"_{worst_lineup['Lineup']}_")
+                    st.caption(f"Off: {worst_lineup['Off. Eff.']} | Def: {worst_lineup['Def. Eff.']} | {worst_lineup['Minutes']} min")
+            
+            # Top performers by category
+            st.subheader("**Top Performers by Category:**")
+            
+            perf_col1, perf_col2, perf_col3 = st.columns(3)
+            
+            with perf_col1:
+                # Best Offensive Lineup - using PPP (Points Per Possession) as primary metric
+                best_offense = lineup_df.sort_values("numeric_off_eff", ascending=False).iloc[0]
+                best_offense_lineup_key = best_offense['Lineup']
+                
+                # Get detailed offensive stats
+                off_details = lineup_offensive_efficiency.get(best_offense_lineup_key, {})
+                
+                st.info("🔥 **Best Offensive Lineup**")
+                st.write(f"**{best_offense['Off. Eff.']}** Off. Efficiency")
+                
+                # Show key offensive metrics
+                ppp = float(best_offense['PPP'])
+                ts_pct = off_details.get('true_shooting_percentage', 0)
+                to_rate = float(best_offense['TO/Min'])
+                
+                st.caption(f"PPP: {ppp:.2f} | TS%: {ts_pct:.1f}% | TO/min: {to_rate:.2f}")
+                st.caption(f"{best_offense['Total Points']} pts in {best_offense['Minutes']} min")
+                st.write(f"_{best_offense['Lineup']}_")
+            
+            with perf_col2:
+                # Best Defensive Lineup - using Defensive Impact per Minute
+                best_defense = lineup_df.sort_values("numeric_def_eff", ascending=False).iloc[0]
+                best_def_lineup_key = best_defense['Lineup']
+                
+                # Get detailed defensive stats
+                def_details = lineup_defensive_efficiency.get(best_def_lineup_key, {})
+                
+                st.info("🛡️ **Best Defensive Lineup**")
+                st.write(f"**{best_defense['Def. Eff.']}** Def. Efficiency")
+                
+                # Show detailed defensive breakdown
+                opp_tos = def_details.get('total_opponent_turnovers', 0)
+                opp_misses = def_details.get('total_opponent_missed_shots', 0)
+                def_impact_per_min = def_details.get('defensive_impact_per_minute', 0)
+                
+                st.caption(f"Def/min: {def_impact_per_min:.2f} | Total: {best_defense['Total Def Impact']}")
+                st.caption(f"Opp TOs: {opp_tos} | Opp Misses: {opp_misses}")
+                st.write(f"_{best_defense['Lineup']}_")
+            
+            with perf_col3:
+                # Most Efficient Scoring Lineup - best PPP with minimum minutes threshold
+                qualified_lineups = lineup_df[lineup_df['Minutes'].astype(float) >= 3.0].copy()  # At least 3 minutes
+                
+                if len(qualified_lineups) > 0:
+                    # Convert PPP to numeric for sorting
+                    qualified_lineups['numeric_ppp'] = qualified_lineups['PPP'].astype(float)
+                    best_efficiency = qualified_lineups.sort_values("numeric_ppp", ascending=False).iloc[0]
+                    
+                    st.info("⚡ **Most Efficient Scoring**")
+                    st.write(f"**{best_efficiency['PPP']}** PPP")
+                    
+                    # Show context - safely access the plus/minus value
+                    points = best_efficiency['Total Points']
+                    minutes = best_efficiency['Minutes']
+                    ts_pct = float(best_efficiency['TS%'].rstrip('%'))
+                    plus_minus = best_efficiency.get('Plus/Minus', best_efficiency.get('+/-', '0'))
+                    
+                    st.caption(f"TS%: {ts_pct:.1f}% | +/-: {plus_minus}")
+                    st.caption(f"{points} pts in {minutes} min")
+                    st.write(f"_{best_efficiency['Lineup']}_")
+                else:
+                    st.info("⚡ **Most Efficient Scoring**")
+                    st.caption("No lineups meet 3-minute minimum")
+            
+            # Add a second row for additional insights
+            insight_col1, insight_col2, insight_col3 = st.columns(3)
+            
+            with insight_col1:
+                # Most Balanced Lineup (best combined offense + defense)
+                lineup_df_balanced = lineup_df.copy()
+                lineup_df_balanced['balance_score'] = (
+                    lineup_df_balanced['numeric_off_eff'] + 
+                    lineup_df_balanced['numeric_def_eff']
+                ) / 2
+                best_balanced = lineup_df_balanced.sort_values("balance_score", ascending=False).iloc[0]
+                
+                st.success("⚖️ **Most Balanced Lineup**")
+                st.write(f"**{best_balanced['balance_score']:.1f}** Combined Score")
+                st.caption(f"Off: {best_balanced['Off. Eff.']} | Def: {best_balanced['Def. Eff.']}")
+                st.caption(f"{best_balanced['Minutes']} min | {best_balanced['Appearances']} appearances")
+                st.write(f"_{best_balanced['Lineup']}_")
+            
+            with insight_col2:
+                # Best Ball Security (lowest TO/Min with minimum minutes)
+                qualified_security = lineup_df[lineup_df['Minutes'].astype(float) >= 3.0].copy()
+                
+                if len(qualified_security) > 0:
+                    # Convert TO/Min to numeric for sorting
+                    qualified_security['numeric_to_min'] = qualified_security['TO/Min'].astype(float)
+                    best_security = qualified_security.sort_values("numeric_to_min", ascending=True).iloc[0]
+                    
+                    st.success("🎯 **Best Ball Security**")
+                    st.write(f"**{best_security['TO/Min']}** TO/min")
+                    st.caption(f"{best_security['Total TOs']} total TOs in {best_security['Minutes']} min")
+                    st.write(f"_{best_security['Lineup']}_")
+                else:
+                    st.success("🎯 **Best Ball Security**")
+                    st.caption("No lineups meet 3-minute minimum")
+            
+            with insight_col3:
+                # Highest Scoring Output (total points with minutes context)
+                # Convert Total Points to numeric for sorting
+                lineup_df_with_numeric = lineup_df.copy()
+                lineup_df_with_numeric['numeric_total_points'] = lineup_df_with_numeric['Total Points'].astype(int)
+                highest_scoring = lineup_df_with_numeric.sort_values("numeric_total_points", ascending=False).iloc[0]
+                
+                st.success("💪 **Highest Scoring Output**")
+                st.write(f"**{highest_scoring['Total Points']}** Total Points")
+                st.caption(f"{highest_scoring['Points/Min']}/min | {highest_scoring['Minutes']} min")
+                st.write(f"_{highest_scoring['Lineup']}_")
+            
+            # Efficiency explanation
+            with st.expander("ℹ️ Consistent Lineup Efficiency Metrics"):
+                st.write("""
+                **Top Performer Categories Explained:**
+                
+                **Best Offensive Lineup:**
+                - Primary metric: Offensive Efficiency Score
+                - Formula: (True Shooting % * 15) + (Usage Rate * 3) - (Turnover Rate * 5)
+                - Shows: PPP (Points Per Possession), TS%, and TO/min
+                - Best overall offensive impact per possession
+                
+                **Best Defensive Lineup:**
+                - Primary metric: Defensive Efficiency Score
+                - Formula: Defensive Impact per Minute * 5
+                - Shows: Opponent turnovers forced and missed shots caused
+                - Measures disruption of opponent offense
+                
+                **Most Efficient Scoring:**
+                - Primary metric: Points Per Possession (PPP)
+                - Minimum: 3 minutes played (ensures meaningful sample)
+                - Shows: True Shooting % and Plus/Minus for context
+                - Best points scored per possession used
+                
+                **Most Balanced Lineup:**
+                - Primary metric: Combined Efficiency Score
+                - Formula: (Offensive Efficiency + Defensive Efficiency) / 2
+                - Shows: Both offensive and defensive efficiency scores
+                - Identifies the most complete two-way lineup
+                - Great for finding your "go-to" unit that excels at both ends
+                
+                **Best Ball Security:**
+                - Primary metric: Turnovers per Minute (lowest)
+                - Minimum: 3 minutes played
+                - Shows: Total turnovers and playing time
+                - Best at protecting the basketball
+                
+                **Highest Scoring Output:**
+                - Primary metric: Total Points scored
+                - Shows: Points per minute rate
+                - Raw scoring production (volume metric)
+                
+                **Why These Metrics Matter:**
+                - **Offensive Efficiency**: Comprehensive offensive evaluation
+                - **Defensive Efficiency**: Measures defensive disruption
+                - **PPP**: Most accurate scoring efficiency (accounts for possessions)
+                - **Balanced Score**: Two-way excellence - offense AND defense
+                - **Ball Security**: Crucial for offensive success
+                - **Scoring Output**: Shows high-volume production capability
+                
+                **Note:** All efficiency formulas explained in detail above in "Advanced Metric Explanations"
+                """)
+    else:
+        st.info("No lineup plus/minus data available yet.")
+    
+    display_defensive_analytics()
+
+        # Quarter end history (legacy / optional)
+    if st.session_state.quarter_end_history:
+        st.subheader("Quarter End Records")
+
+        quarter_end_data = []
+        for quarter_end in st.session_state.quarter_end_history:
+            quarter_end_data.append({
+                "Quarter": quarter_end.get("quarter", "Unknown"),
+                "Final Score": quarter_end.get("final_score", "0-0"),
+                "Final Lineup": " | ".join(quarter_end.get("final_lineup", [])),
+            })
+
+        if quarter_end_data:
+            quarter_end_df = pd.DataFrame(quarter_end_data)
+            st.dataframe(
+                quarter_end_df,
+                use_container_width=True,
+                hide_index=True
+            )
+
+        # Optional cleanup button
+        if st.button("🗑️ Clear Quarter End Records"):
+            st.session_state.quarter_end_history.clear()
+            st.rerun()
+
+    # Lineup history (now also shows end-of-quarter snapshots)
+    if st.session_state.lineup_history:
+        st.subheader("Lineup History (includes End-of-Quarter 0:00 snapshots)")
+
+        lineup_data = []
+        for i, lineup_event in enumerate(st.session_state.lineup_history):
+            label = f"{lineup_event.get('quarter','?')} End" if lineup_event.get("is_quarter_end") else i + 1
+            lineup_data.append({
+                "Lineup #": label,
+                "Quarter": lineup_event.get("quarter", "Unknown"),
+                "Game Time": lineup_event.get("game_time", "Unknown"),
+                "Score": f"{lineup_event.get('home_score', 0)}-{lineup_event.get('away_score', 0)}",
+                "Lineup": " | ".join(lineup_event.get("new_lineup", [])),
+            })
+
+        if lineup_data:
+            lineup_df = pd.DataFrame(lineup_data)
+            st.dataframe(
+                lineup_df,
+                use_container_width=True,
+                hide_index=True
+            )
 
 # ------------------------------------------------------------------
 # Tab 3: AI Insights
