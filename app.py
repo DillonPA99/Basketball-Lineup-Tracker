@@ -4773,36 +4773,36 @@ Total Points: {total_points}
 # ============================================================================
 
 def calculate_momentum_score(recent_events=10):
-    """
-    Calculate current momentum based on recent scoring events.
-    Returns: momentum_score (-100 to +100), momentum_direction
-    """
+    """Calculate momentum based on scoring efficiency in recent possessions."""
     if len(st.session_state.score_history) < 2:
         return 0, "neutral"
     
-    # Get recent scoring events
     recent_scores = st.session_state.score_history[-recent_events:]
     
-    momentum_points = 0
-    time_weighted_points = 0
+    home_possessions = 0
+    home_points = 0
+    away_possessions = 0
+    away_points = 0
     
     for i, score in enumerate(recent_scores):
-        # Time weighting - more recent events matter more
         recency_weight = (i + 1) / len(recent_scores)
         
-        # Points contribution
-        points = score['points'] if score.get('made', True) else 0
-        
         if score['team'] == 'home':
-            momentum_points += points * recency_weight
-            time_weighted_points += points * recency_weight
+            home_possessions += recency_weight
+            if score.get('made', True):
+                home_points += score['points'] * recency_weight
         else:
-            momentum_points -= points * recency_weight
-            time_weighted_points -= points * recency_weight
+            away_possessions += recency_weight
+            if score.get('made', True):
+                away_points += score['points'] * recency_weight
     
-    # Normalize to -100 to +100 scale
-    max_possible = recent_events * 3  # Max 3 points per possession
-    momentum_score = (momentum_points / max_possible) * 100
+    # Calculate efficiency differential
+    home_eff = (home_points / home_possessions) if home_possessions > 0 else 0
+    away_eff = (away_points / away_possessions) if away_possessions > 0 else 0
+    
+    # Normalize to -100 to +100
+    momentum_score = (home_eff - away_eff) * 50
+    momentum_score = max(-100, min(100, momentum_score))
     
     # Determine direction
     if momentum_score > 15:
@@ -4818,20 +4818,14 @@ def calculate_momentum_score(recent_events=10):
     
     return momentum_score, direction
 
-
 def calculate_scoring_efficiency_trend():
-    """
-    Analyze if team is scoring more/less efficiently over time.
-    Returns: efficiency_trend, current_ppp, projected_ppp
-    """
+    """Analyze scoring efficiency trend over time."""
     if len(st.session_state.score_history) < 10:
         return "insufficient_data", 0, 0
     
-    # Split game into segments
     total_events = len(st.session_state.score_history)
     segment_size = max(5, total_events // 4)
     
-    # Calculate PPP (Points Per Possession) for each segment
     segments_ppp = []
     
     for i in range(0, total_events, segment_size):
@@ -4847,24 +4841,19 @@ def calculate_scoring_efficiency_trend():
     if len(segments_ppp) < 2:
         return "insufficient_data", 0, 0
     
-    # Calculate trend using linear regression
-    x = np.arange(len(segments_ppp))
-    y = np.array(segments_ppp)
-    
-    # FIXED: Check if we have enough data points for regression
-    if len(x) < 2 or len(y) < 2 or len(x) != len(y):
-        current_ppp = segments_ppp[-1] if segments_ppp else 0
-        return "stable", current_ppp, current_ppp
-    
     try:
+        x = np.arange(len(segments_ppp))
+        y = np.array(segments_ppp)
+        
         slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
         
-        # Current and projected PPP
         current_ppp = segments_ppp[-1]
-        projected_ppp = slope * (len(segments_ppp)) + intercept
+        projected_ppp = slope * len(segments_ppp) + intercept
         
-        # Determine trend
-        if slope > 0.05:
+        # Use slope and R-squared for trend determination
+        if abs(slope) < 0.02 or r_value**2 < 0.3:  # Weak correlation
+            trend = "stable"
+        elif slope > 0.05:
             trend = "improving"
         elif slope < -0.05:
             trend = "declining"
@@ -4874,13 +4863,12 @@ def calculate_scoring_efficiency_trend():
         return trend, current_ppp, projected_ppp
     
     except Exception as e:
-        # Fallback if regression fails
         current_ppp = segments_ppp[-1] if segments_ppp else 0
         return "stable", current_ppp, current_ppp
-
+        
 def predict_final_score():
     """
-    Predict final score based on current pace and trends.
+    Predict final score based on current pace and trends with improved confidence calculation.
     Returns: predicted_home, predicted_away, confidence_level
     """
     if not st.session_state.score_history:
@@ -4889,6 +4877,7 @@ def predict_final_score():
     # Calculate current pace (points per minute)
     current_home = st.session_state.home_score
     current_away = st.session_state.away_score
+    score_diff = current_home - current_away
     
     # Estimate game progress
     quarter_map = {'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4, 'OT1': 4.25, 'OT2': 4.5, 'OT3': 4.75}
@@ -4898,8 +4887,12 @@ def predict_final_score():
     try:
         time_parts = st.session_state.current_game_time.split(':')
         minutes_remaining = int(time_parts[0])
+        seconds_remaining = int(time_parts[1]) if len(time_parts) > 1 else 0
         quarter_length = st.session_state.quarter_length
-        minutes_elapsed_in_quarter = quarter_length - minutes_remaining
+        
+        # Calculate exact time elapsed in current quarter
+        seconds_elapsed_in_quarter = (quarter_length * 60) - (minutes_remaining * 60 + seconds_remaining)
+        minutes_elapsed_in_quarter = seconds_elapsed_in_quarter / 60
     except:
         minutes_elapsed_in_quarter = 0
     
@@ -4936,10 +4929,119 @@ def predict_final_score():
     predicted_home = pace_projected_home + momentum_adjustment + trend_adjustment
     predicted_away = pace_projected_away - momentum_adjustment
     
-    # Calculate confidence based on game progress
-    confidence = min(95, (total_minutes_elapsed / total_game_minutes) * 100)
+    # ===== IMPROVED CONFIDENCE CALCULATION =====
     
-    return round(predicted_home), round(predicted_away), round(confidence)
+    # Base confidence on game progress (0-100%)
+    game_progress = total_minutes_elapsed / total_game_minutes
+    base_confidence = game_progress * 100
+    
+    # Adjustment factors
+    confidence_modifiers = []
+    
+    # 1. Score differential factor
+    #    - Blowouts are more predictable (increase confidence)
+    #    - Close games are less predictable (decrease confidence)
+    abs_score_diff = abs(score_diff)
+    
+    if abs_score_diff > 20:
+        # Large lead - very predictable
+        confidence_modifiers.append(1.15)
+    elif abs_score_diff > 15:
+        # Comfortable lead - more predictable
+        confidence_modifiers.append(1.10)
+    elif abs_score_diff > 10:
+        # Moderate lead - slightly more predictable
+        confidence_modifiers.append(1.05)
+    elif abs_score_diff < 3:
+        # Very close game - less predictable
+        confidence_modifiers.append(0.85)
+    elif abs_score_diff < 5:
+        # Close game - somewhat less predictable
+        confidence_modifiers.append(0.92)
+    else:
+        # Normal game - no adjustment
+        confidence_modifiers.append(1.0)
+    
+    # 2. Time remaining factor
+    #    - More time remaining = less predictable
+    #    - Final minutes with large lead = very predictable
+    time_remaining = total_game_minutes - total_minutes_elapsed
+    
+    if time_remaining < 2 and abs_score_diff > 10:
+        # Game basically over
+        confidence_modifiers.append(1.20)
+    elif time_remaining < 5 and abs_score_diff > 7:
+        # Late game with comfortable lead
+        confidence_modifiers.append(1.10)
+    elif time_remaining > 30:
+        # Lots of game left - less predictable
+        confidence_modifiers.append(0.90)
+    elif time_remaining > 20:
+        # Half or more remaining
+        confidence_modifiers.append(0.95)
+    else:
+        # Normal time remaining
+        confidence_modifiers.append(1.0)
+    
+    # 3. Momentum factor
+    #    - Strong momentum in either direction reduces predictability
+    #    - Stable game increases predictability
+    if momentum_dir in ["strong_positive", "strong_negative"]:
+        # Strong momentum = less predictable (swings possible)
+        confidence_modifiers.append(0.90)
+    elif momentum_dir == "neutral":
+        # Stable game = more predictable
+        confidence_modifiers.append(1.05)
+    else:
+        # Moderate momentum
+        confidence_modifiers.append(0.97)
+    
+    # 4. Efficiency trend factor
+    #    - Improving/declining trends add uncertainty
+    #    - Stable trends increase predictability
+    if eff_trend == "improving" or eff_trend == "declining":
+        confidence_modifiers.append(0.95)
+    elif eff_trend == "stable":
+        confidence_modifiers.append(1.03)
+    else:
+        # Insufficient data
+        confidence_modifiers.append(0.85)
+    
+    # 5. Sample size factor
+    #    - More events = more reliable data = higher confidence
+    num_events = len(st.session_state.score_history)
+    
+    if num_events < 10:
+        confidence_modifiers.append(0.80)
+    elif num_events < 20:
+        confidence_modifiers.append(0.90)
+    elif num_events > 50:
+        confidence_modifiers.append(1.05)
+    else:
+        confidence_modifiers.append(1.0)
+    
+    # Apply all modifiers
+    adjusted_confidence = base_confidence
+    for modifier in confidence_modifiers:
+        adjusted_confidence *= modifier
+    
+    # Ensure confidence stays within reasonable bounds
+    # - Minimum 5% (always some uncertainty)
+    # - Maximum 95% (never 100% certain)
+    # - Early game cap at 60% even with modifiers
+    if game_progress < 0.25:
+        # First quarter - cap at 40%
+        adjusted_confidence = min(adjusted_confidence, 40)
+    elif game_progress < 0.5:
+        # First half - cap at 60%
+        adjusted_confidence = min(adjusted_confidence, 60)
+    elif game_progress < 0.75:
+        # Third quarter - cap at 75%
+        adjusted_confidence = min(adjusted_confidence, 75)
+    
+    final_confidence = max(5, min(95, round(adjusted_confidence)))
+    
+    return round(predicted_home), round(predicted_away), final_confidence
 
 
 def calculate_win_probability():
@@ -4996,11 +5098,12 @@ def calculate_win_probability():
     try:
         time_parts = st.session_state.current_game_time.split(':')
         minutes_remaining = int(time_parts[0])
+        seconds_remaining = int(time_parts[1]) if len(time_parts) > 1 else 0
+        total_seconds_remaining = minutes_remaining * 60 + seconds_remaining
         
         if st.session_state.current_quarter in ['Q4', 'OT1', 'OT2']:
-            if score_diff < 0 and minutes_remaining < 3:
-                # Trailing in final minutes
-                comeback_difficulty = abs(score_diff) * 2
+            if score_diff < 0 and total_seconds_remaining < 180:  # Less than 3 minutes
+                comeback_difficulty = abs(score_diff) * (1 + (180 - total_seconds_remaining) / 180)
                 probability -= comeback_difficulty
                 factors.append({
                     'factor': f'Trailing with {minutes_remaining}min left',
@@ -5033,16 +5136,15 @@ def calculate_win_probability():
     probability = max(1, min(99, probability))
     
     return round(probability), factors
-
-
+    
 def identify_critical_moments():
-    """
-    Identify upcoming critical game moments that require attention.
-    Returns: list of critical moments with recommendations
-    """
+    """Identify critical game moments."""
     critical_moments = []
     
-    # Parse current time
+    # Validate we have enough data
+    if not st.session_state.score_history or len(st.session_state.score_history) < 5:
+        return critical_moments
+    
     try:
         time_parts = st.session_state.current_game_time.split(':')
         minutes_remaining = int(time_parts[0])
