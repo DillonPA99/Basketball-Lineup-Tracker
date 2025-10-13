@@ -5885,7 +5885,7 @@ with st.sidebar:
 
     st.divider()
 
-        st.subheader("📧 Email Analytics Report")
+    st.subheader("📧 Email Analytics Report")
     
     # Check if there's meaningful game data to export
     has_game_data = (
