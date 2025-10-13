@@ -5811,25 +5811,6 @@ with st.sidebar:
 
     st.divider()
 
-        # Real-time Plus/Minus Display
-    if st.session_state.quarter_lineup_set and st.session_state.lineup_history:
-        st.subheader("Live Plus/Minus")
-        
-        individual_stats = calculate_individual_plus_minus()
-        if individual_stats:
-            st.write("**Current Players Plus/Minus:**")
-            current_plus_minus_cols = st.columns(5)
-            
-            for i, player in enumerate(st.session_state.current_lineup):
-                with current_plus_minus_cols[i]:
-                    plus_minus = individual_stats.get(player, {}).get('plus_minus', 0)
-                    if plus_minus >= 0:
-                        st.success(f"{player.split('(')[0].strip()}\n+{plus_minus}")
-                    else:
-                        st.error(f"{player.split('(')[0].strip()}\n{plus_minus}")
-
-    st.divider()
-
     # Show current roster info
     st.subheader("Team Roster")
     st.info(f"📋 {len(st.session_state.roster)} players")
