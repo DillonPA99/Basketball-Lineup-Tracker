@@ -5731,41 +5731,40 @@ if st.session_state.roster_set:
 with st.sidebar:
 
     st.subheader("Game Setup")
-    setup_col1, setup_col2, setup_col3, setup_col4 = st.columns([2, 2, 2, 1])
     
-    with setup_col1:
-        home_name = st.text_input(
-            "Home Team Name",
-            value=st.session_state.home_team_name,
-            placeholder="Enter home team name",
-            max_chars=20
-        )
-        
-    with setup_col2:
-        away_name = st.text_input(
-            "Away Team Name", 
-            value=st.session_state.away_team_name,
-            placeholder="Enter opponent name",
-            max_chars=20
-        )
+    # Single column layout with 4 rows
+    home_name = st.text_input(
+        "Home Team Name",
+        value=st.session_state.home_team_name,
+        placeholder="Enter home team name",
+        max_chars=20,
+        key="home_team_input"
+    )
     
-    with setup_col3:
-        game_name = st.text_input(
-            "Game Name (optional)",
-            value=st.session_state.custom_game_name,
-            placeholder="e.g., 'Championship Game', 'vs Lakers'",
-            max_chars=30,
-            help="Custom name to identify this game in your saved games list"
-        )
+    away_name = st.text_input(
+        "Away Team Name", 
+        value=st.session_state.away_team_name,
+        placeholder="Enter opponent name",
+        max_chars=20,
+        key="away_team_input"
+    )
     
-    with setup_col4:
-        if st.button("Update Setup", type="primary"):
-            st.session_state.home_team_name = home_name or "HOME"
-            st.session_state.away_team_name = away_name or "AWAY"
-            st.session_state.custom_game_name = game_name
-            update_session_name_if_needed()
-            st.success("Game setup updated!")
-            st.rerun()
+    game_name = st.text_input(
+        "Game Name (optional)",
+        value=st.session_state.custom_game_name,
+        placeholder="e.g., 'Championship Game'",
+        max_chars=30,
+        help="Custom name to identify this game",
+        key="game_name_input"
+    )
+    
+    if st.button("Update Setup", type="primary", use_container_width=True):
+        st.session_state.home_team_name = home_name or "HOME"
+        st.session_state.away_team_name = away_name or "AWAY"
+        st.session_state.custom_game_name = game_name
+        update_session_name_if_needed()
+        st.success("Game setup updated!")
+        st.rerun()
     
     # Display current game info
     game_display_text = ""
