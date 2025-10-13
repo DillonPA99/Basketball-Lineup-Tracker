@@ -8262,6 +8262,8 @@ with tab2:
         else:
             st.info("No individual player statistics available yet.")
 
+    st.divider()
+    
     # Lineup Plus/Minus
     st.header("**Lineup Statistics**")
     lineup_stats = calculate_lineup_plus_minus_with_time()
@@ -8349,180 +8351,6 @@ with tab2:
             lineup_df = pd.DataFrame(lineup_plus_minus_data)
             lineup_df = lineup_df.sort_values('numeric_plus_minus', ascending=False)
 
-            # ===== TOP PERFORMING LINEUPS =====
-            st.write("**🌟 Top Performing Lineups**")
-    
-            lineup_perf_col1, lineup_perf_col2, lineup_perf_col3 = st.columns(3)
-    
-            with lineup_perf_col1:
-                best_pm = lineup_df.iloc[0]
-                st.success(f"**Best +/- Lineup:** {best_pm['Plus/Minus']}")
-                st.caption(f"{best_pm['Minutes']} min | {best_pm['Appearances']} apps")
-                st.caption(f"Off: {best_pm['Off. Eff.']} | Def: {best_pm['Def. Eff.']}")
-                st.write(best_pm['Lineup'])
-    
-            with lineup_perf_col2:
-                best_off = lineup_df.sort_values('numeric_off_eff', ascending=False).iloc[0]
-                st.info(f"**Best Offensive:** {best_off['Off. Eff.']} Eff")
-                st.caption(f"{best_off['Total Points']} pts | {best_off['PPP']} PPP")
-                st.caption(f"{best_off['Minutes']} min | {best_off['Appearances']} apps")
-                st.write(best_off['Lineup'])
-    
-            with lineup_perf_col3:
-                best_def = lineup_df.sort_values('numeric_def_eff', ascending=False).iloc[0]
-                st.info(f"**Best Defensive:** {best_def['Def. Eff.']} Eff")
-                st.caption(f"{best_def['Total Def Impact']} impact | {best_def['Def Impact/Min']}/min")
-                st.caption(f"{best_def['Minutes']} min | {best_def['Appearances']} apps")
-                st.write(best_def['Lineup'])
-    
-            st.divider()
-
-            # ===== CORE LINEUP TABLE =====
-            st.subheader("**📊 Core Lineup Statistics**")
-            core_lineup_cols = ['Lineup', 'Minutes', 'Plus/Minus', 'Off. Eff.', 'Def. Eff.', 'Total Points', 'PPP', 'Points/Min', 'TS%', 'TO/Min', 'Def Impact/Min']
-    
-            st.dataframe(
-                lineup_df[core_lineup_cols].style.applymap(
-                    color_plus_minus, subset=['Plus/Minus']
-                ).applymap(
-                    color_lineup_points, subset=['Total Points']
-                ).applymap(
-                    color_lineup_PPP, subset=['PPP']
-                ).applymap(
-                    color_ts_percentage, subset=['TS%']
-                ).applymap(
-                    color_offensive_efficiency_scores, subset=['Off. Eff.']
-                ).applymap(
-                    color_defensive_efficiency_scores, subset=['Def. Eff.']
-                ).applymap(
-                    color_lineup_points_per_minute, subset=['Points/Min']
-                ).applymap(
-                    color_turnovers_lineup_per_min, subset=['TO/Min']
-                ).applymap(
-                    color_lineup_defensive_impact_per_minute, subset=['Def Impact/Min']
-                ),
-                use_container_width=True,
-                hide_index=True
-            )
-
-             # ===== DETAILED LINEUP STATS =====
-            lineup_detail_col1, lineup_detail_col2 = st.columns(2)
-    
-            with lineup_detail_col1:
-                with st.expander("🎯 Lineup Shooting Details"):
-                    lineup_shooting_cols = ['Lineup', 'Off. Eff.', 'eFG%', 'TS%', 'FG', 'FG%', 'FT', 'FT%', '2FG', '2FG%', '3FG', '3FG%']
-                    st.dataframe(
-                        lineup_df[lineup_shooting_cols].style.applymap(
-                            color_ft_percentage, subset=['FT%']
-                        ).applymap(
-                            color_2pt_percentage, subset=['2FG%']
-                        ).applymap(
-                            color_3pt_percentage, subset=['3FG%']
-                        ).applymap(
-                            color_fg_percentage, subset=['FG%']
-                        ).applymap(
-                            color_efg_percentage, subset=['eFG%']
-                        ).applymap(
-                            color_ts_percentage, subset=['TS%']
-                        ).applymap(
-                            color_offensive_efficiency_scores, subset=['Off. Eff.']
-                        ),
-                        use_container_width=True,
-                        hide_index=True
-                    )
-        
-                with st.expander("⚡ Lineup Efficiency Metrics"):
-                    lineup_eff_cols = ['Lineup', 'Minutes', 'Off. Eff.', 'Def. Eff.', 'PPP', 'Points/Min', 'TO/Min', 'Total TOs']
-                    st.dataframe(
-                        lineup_df[lineup_eff_cols].style.applymap(
-                            color_offensive_efficiency_scores, subset=['Off. Eff.']
-                        ).applymap(
-                            color_defensive_efficiency_scores, subset=['Def. Eff.']
-                        ).applymap(
-                            color_lineup_points_per_minute, subset=['Points/Min']
-                        ).applymap(
-                            color_lineup_PPP, subset=['PPP']
-                        ).applymap(
-                            color_turnovers, subset=['Total TOs']
-                        ).applymap(
-                            color_turnovers_lineup_per_min, subset=['TO/Min']
-                        ),
-                        use_container_width=True,
-                        hide_index=True
-                    )
-
-            with lineup_detail_col2:
-                with st.expander("🛡️ Lineup Defense"):
-                    lineup_def_cols = ['Lineup', 'Def. Eff.', 'Def Impact/Min', 'Total Def Impact']
-                    st.dataframe(
-                        lineup_df[lineup_def_cols].style.applymap(
-                            color_defensive_efficiency_scores, subset=["Def. Eff."]
-                        ).applymap(
-                            color_lineup_defensive_impact, subset=['Total Def Impact']
-                        ).applymap(
-                            color_lineup_defensive_impact_per_minute, subset=['Def Impact/Min']
-                        ),
-                        use_container_width=True,
-                        hide_index=True
-                    )
-        
-                with st.expander("📋 Complete Lineup Stats (All Columns)"):
-                    main_columns = ["Lineup", "Appearances", "Minutes", "Off. Eff.", "Def. Eff.", "Plus/Minus", "Total Points", "PPP",  "Points/Min", "FT", "FT%", "FG", "FG%", "2FG", "2FG%", "3FG", "3FG%", "eFG%", "TS%", "Total TOs", "TO/Min" , "Def Impact/Min", "Total Def Impact"]
-            
-                    st.dataframe(
-                        lineup_df[main_columns].style.applymap(
-                            color_plus_minus, subset=["Plus/Minus"]
-                        ).applymap(
-                            color_lineup_points, subset=["Total Points"]
-                        ).applymap(
-                            color_lineup_PPP, subset=["PPP"]
-                        ).applymap(
-                            color_offensive_efficiency_scores, subset=["Off. Eff."]
-                        ).applymap(
-                            color_defensive_efficiency_scores, subset=["Def. Eff."]
-                        ).applymap(
-                            color_lineup_points_per_minute, subset=["Points/Min"]                   
-                        ).applymap(
-                            color_ft_percentage, subset=['FT%']
-                        ).applymap(
-                            color_fg_percentage, subset=["FG%"]
-                        ).applymap(
-                            color_2pt_percentage, subset=["2FG%"]
-                        ).applymap(
-                            color_3pt_percentage, subset=["3FG%"]
-                        ).applymap(
-                            color_efg_percentage, subset=["eFG%"]
-                        ).applymap(
-                            color_ts_percentage, subset=["TS%"]
-                        ).applymap(
-                            color_turnovers, subset=["Total TOs"] 
-                        ).applymap(
-                            color_turnovers_lineup_per_min, subset=["TO/Min"] 
-                        ).applymap(
-                            color_lineup_defensive_impact_per_minute, subset=["Def Impact/Min"]
-                        ).applymap(
-                            color_lineup_defensive_impact, subset=["Total Def Impact"]
-                        ),
-                        use_container_width=True,
-                        hide_index=True
-                    )
-            
-            # Enhanced Best and Worst Lineups
-            if len(lineup_df) > 0:
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    best_lineup = lineup_df.iloc[0]
-                    st.success(f"**Best +/- Lineup:** {best_lineup['Plus/Minus']}")
-                    st.write(f"_{best_lineup['Lineup']}_")
-                    st.caption(f"Off: {best_lineup['Off. Eff.']} | Def: {best_lineup['Def. Eff.']} | {best_lineup['Minutes']} min")
-
-                with col2:
-                    worst_lineup = lineup_df.iloc[-1]
-                    st.error(f"**Worst +/- Lineup:** {worst_lineup['Plus/Minus']}")
-                    st.write(f"_{worst_lineup['Lineup']}_")
-                    st.caption(f"Off: {worst_lineup['Off. Eff.']} | Def: {worst_lineup['Def. Eff.']} | {worst_lineup['Minutes']} min")
-            
             # Top performers by category
             st.subheader("**Top Performers by Category:**")
             
@@ -8691,6 +8519,154 @@ with tab2:
                 
                 **Note:** All efficiency formulas explained in detail above in "Advanced Metric Explanations"
                 """)
+    
+
+            # ===== CORE LINEUP TABLE =====
+            st.subheader("**📊 Core Lineup Statistics**")
+            core_lineup_cols = ['Lineup', 'Minutes', 'Plus/Minus', 'Off. Eff.', 'Def. Eff.', 'Total Points', 'PPP', 'Points/Min', 'TS%', 'TO/Min', 'Def Impact/Min']
+    
+            st.dataframe(
+                lineup_df[core_lineup_cols].style.applymap(
+                    color_plus_minus, subset=['Plus/Minus']
+                ).applymap(
+                    color_lineup_points, subset=['Total Points']
+                ).applymap(
+                    color_lineup_PPP, subset=['PPP']
+                ).applymap(
+                    color_ts_percentage, subset=['TS%']
+                ).applymap(
+                    color_offensive_efficiency_scores, subset=['Off. Eff.']
+                ).applymap(
+                    color_defensive_efficiency_scores, subset=['Def. Eff.']
+                ).applymap(
+                    color_lineup_points_per_minute, subset=['Points/Min']
+                ).applymap(
+                    color_turnovers_lineup_per_min, subset=['TO/Min']
+                ).applymap(
+                    color_lineup_defensive_impact_per_minute, subset=['Def Impact/Min']
+                ),
+                use_container_width=True,
+                hide_index=True
+            )
+
+             # ===== DETAILED LINEUP STATS =====
+            lineup_detail_col1, lineup_detail_col2 = st.columns(2)
+    
+            with lineup_detail_col1:
+                with st.expander("🎯 Lineup Shooting Details"):
+                    lineup_shooting_cols = ['Lineup', 'Off. Eff.', 'eFG%', 'TS%', 'FG', 'FG%', 'FT', 'FT%', '2FG', '2FG%', '3FG', '3FG%']
+                    st.dataframe(
+                        lineup_df[lineup_shooting_cols].style.applymap(
+                            color_ft_percentage, subset=['FT%']
+                        ).applymap(
+                            color_2pt_percentage, subset=['2FG%']
+                        ).applymap(
+                            color_3pt_percentage, subset=['3FG%']
+                        ).applymap(
+                            color_fg_percentage, subset=['FG%']
+                        ).applymap(
+                            color_efg_percentage, subset=['eFG%']
+                        ).applymap(
+                            color_ts_percentage, subset=['TS%']
+                        ).applymap(
+                            color_offensive_efficiency_scores, subset=['Off. Eff.']
+                        ),
+                        use_container_width=True,
+                        hide_index=True
+                    )
+        
+                with st.expander("⚡ Lineup Efficiency Metrics"):
+                    lineup_eff_cols = ['Lineup', 'Minutes', 'Off. Eff.', 'Def. Eff.', 'PPP', 'Points/Min', 'TO/Min', 'Total TOs']
+                    st.dataframe(
+                        lineup_df[lineup_eff_cols].style.applymap(
+                            color_offensive_efficiency_scores, subset=['Off. Eff.']
+                        ).applymap(
+                            color_defensive_efficiency_scores, subset=['Def. Eff.']
+                        ).applymap(
+                            color_lineup_points_per_minute, subset=['Points/Min']
+                        ).applymap(
+                            color_lineup_PPP, subset=['PPP']
+                        ).applymap(
+                            color_turnovers, subset=['Total TOs']
+                        ).applymap(
+                            color_turnovers_lineup_per_min, subset=['TO/Min']
+                        ),
+                        use_container_width=True,
+                        hide_index=True
+                    )
+
+            with lineup_detail_col2:
+                with st.expander("🛡️ Lineup Defense"):
+                    lineup_def_cols = ['Lineup', 'Def. Eff.', 'Def Impact/Min', 'Total Def Impact']
+                    st.dataframe(
+                        lineup_df[lineup_def_cols].style.applymap(
+                            color_defensive_efficiency_scores, subset=["Def. Eff."]
+                        ).applymap(
+                            color_lineup_defensive_impact, subset=['Total Def Impact']
+                        ).applymap(
+                            color_lineup_defensive_impact_per_minute, subset=['Def Impact/Min']
+                        ),
+                        use_container_width=True,
+                        hide_index=True
+                    )
+        
+                with st.expander("📋 Complete Lineup Stats (All Columns)"):
+                    main_columns = ["Lineup", "Appearances", "Minutes", "Off. Eff.", "Def. Eff.", "Plus/Minus", "Total Points", "PPP",  "Points/Min", "FT", "FT%", "FG", "FG%", "2FG", "2FG%", "3FG", "3FG%", "eFG%", "TS%", "Total TOs", "TO/Min" , "Def Impact/Min", "Total Def Impact"]
+            
+                    st.dataframe(
+                        lineup_df[main_columns].style.applymap(
+                            color_plus_minus, subset=["Plus/Minus"]
+                        ).applymap(
+                            color_lineup_points, subset=["Total Points"]
+                        ).applymap(
+                            color_lineup_PPP, subset=["PPP"]
+                        ).applymap(
+                            color_offensive_efficiency_scores, subset=["Off. Eff."]
+                        ).applymap(
+                            color_defensive_efficiency_scores, subset=["Def. Eff."]
+                        ).applymap(
+                            color_lineup_points_per_minute, subset=["Points/Min"]                   
+                        ).applymap(
+                            color_ft_percentage, subset=['FT%']
+                        ).applymap(
+                            color_fg_percentage, subset=["FG%"]
+                        ).applymap(
+                            color_2pt_percentage, subset=["2FG%"]
+                        ).applymap(
+                            color_3pt_percentage, subset=["3FG%"]
+                        ).applymap(
+                            color_efg_percentage, subset=["eFG%"]
+                        ).applymap(
+                            color_ts_percentage, subset=["TS%"]
+                        ).applymap(
+                            color_turnovers, subset=["Total TOs"] 
+                        ).applymap(
+                            color_turnovers_lineup_per_min, subset=["TO/Min"] 
+                        ).applymap(
+                            color_lineup_defensive_impact_per_minute, subset=["Def Impact/Min"]
+                        ).applymap(
+                            color_lineup_defensive_impact, subset=["Total Def Impact"]
+                        ),
+                        use_container_width=True,
+                        hide_index=True
+                    )
+            
+            # Enhanced Best and Worst Lineups
+            if len(lineup_df) > 0:
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    best_lineup = lineup_df.iloc[0]
+                    st.success(f"**Best +/- Lineup:** {best_lineup['Plus/Minus']}")
+                    st.write(f"_{best_lineup['Lineup']}_")
+                    st.caption(f"Off: {best_lineup['Off. Eff.']} | Def: {best_lineup['Def. Eff.']} | {best_lineup['Minutes']} min")
+
+                with col2:
+                    worst_lineup = lineup_df.iloc[-1]
+                    st.error(f"**Worst +/- Lineup:** {worst_lineup['Plus/Minus']}")
+                    st.write(f"_{worst_lineup['Lineup']}_")
+                    st.caption(f"Off: {worst_lineup['Off. Eff.']} | Def: {worst_lineup['Def. Eff.']} | {worst_lineup['Minutes']} min")
+            
     else:
         st.info("No lineup plus/minus data available yet.")
     
