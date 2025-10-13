@@ -7481,7 +7481,7 @@ with tab2:
     
     
     # 🏠 Home Team Section
-    st.markdown("### 🏠 Home Team")
+    st.markdown("### Home Team")
     
     home_cols = st.columns(7)
     
@@ -7512,7 +7512,7 @@ with tab2:
     st.divider()
     
     # 🚀 Away Team Section
-    st.markdown("### 🚀 Away Team")
+    st.markdown("### Away Team")
     
     away_cols = st.columns(7)
     
