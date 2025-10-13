@@ -5885,6 +5885,124 @@ with st.sidebar:
 
     st.divider()
 
+        st.subheader("📧 Email Analytics Report")
+    
+    # Check if there's meaningful game data to export
+    has_game_data = (
+        st.session_state.home_score > 0 or 
+        st.session_state.away_score > 0 or 
+        len(st.session_state.lineup_history) > 0 or
+        len(st.session_state.score_history) > 0 or
+        len(st.session_state.quarter_end_history) > 0
+
+    )
+    
+    if not has_game_data:
+        st.info("📊 Start tracking your game to generate analytics report!")
+    else:
+        st.write("Generate comprehensive analytics email:")
+        
+        # Generate and download Excel file
+        if st.button("📧 Generate Analytics Email", type="primary"):
+            try:
+                subject, body = create_analytics_email_content()
+            
+                st.write("**Email Subject:**")
+                st.code(subject)
+            
+                st.write("**Email Body:**")
+                st.text_area(
+                    "Copy this analytics report:",
+                    body,
+                    height=400,
+                    help="Copy this complete analytics report to paste into your email"
+                )
+            
+                st.success("✅ Analytics email content generated!")
+            
+            except Exception as e:
+                st.error(f"❌ Error generating analytics email: {str(e)}")
+
+        # Instructions
+        with st.expander("📖 How to Email Report"):
+            st.write("""
+            **This email includes comprehensive analytics from the Analytics tab:**
+        
+            📊 **Game Summary:** 
+            • Total points, lineup changes, scoring plays, quarters completed
+            • Game identification with team names and custom game titles
+        
+            🎯 **Complete Shooting Statistics:** 
+            • Free throw, 2-point, 3-point, and total field goal percentages
+            • Makes/attempts breakdown for both home and away teams
+            • Team shooting efficiency comparisons
+            • Points off turnovers for both teams
+        
+            👤 **Enhanced Individual Player Statistics (Home Team):**
+            • Points, minutes played, plus/minus ratings
+            • **Efficiency Scores**: Offensive & Defensive Efficiency using consistent methodology
+            • **Advanced Metrics**: PPP (Points Per Possession), Points/Min
+            • Complete shooting percentages: FT%, 2PT%, 3PT%, FG%, eFG%, TS%
+            • **Ball Security**: Turnover counts and TO/Min rates
+            • **Defensive Impact**: Defensive Impact Score, Def Impact/Min
+            • Opponent turnovers forced and missed shots while on court
+        
+            🔄 **Turnover Analysis:**
+            • Team turnover counts and differential analysis
+            • Turnover advantage breakdown
+            • Individual player turnover statistics with per-minute rates
+        
+            🎯 **Points Off Turnovers Analytics:**
+            • Team points off turnovers with efficiency ratings
+            • Lineup-specific points off turnover performance
+            • Impact percentage (what % of total points came from turnovers)
+            • Best performing lineups for capitalizing on turnovers
+        
+            ➕ **Advanced Plus/Minus Analytics:**
+            • Individual player plus/minus ratings
+            • Lineup combination plus/minus with actual time played
+            • Minutes breakdown for each lineup combination
+            • Points scored by each lineup
+            • Best and worst performing lineups with context
+        
+            🏀 **Lineup Statistics:**
+            • **Efficiency Scores**: Offensive & Defensive Efficiency (same methodology as players)
+            • **Scoring Metrics**: Total Points, PPG, PPP, Points/Min
+            • Complete shooting percentages: FT%, FG%, 2FG%, 3FG%, eFG%, TS%
+            • **Ball Security**: Total TOs and TO/Min rates
+            • **Defensive Performance**: Total Def Impact, Def Impact/Min
+            • Plus/minus ratings for each lineup combination
+        
+            🛡️ **Defensive Analytics:**
+            • Individual defensive impact scores and statistics
+            • Opponent turnovers forced and missed shots caused
+            • Defensive impact per minute calculations (weighted: TOs = 1.5x, Misses = 1.0x)
+            • Lineup defensive performance ratings using same methodology
+            • Best defensive lineup identification
+        
+            📋 **Historical Records:**
+            • Quarter end records with final scores and lineups
+            • Complete lineup change summary
+            • Breakdown of actual changes vs. quarter snapshots
+        
+            **Report Format:**
+            • Professional text format suitable for email
+            • Organized sections with clear headers
+            • Statistical breakdowns with percentages and efficiency metrics
+            • **Consistent Methodology**: Same efficiency calculations for players and lineups
+            • Summary insights and key performance highlights
+            
+            **Key Metrics Explained:**
+            • **Offensive Efficiency**: (TS% × 15) + (Usage × 3) - (TO Rate × 5)
+            • **Defensive Efficiency**: Defensive Impact per Minute × 5
+            • **PPP**: Points ÷ Estimated Possessions (most accurate efficiency metric)
+            • **Defensive Impact**: Weighted events (Opp TOs × 1.5 + Opp Misses × 1.0)
+            
+            **Simply copy and paste the generated content into your email client!**
+            """)
+
+    st.divider()
+
     # Game Session Management
     st.subheader("💾 Game Sessions")
 
@@ -6116,124 +6234,6 @@ with st.sidebar:
                 
         except Exception as e:
             st.error(f"Error loading saved games: {str(e)}")
-
-    st.divider()
-
-    st.subheader("📧 Email Analytics Report")
-    
-    # Check if there's meaningful game data to export
-    has_game_data = (
-        st.session_state.home_score > 0 or 
-        st.session_state.away_score > 0 or 
-        len(st.session_state.lineup_history) > 0 or
-        len(st.session_state.score_history) > 0 or
-        len(st.session_state.quarter_end_history) > 0
-
-    )
-    
-    if not has_game_data:
-        st.info("📊 Start tracking your game to generate analytics report!")
-    else:
-        st.write("Generate comprehensive analytics email:")
-        
-        # Generate and download Excel file
-        if st.button("📧 Generate Analytics Email", type="primary"):
-            try:
-                subject, body = create_analytics_email_content()
-            
-                st.write("**Email Subject:**")
-                st.code(subject)
-            
-                st.write("**Email Body:**")
-                st.text_area(
-                    "Copy this analytics report:",
-                    body,
-                    height=400,
-                    help="Copy this complete analytics report to paste into your email"
-                )
-            
-                st.success("✅ Analytics email content generated!")
-            
-            except Exception as e:
-                st.error(f"❌ Error generating analytics email: {str(e)}")
-
-        # Instructions
-        with st.expander("📖 How to Email Report"):
-            st.write("""
-            **This email includes comprehensive analytics from the Analytics tab:**
-        
-            📊 **Game Summary:** 
-            • Total points, lineup changes, scoring plays, quarters completed
-            • Game identification with team names and custom game titles
-        
-            🎯 **Complete Shooting Statistics:** 
-            • Free throw, 2-point, 3-point, and total field goal percentages
-            • Makes/attempts breakdown for both home and away teams
-            • Team shooting efficiency comparisons
-            • Points off turnovers for both teams
-        
-            👤 **Enhanced Individual Player Statistics (Home Team):**
-            • Points, minutes played, plus/minus ratings
-            • **Efficiency Scores**: Offensive & Defensive Efficiency using consistent methodology
-            • **Advanced Metrics**: PPP (Points Per Possession), Points/Min
-            • Complete shooting percentages: FT%, 2PT%, 3PT%, FG%, eFG%, TS%
-            • **Ball Security**: Turnover counts and TO/Min rates
-            • **Defensive Impact**: Defensive Impact Score, Def Impact/Min
-            • Opponent turnovers forced and missed shots while on court
-        
-            🔄 **Turnover Analysis:**
-            • Team turnover counts and differential analysis
-            • Turnover advantage breakdown
-            • Individual player turnover statistics with per-minute rates
-        
-            🎯 **Points Off Turnovers Analytics:**
-            • Team points off turnovers with efficiency ratings
-            • Lineup-specific points off turnover performance
-            • Impact percentage (what % of total points came from turnovers)
-            • Best performing lineups for capitalizing on turnovers
-        
-            ➕ **Advanced Plus/Minus Analytics:**
-            • Individual player plus/minus ratings
-            • Lineup combination plus/minus with actual time played
-            • Minutes breakdown for each lineup combination
-            • Points scored by each lineup
-            • Best and worst performing lineups with context
-        
-            🏀 **Lineup Statistics:**
-            • **Efficiency Scores**: Offensive & Defensive Efficiency (same methodology as players)
-            • **Scoring Metrics**: Total Points, PPG, PPP, Points/Min
-            • Complete shooting percentages: FT%, FG%, 2FG%, 3FG%, eFG%, TS%
-            • **Ball Security**: Total TOs and TO/Min rates
-            • **Defensive Performance**: Total Def Impact, Def Impact/Min
-            • Plus/minus ratings for each lineup combination
-        
-            🛡️ **Defensive Analytics:**
-            • Individual defensive impact scores and statistics
-            • Opponent turnovers forced and missed shots caused
-            • Defensive impact per minute calculations (weighted: TOs = 1.5x, Misses = 1.0x)
-            • Lineup defensive performance ratings using same methodology
-            • Best defensive lineup identification
-        
-            📋 **Historical Records:**
-            • Quarter end records with final scores and lineups
-            • Complete lineup change summary
-            • Breakdown of actual changes vs. quarter snapshots
-        
-            **Report Format:**
-            • Professional text format suitable for email
-            • Organized sections with clear headers
-            • Statistical breakdowns with percentages and efficiency metrics
-            • **Consistent Methodology**: Same efficiency calculations for players and lineups
-            • Summary insights and key performance highlights
-            
-            **Key Metrics Explained:**
-            • **Offensive Efficiency**: (TS% × 15) + (Usage × 3) - (TO Rate × 5)
-            • **Defensive Efficiency**: Defensive Impact per Minute × 5
-            • **PPP**: Points ÷ Estimated Possessions (most accurate efficiency metric)
-            • **Defensive Impact**: Weighted events (Opp TOs × 1.5 + Opp Misses × 1.0)
-            
-            **Simply copy and paste the generated content into your email client!**
-            """)
 
     st.divider()
         
@@ -6727,7 +6727,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏀 Live Game", "📊 Analytics", "�
 # Tab 1: Live Game - FIXED VERSION
 # ------------------------------------------------------------------
 with tab1:
-    st.header("Live Game Management")
+    st.header("Live Game")
     
     # Current game status
     status_col1, status_col2, status_col3, status_col4, status_col5 = st.columns([1, 1, 1, 1, 1])
