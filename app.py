@@ -8851,7 +8851,7 @@ with tab3:
                 st.caption(f"Recent {ppp_diff:.2f} worse")
 
         st.divider()
-    
+        
         # Additional AI Coaching Section
         st.subheader("🧠 Detailed AI Coaching Analysis")
         
@@ -8863,7 +8863,7 @@ with tab3:
         suggestions = get_ai_coaching_suggestion()
         
         # Strategic Overview (moved to top for quick reference)
-        col1, col2 = st.columns(2)
+        col1, col2 = st.columns(2)  # <--- Make sure this has 4 spaces from the left margin
         
         with col1:
             st.markdown("#### 📊 Current State")
