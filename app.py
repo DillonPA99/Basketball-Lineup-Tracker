@@ -9279,56 +9279,70 @@ with tab5:
                     else:
                         total_away_pot += points
         
-        # Display team shooting comparison (same format as Tab 2)        
-        team_col1, team_col2 = st.columns(2)
-        
-        with team_col1:
+            # ============================
+            # 📊 Team Shooting Comparison
+            # ============================
+            
+            # 🏠 Team (Season Totals)
             st.markdown("### Team (Season Totals)")
             
-            st.metric("Total Points", season_home_shooting['total_points'])
+            team_cols = st.columns(7)
             
+            # Calculate Team (Season Totals) metrics
             fg_pct = (season_home_shooting['field_goals_made'] / season_home_shooting['field_goals_attempted'] * 100) if season_home_shooting['field_goals_attempted'] > 0 else 0
-            st.metric("Total FG", f"{season_home_shooting['field_goals_made']}/{season_home_shooting['field_goals_attempted']}", f"{fg_pct:.1f}%")
-            
             two_pt_made = season_home_shooting['field_goals_made'] - season_home_shooting['three_pointers_made']
             two_pt_attempted = season_home_shooting['field_goals_attempted'] - season_home_shooting['three_pointers_attempted']
             two_pt_pct = (two_pt_made / two_pt_attempted * 100) if two_pt_attempted > 0 else 0
-            st.metric("2-Point FG", f"{two_pt_made}/{two_pt_attempted}", f"{two_pt_pct:.1f}%")
-            
             three_pt_pct = (season_home_shooting['three_pointers_made'] / season_home_shooting['three_pointers_attempted'] * 100) if season_home_shooting['three_pointers_attempted'] > 0 else 0
-            st.metric("3-Point FG", f"{season_home_shooting['three_pointers_made']}/{season_home_shooting['three_pointers_attempted']}", f"{three_pt_pct:.1f}%")
-            
             ft_pct = (season_home_shooting['free_throws_made'] / season_home_shooting['free_throws_attempted'] * 100) if season_home_shooting['free_throws_attempted'] > 0 else 0
-            st.metric("Free Throws", f"{season_home_shooting['free_throws_made']}/{season_home_shooting['free_throws_attempted']}", f"{ft_pct:.1f}%")
-            
-            st.metric("Points off Turnovers", total_home_pot)
-            
             home_pot_pct = (total_home_pot / season_home_shooting['total_points'] * 100) if season_home_shooting['total_points'] > 0 else 0
-            st.metric("Points off TO %", f"{home_pot_pct:.1f}%")
-        
-        with team_col2:
+            
+            with team_cols[0]:
+                st.metric("Total Points", season_home_shooting['total_points'])
+            with team_cols[1]:
+                st.metric("Total FG", f"{season_home_shooting['field_goals_made']}/{season_home_shooting['field_goals_attempted']}", f"{fg_pct:.1f}%")
+            with team_cols[2]:
+                st.metric("2-Point FG", f"{two_pt_made}/{two_pt_attempted}", f"{two_pt_pct:.1f}%")
+            with team_cols[3]:
+                st.metric("3-Point FG", f"{season_home_shooting['three_pointers_made']}/{season_home_shooting['three_pointers_attempted']}", f"{three_pt_pct:.1f}%")
+            with team_cols[4]:
+                st.metric("Free Throws", f"{season_home_shooting['free_throws_made']}/{season_home_shooting['free_throws_attempted']}", f"{ft_pct:.1f}%")
+            with team_cols[5]:
+                st.metric("Points off TO", total_home_pot)
+            with team_cols[6]:
+                st.metric("Points off TO %", f"{home_pot_pct:.1f}%")
+            
+            st.divider()
+            
+            # 🚀 Opponent Team (Season Totals)
             st.markdown("### Opp. Team (Season Totals)")
             
-            st.metric("Total Points", season_away_shooting['total_points'])
+            opp_cols = st.columns(7)
             
+            # Calculate Opponent (Season Totals) metrics
             away_fg_pct = (season_away_shooting['field_goals_made'] / season_away_shooting['field_goals_attempted'] * 100) if season_away_shooting['field_goals_attempted'] > 0 else 0
-            st.metric("Total FG", f"{season_away_shooting['field_goals_made']}/{season_away_shooting['field_goals_attempted']}", f"{away_fg_pct:.1f}%")
-            
             away_two_pt_made = season_away_shooting['field_goals_made'] - season_away_shooting['three_pointers_made']
             away_two_pt_attempted = season_away_shooting['field_goals_attempted'] - season_away_shooting['three_pointers_attempted']
             away_two_pt_pct = (away_two_pt_made / away_two_pt_attempted * 100) if away_two_pt_attempted > 0 else 0
-            st.metric("2-Point FG", f"{away_two_pt_made}/{away_two_pt_attempted}", f"{away_two_pt_pct:.1f}%")
-            
             away_three_pt_pct = (season_away_shooting['three_pointers_made'] / season_away_shooting['three_pointers_attempted'] * 100) if season_away_shooting['three_pointers_attempted'] > 0 else 0
-            st.metric("3-Point FG", f"{season_away_shooting['three_pointers_made']}/{season_away_shooting['three_pointers_attempted']}", f"{away_three_pt_pct:.1f}%")
-            
             away_ft_pct = (season_away_shooting['free_throws_made'] / season_away_shooting['free_throws_attempted'] * 100) if season_away_shooting['free_throws_attempted'] > 0 else 0
-            st.metric("Free Throws", f"{season_away_shooting['free_throws_made']}/{season_away_shooting['free_throws_attempted']}", f"{away_ft_pct:.1f}%")
-            
-            st.metric("Points off Turnovers", total_away_pot)
-            
             away_pot_pct = (total_away_pot / season_away_shooting['total_points'] * 100) if season_away_shooting['total_points'] > 0 else 0
-            st.metric("Points off TO %", f"{away_pot_pct:.1f}%")
+            
+            with opp_cols[0]:
+                st.metric("Total Points", season_away_shooting['total_points'])
+            with opp_cols[1]:
+                st.metric("Total FG", f"{season_away_shooting['field_goals_made']}/{season_away_shooting['field_goals_attempted']}", f"{away_fg_pct:.1f}%")
+            with opp_cols[2]:
+                st.metric("2-Point FG", f"{away_two_pt_made}/{away_two_pt_attempted}", f"{away_two_pt_pct:.1f}%")
+            with opp_cols[3]:
+                st.metric("3-Point FG", f"{season_away_shooting['three_pointers_made']}/{season_away_shooting['three_pointers_attempted']}", f"{away_three_pt_pct:.1f}%")
+            with opp_cols[4]:
+                st.metric("Free Throws", f"{season_away_shooting['free_throws_made']}/{season_away_shooting['free_throws_attempted']}", f"{away_ft_pct:.1f}%")
+            with opp_cols[5]:
+                st.metric("Points off TO", total_away_pot)
+            with opp_cols[6]:
+                st.metric("Points off TO %", f"{away_pot_pct:.1f}%")
+
         
         st.divider()
         
