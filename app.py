@@ -5410,8 +5410,9 @@ def display_game_flow_prediction():
         estimated_possessions = total_fga + total_turnovers + (0.44 * total_fta)
         current_overall_ppp = (total_points / estimated_possessions) if estimated_possessions > 0 else 0
         
-        st.metric("Current Efficiency", f"{current_overall_ppp:.2f} PPP")
-    
+        st.metric("Overall Game Efficiency", f"{current_overall_ppp:.2f} PPP")
+        st.caption("Total game average")  
+        
     # Efficiency Trend
     eff_trend, current_ppp, projected_ppp = calculate_scoring_efficiency_trend()
     with metric_col4:
@@ -8787,9 +8788,70 @@ with tab3:
     else:
         # Display the full AI game flow prediction section
         display_game_flow_prediction()
-        
-        # Removed the st.divider() here
-        
+
+        # Add PPP comparison for clarity
+        st.divider()
+
+        st.subheader("📊 Efficiency Comparison")
+
+        comparison_col1, comparison_col2, comparison_col3 = st.columns(3)
+
+        with comparison_col1:
+            # Calculate overall game PPP
+            total_points = st.session_state.home_score
+            total_turnovers = sum(1 for to in st.session_state.turnover_history if to.get('team') == 'home')
+            
+            # Sum up all shooting attempts
+            total_fga = 0
+            total_fta = 0
+            for score_event in st.session_state.score_history:
+                if score_event.get('team') == 'home' and score_event.get('attempted', True):
+                    shot_type = score_event.get('shot_type', 'field_goal')
+                    if shot_type in ['field_goal', 'three_pointer']:
+                        total_fga += 1
+                    elif shot_type == 'free_throw':
+                        total_fta += 1
+            
+            # Calculate PPP
+            estimated_possessions = total_fga + total_turnovers + (0.44 * total_fta)
+            current_overall_ppp = (total_points / estimated_possessions) if estimated_possessions > 0 else 0
+            
+            if current_overall_ppp >= 1.10:
+                st.success(f"**Overall Game**\n\n# {current_overall_ppp:.2f} PPP")
+            elif current_overall_ppp >= 1.00:
+                st.info(f"**Overall Game**\n\n# {current_overall_ppp:.2f} PPP")
+            else:
+                st.warning(f"**Overall Game**\n\n# {current_overall_ppp:.2f} PPP")
+            st.caption("Average across all possessions")
+
+        with comparison_col2:
+            # Recent segment PPP (from efficiency trend)
+            eff_trend, current_ppp, projected_ppp = calculate_scoring_efficiency_trend()
+            
+            if current_ppp >= 1.10:
+                st.success(f"**Recent Segment**\n\n# {current_ppp:.2f} PPP")
+            elif current_ppp >= 1.00:
+                st.info(f"**Recent Segment**\n\n# {current_ppp:.2f} PPP")
+            else:
+                st.warning(f"**Recent Segment**\n\n# {current_ppp:.2f} PPP")
+            st.caption("Last ~10 possessions")
+
+        with comparison_col3:
+            # Show the difference
+            ppp_diff = current_ppp - current_overall_ppp
+            
+            if abs(ppp_diff) < 0.10:
+                st.info(f"**Momentum**\n\n# Stable")
+                st.caption(f"Recent vs Overall: {ppp_diff:+.2f}")
+            elif ppp_diff > 0:
+                st.success(f"**Momentum**\n\n# 🔥 Hot")
+                st.caption(f"Recent +{ppp_diff:.2f} better!")
+            else:
+                st.error(f"**Momentum**\n\n# 📉 Cooling")
+                st.caption(f"Recent {ppp_diff:.2f} worse")
+
+        st.divider()
+    
         # Additional AI Coaching Section
         st.subheader("🧠 Detailed AI Coaching Analysis")
         
@@ -8807,7 +8869,8 @@ with tab3:
             st.markdown("#### 📊 Current State")
             st.metric("Win Probability", f"{win_prob}%")
             st.metric("Momentum Score", f"{momentum_score:+.1f}")
-            st.metric("Current Efficiency", f"{current_ppp:.2f} PPP")
+            st.metric("Recent Segment Efficiency", f"{current_ppp:.2f} PPP")
+            st.caption("Based on recent possessions")
             
             to_diff = away_tos - home_tos
             to_label = f"+{to_diff}" if to_diff > 0 else str(to_diff) if to_diff < 0 else "Even"
@@ -8853,6 +8916,13 @@ with tab3:
         
         # Expandable Deep Dive Sections
         with st.expander("📊 Momentum Deep Dive"):
+                st.info("""
+                📊 **Efficiency Metrics Explained:**
+                - **Overall Game PPP**: Average efficiency across entire game
+                - **Recent Segment PPP**: Efficiency in your last ~10 possessions (shown below)
+                - **Projected PPP**: Where your efficiency is trending
+                """)
+            
             col1, col2, col3 = st.columns(3)
             
             with col1:
@@ -8887,11 +8957,13 @@ with tab3:
                 getattr(st, trend_color)(f"**{eff_trend.title()}**")
             
             with col2:
-                st.metric("Current PPP", f"{current_ppp:.2f}")
+                st.metric("Recent Segment PPP", f"{current_ppp:.2f}")
+                st.caption("Last ~10 possessions")
             
             with col3:
                 ppp_change = projected_ppp - current_ppp
                 st.metric("Projected PPP", f"{projected_ppp:.2f}", delta=f"{ppp_change:+.2f}")
+                st.caption("Trend projection")
             
             # Efficiency interpretation
             if current_ppp > 1.1:
@@ -8974,12 +9046,11 @@ with tab3:
             
             **Predicted Final Score:** Current pace + momentum adjustment + efficiency trend
             
-            **Efficiency Trend:** PPP by segment, linear regression (improving/declining/stable)
-            
-            **Critical Moments:** Quarter endings, clutch time, momentum swings, comeback opportunities
-            
-            **Coaching Priority:** High (immediate impact) vs Medium (important but not urgent)
-            
+            **Efficiency Metrics:**
+            - **Overall Game PPP**: Total points ÷ total possessions (entire game)
+            - **Recent Segment PPP**: PPP calculated from last ~10 possessions only
+            - **Projected PPP**: Linear regression trend of segment PPPs
+            - **Efficiency Trend**: Comparing recent segments (improving/declining/stable)
             *Note: All predictions are probabilistic and meant to inform, not replace, basketball IQ.*
             """)
 
