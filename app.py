@@ -8611,7 +8611,9 @@ with tab2:
     
     display_defensive_analytics()
 
-        # Quarter end history (legacy / optional)
+    st.divider()
+
+    # Quarter end history (legacy / optional)
     if st.session_state.quarter_end_history:
         st.subheader("Quarter End Records")
 
@@ -8635,6 +8637,8 @@ with tab2:
         if st.button("🗑️ Clear Quarter End Records"):
             st.session_state.quarter_end_history.clear()
             st.rerun()
+
+    st.divider()
 
     # Lineup history (now also shows end-of-quarter snapshots)
     if st.session_state.lineup_history:
