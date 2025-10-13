@@ -6781,7 +6781,6 @@ with tab1:
         sub_col1, sub_col2 = st.columns(2)
         
         with sub_col1:
-            st.write("**Players Coming Out:**")
             players_out = st.multiselect(
                 "Select players to substitute out",
                 st.session_state.current_lineup,
@@ -6790,7 +6789,6 @@ with tab1:
             )
         
         with sub_col2:
-            st.write("**Players Coming In:**")
             # Available players for substitution (not currently on court)
             available_for_sub = [p for p in available_players if p not in st.session_state.current_lineup]
             players_in = st.multiselect(
@@ -6842,7 +6840,7 @@ with tab1:
         picker_col1, picker_col2 = st.columns(2)
         
         with picker_col1:
-            st.markdown("### Minutes")
+            st.markdown("Minutes")
             # Only show minutes from max_allowed_minutes down to 0
             minute_options = list(range(max_allowed_minutes, -1, -1))
             
@@ -6859,7 +6857,7 @@ with tab1:
             )
         
         with picker_col2:
-            st.markdown("### Seconds")
+            st.markdown("Seconds")
             second_options = list(range(59, -1, -1))
             seconds = st.selectbox(
                 "sec",
