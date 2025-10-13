@@ -3628,14 +3628,7 @@ def display_lineup_recommendation():
         st.info("Need at least 5 players in roster to generate recommendations")
         return
     
-    # Options for recommendation
-    include_defense = st.checkbox(
-        "Include Defensive Analysis", 
-        value=True,
-        help="Factor in defensive impact when recommending lineups"
-    )
-    
-    if st.button("🤖 Generate Best Lineup Recommendation", type="primary"):
+    if st.button("Generate Best Lineup Recommendation", type="primary"):
         with st.spinner("Analyzing all possible lineup combinations..."):
             best_lineup, all_lineup_scores = recommend_best_lineup(include_defense=include_defense)
         
