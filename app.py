@@ -8914,29 +8914,28 @@ with tab3:
                     st.error(f"**{i}. {sug['category']}**\n\n{sug['suggestion']}\n\n*{sug['data']}*")
                 st.divider()
         
-        # Expandable Deep Dive Sections
         with st.expander("📊 Momentum Deep Dive"):
-                st.info("""
-                📊 **Efficiency Metrics Explained:**
-                - **Overall Game PPP**: Average efficiency across entire game
-                - **Recent Segment PPP**: Efficiency in your last ~10 possessions (shown below)
-                - **Projected PPP**: Where your efficiency is trending
-                """)
-            
+            st.info("""
+            📊 **Efficiency Metrics Explained:**
+            - **Overall Game PPP**: Average efficiency across entire game
+            - **Recent Segment PPP**: Efficiency in your last ~10 possessions (shown below)
+            - **Projected PPP**: Where your efficiency is trending
+            """)
+        
             col1, col2, col3 = st.columns(3)
-            
+        
             with col1:
                 status_color = "success" if "positive" in momentum_dir else "error" if "negative" in momentum_dir else "info"
                 getattr(st, status_color)(f"**{momentum_dir.replace('_', ' ').title()}**")
-            
+        
             with col2:
                 st.metric("Score", f"{momentum_score:+.1f}", 
-                         help="-100 (very negative) to +100 (very positive)")
-            
+                          help="-100 (very negative) to +100 (very positive)")
+        
             with col3:
                 recent = min(10, len(st.session_state.score_history))
                 st.metric("Sample", f"Last {recent} events")
-            
+        
             # Momentum interpretation
             if momentum_dir == "strong_positive":
                 st.success("🔥 Team is on fire! Maintain current lineup and strategy.")
@@ -8948,6 +8947,7 @@ with tab3:
                 st.warning("📉 Losing momentum. Adjustments needed soon.")
             else:
                 st.info("➡️ Even game. Next possessions pivotal.")
+
         
         with st.expander("⚡ Efficiency Analysis"):
             col1, col2, col3 = st.columns(3)
