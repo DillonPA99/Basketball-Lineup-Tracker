@@ -5389,15 +5389,28 @@ def display_game_flow_prediction():
             f"{confidence}% confidence"
         )
     
-    # Momentum
-    momentum_score, momentum_dir = calculate_momentum_score()
+    # Current Efficiency - FIXED VERSION
     with metric_col3:
-        momentum_emoji = "🔥" if momentum_dir in ["strong_positive", "positive"] else "❄️" if momentum_dir in ["strong_negative", "negative"] else "➖"
-        st.metric(
-            "Momentum",
-            f"{momentum_emoji} {momentum_dir.replace('_', ' ').title()}",
-            f"{momentum_score:+.0f}"
-        )
+        # Calculate current overall PPP from entire game
+        total_points = st.session_state.home_score
+        total_turnovers = sum(1 for to in st.session_state.turnover_history if to.get('team') == 'home')
+        
+        # Sum up all shooting attempts
+        total_fga = 0
+        total_fta = 0
+        for score_event in st.session_state.score_history:
+            if score_event.get('team') == 'home' and score_event.get('attempted', True):
+                shot_type = score_event.get('shot_type', 'field_goal')
+                if shot_type in ['field_goal', 'three_pointer']:
+                    total_fga += 1
+                elif shot_type == 'free_throw':
+                    total_fta += 1
+        
+        # Calculate PPP using same formula as Analytics tab
+        estimated_possessions = total_fga + total_turnovers + (0.44 * total_fta)
+        current_overall_ppp = (total_points / estimated_possessions) if estimated_possessions > 0 else 0
+        
+        st.metric("Current Efficiency", f"{current_overall_ppp:.2f} PPP")
     
     # Efficiency Trend
     eff_trend, current_ppp, projected_ppp = calculate_scoring_efficiency_trend()
@@ -5457,7 +5470,7 @@ def display_game_flow_prediction():
         st.write(f"""
         - **Current Pace:** {st.session_state.home_score} - {st.session_state.away_score}
         - **Pace-Based Projection:** Projects current scoring rate to game end
-        - **Momentum Adjustment:** ±{momentum_score * 0.1:.1f} points based on recent play
+        - **Momentum Adjustment:** ±{calculate_momentum_score()[0] * 0.1:.1f} points based on recent play
         - **Efficiency Trend:** {eff_trend.title()} ({current_ppp:.2f} → {projected_ppp:.2f} PPP)
         - **Confidence Level:** {confidence}% (increases as game progresses)
         """)
