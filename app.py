@@ -4095,15 +4095,14 @@ def calculate_lineup_defensive_efficiency():
 
 
 def display_defensive_analytics():
-    """Display defensive impact analytics - UPDATED VERSION."""
-    st.subheader("🛡️ Defensive Impact Analytics")
+    st.subheader("🛡️ Raw Defensive Analytics")
     
     if not st.session_state.lineup_history:
         st.info("No lineup data available for defensive analysis.")
         return
     
     # Individual Defensive Impact
-    st.write("**Individual Defensive Impact**")
+    st.write("**Individual Defense**")
     individual_defense = calculate_individual_defensive_impact()
     
     if individual_defense:
@@ -4134,7 +4133,7 @@ def display_defensive_analytics():
             st.info("No individual defensive data available yet.")
     
     # Lineup Defensive Ratings
-    st.write("**Lineup Defensive Performance**")
+    st.write("**Lineup Defense**")
     lineup_defense = calculate_lineup_defensive_rating()
     
     if lineup_defense:
