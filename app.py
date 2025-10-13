@@ -8793,9 +8793,9 @@ with tab3:
         st.divider()
 
         st.subheader("📊 Efficiency Comparison")
-
+    
         comparison_col1, comparison_col2, comparison_col3 = st.columns(3)
-
+    
         with comparison_col1:
             # Calculate overall game PPP
             total_points = st.session_state.home_score
@@ -8823,7 +8823,7 @@ with tab3:
             else:
                 st.warning(f"**Overall Game**\n\n# {current_overall_ppp:.2f} PPP")
             st.caption("Average across all possessions")
-
+    
         with comparison_col2:
             # Recent segment PPP (from efficiency trend)
             eff_trend, current_ppp, projected_ppp = calculate_scoring_efficiency_trend()
@@ -8835,7 +8835,7 @@ with tab3:
             else:
                 st.warning(f"**Recent Segment**\n\n# {current_ppp:.2f} PPP")
             st.caption("Last ~10 possessions")
-
+    
         with comparison_col3:
             # Show the difference
             ppp_diff = current_ppp - current_overall_ppp
