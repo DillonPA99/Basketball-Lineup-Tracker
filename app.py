@@ -8392,7 +8392,7 @@ with tab2:
                 opp_misses = def_details.get('total_opponent_missed_shots', 0)
                 def_impact_per_min = def_details.get('defensive_impact_per_minute', 0)
                 
-                st.caption(f"Def/min: {def_impact_per_min:.2f} | Total: {best_defense['Total Def Impact']}")
+                st.caption(f"Def Impact/min: {def_impact_per_min:.2f} | Total: {best_defense['Total Def Impact']}")
                 st.caption(f"Opp TOs: {opp_tos} | Opp Misses: {opp_misses}")
                 st.write(f"_{best_defense['Lineup']}_")
             
@@ -8435,7 +8435,7 @@ with tab2:
                 
                 st.success("⚖️ **Most Balanced Lineup**")
                 st.write(f"**{best_balanced['balance_score']:.1f}** Combined Score")
-                st.caption(f"Off: {best_balanced['Off. Eff.']} | Def: {best_balanced['Def. Eff.']}")
+                st.caption(f"Off. Eff.: {best_balanced['Off. Eff.']} | Def. Eff.: {best_balanced['Def. Eff.']}")
                 st.caption(f"{best_balanced['Minutes']} min | {best_balanced['Appearances']} appearances")
                 st.write(f"_{best_balanced['Lineup']}_")
             
@@ -8465,7 +8465,7 @@ with tab2:
                 
                 st.success("💪 **Highest Scoring Output**")
                 st.write(f"**{highest_scoring['Total Points']}** Total Points")
-                st.caption(f"{highest_scoring['Points/Min']}/min | {highest_scoring['Minutes']} min")
+                st.caption(f"{highest_scoring['Points/Min']}/Pts min | {highest_scoring['Minutes']} min")
                 st.write(f"_{highest_scoring['Lineup']}_")
             
             # Efficiency explanation
