@@ -9222,9 +9222,6 @@ with tab5:
                 
         st.divider()
         
-        # Aggregate shooting statistics (same as Tab 2)
-        st.subheader("Season Shooting Statistics")
-        
         season_home_shooting = {
             'free_throws_made': 0, 'free_throws_attempted': 0,
             'field_goals_made': 0, 'field_goals_attempted': 0,
@@ -9279,15 +9276,12 @@ with tab5:
                         total_home_pot += points
                     else:
                         total_away_pot += points
-        
-        # Display team shooting comparison (Home and Away - 7 columns each)
-        
+                
         # ===== HOME TEAM =====
-        st.markdown("## Team")
+        st.markdown("## Team Totals")
         home_cols = st.columns(7)
         
         with home_cols[0]:
-            st.markdown("### Season Totals")
             st.metric("Total Points", season_home_shooting['total_points'])
         
         with home_cols[1]:
@@ -9330,11 +9324,10 @@ with tab5:
         
         # ===== AWAY TEAM =====
         st.markdown("---")
-        st.markdown("## Opp. Team")
+        st.markdown("## Opp. Team Totals")
         away_cols = st.columns(7)
         
         with away_cols[0]:
-            st.markdown("### Season Totals")
             st.metric("Total Points", season_away_shooting['total_points'])
         
         with away_cols[1]:
