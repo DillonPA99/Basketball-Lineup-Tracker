@@ -9278,7 +9278,7 @@ with tab5:
                         total_away_pot += points
                 
         # ===== HOME TEAM =====
-        st.markdown("## Team Totals")
+        st.subheader("## Team Totals")
         home_cols = st.columns(7)
         
         with home_cols[0]:
@@ -9324,7 +9324,7 @@ with tab5:
         
         # ===== AWAY TEAM =====
         st.markdown("---")
-        st.markdown("## Opp. Team Totals")
+        st.subheader("## Opp. Team Totals")
         away_cols = st.columns(7)
         
         with away_cols[0]:
