@@ -4819,52 +4819,124 @@ def calculate_momentum_score(recent_events=10):
     return momentum_score, direction
 
 def calculate_scoring_efficiency_trend():
-    """Analyze scoring efficiency trend over time."""
+    """
+    Analyze if team is scoring more/less efficiently over time using proper PPP calculation.
+    Returns: efficiency_trend, current_ppp, projected_ppp
+    """
     if len(st.session_state.score_history) < 10:
         return "insufficient_data", 0, 0
     
+    # Split game into segments
     total_events = len(st.session_state.score_history)
     segment_size = max(5, total_events // 4)
     
+    # Calculate PPP (Points Per Possession) for each segment using proper formula
     segments_ppp = []
     
     for i in range(0, total_events, segment_size):
-        segment = st.session_state.score_history[i:i+segment_size]
+        segment_scores = st.session_state.score_history[i:i+segment_size]
         
-        home_points = sum(s['points'] for s in segment if s['team'] == 'home' and s.get('made', True))
-        home_possessions = len([s for s in segment if s['team'] == 'home'])
+        # Track home team stats
+        home_points = 0
+        home_fga = 0
+        home_fta = 0
         
-        if home_possessions > 0:
-            segment_ppp = home_points / home_possessions
+        # Count scoring events
+        for score in segment_scores:
+            if score['team'] != 'home':
+                continue
+            
+            shot_type = score.get('shot_type', 'field_goal')
+            made = score.get('made', True)
+            attempted = score.get('attempted', True)
+            
+            if made:
+                home_points += score['points']
+            
+            if attempted:
+                if shot_type in ['field_goal', 'three_pointer']:
+                    home_fga += 1
+                elif shot_type == 'free_throw':
+                    home_fta += 1
+        
+        # Count turnovers in this segment
+        home_turnovers = 0
+        for turnover in st.session_state.turnover_history:
+            if turnover.get('team') == 'home':
+                # Check if this turnover occurred during this segment's timeframe
+                # We'll use a simple approach: count all turnovers proportionally
+                turnover_event_sequence = turnover.get('event_sequence', 0)
+                
+                # Find the event sequence range for this segment
+                segment_start_seq = segment_scores[0].get('event_sequence', 0) if segment_scores else 0
+                segment_end_seq = segment_scores[-1].get('event_sequence', float('inf')) if segment_scores else 0
+                
+                if segment_start_seq <= turnover_event_sequence <= segment_end_seq:
+                    home_turnovers += 1
+        
+        # Calculate estimated possessions using proper formula
+        estimated_possessions = home_fga + home_turnovers + (0.44 * home_fta)
+        
+        # Calculate PPP for this segment
+        if estimated_possessions > 0:
+            segment_ppp = home_points / estimated_possessions
             segments_ppp.append(segment_ppp)
     
     if len(segments_ppp) < 2:
         return "insufficient_data", 0, 0
     
+    # Calculate trend using linear regression
     try:
         x = np.arange(len(segments_ppp))
         y = np.array(segments_ppp)
         
         slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
         
+        # Current and projected PPP
         current_ppp = segments_ppp[-1]
         projected_ppp = slope * len(segments_ppp) + intercept
         
-        # Use slope and R-squared for trend determination
-        if abs(slope) < 0.02 or r_value**2 < 0.3:  # Weak correlation
+        # Determine trend with statistical significance
+        # Use both slope magnitude and R-squared for reliability
+        r_squared = r_value ** 2
+        
+        # Only declare a trend if correlation is meaningful (R² > 0.3)
+        if r_squared < 0.3:
+            # Weak correlation - call it stable regardless of slope
             trend = "stable"
         elif slope > 0.05:
+            # Significant upward trend
             trend = "improving"
         elif slope < -0.05:
+            # Significant downward trend
             trend = "declining"
         else:
+            # Small slope - essentially stable
             trend = "stable"
         
         return trend, current_ppp, projected_ppp
     
     except Exception as e:
+        # Fallback if regression fails
         current_ppp = segments_ppp[-1] if segments_ppp else 0
-        return "stable", current_ppp, current_ppp
+        avg_ppp = sum(segments_ppp) / len(segments_ppp) if segments_ppp else 0
+        
+        # Simple trend check without regression
+        if len(segments_ppp) >= 2:
+            first_half_avg = sum(segments_ppp[:len(segments_ppp)//2]) / (len(segments_ppp)//2)
+            second_half_avg = sum(segments_ppp[len(segments_ppp)//2:]) / (len(segments_ppp) - len(segments_ppp)//2)
+            
+            diff = second_half_avg - first_half_avg
+            if diff > 0.1:
+                trend = "improving"
+            elif diff < -0.1:
+                trend = "declining"
+            else:
+                trend = "stable"
+        else:
+            trend = "stable"
+        
+        return trend, current_ppp, avg_ppp
         
 def predict_final_score():
     """
