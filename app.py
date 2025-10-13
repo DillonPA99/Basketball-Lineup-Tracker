@@ -5777,8 +5777,6 @@ with st.sidebar:
     
     st.divider()
     
-    st.header("Game Controls")
-
     # Quarter management
     st.subheader("Quarter Settings")
     quarter_options = ["Q1", "Q2", "Q3", "Q4", "OT1", "OT2", "OT3"]
