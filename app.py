@@ -5729,45 +5729,7 @@ if st.session_state.roster_set:
 # Sidebar: Game Controls (only when roster is set)
 # ------------------------------------------------------------------
 with st.sidebar:
-
-    # Add an anchor at the very top
-    st.markdown('<a id="sidebar-top"></a>', unsafe_allow_html=True)
-    
-    # Sticky navigation bar
-    st.markdown("""
-        <style>
-        .sticky-nav {
-            position: sticky;
-            top: 0;
-            z-index: 999;
-            background-color: var(--background-color);
-            padding: 0.5rem 0;
-            margin-bottom: 0.5rem;
-            border-bottom: 2px solid var(--primary-color);
-        }
-        
-        .back-to-top {
-            text-align: center;
-            padding: 0.25rem;
-            background-color: var(--secondary-background-color);
-            border-radius: 0.25rem;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        
-        .back-to-top:hover {
-            background-color: var(--primary-color);
-            color: white;
-        }
-        </style>
-        
-        <div class="sticky-nav">
-            <a href="#sidebar-top" class="back-to-top">⬆️ Back to Top</a>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    st.subheader("Game Setup")
-    
+    st.subheader("Game Setup") 
     # Single column layout with 4 rows
     home_name = st.text_input(
         "Home Team Name",
