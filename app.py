@@ -8651,24 +8651,10 @@ with tab2:
                         hide_index=True
                     )
             
-            # Enhanced Best and Worst Lineups
-            if len(lineup_df) > 0:
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    best_lineup = lineup_df.iloc[0]
-                    st.success(f"**Best +/- Lineup:** {best_lineup['Plus/Minus']}")
-                    st.write(f"_{best_lineup['Lineup']}_")
-                    st.caption(f"Off: {best_lineup['Off. Eff.']} | Def: {best_lineup['Def. Eff.']} | {best_lineup['Minutes']} min")
-
-                with col2:
-                    worst_lineup = lineup_df.iloc[-1]
-                    st.error(f"**Worst +/- Lineup:** {worst_lineup['Plus/Minus']}")
-                    st.write(f"_{worst_lineup['Lineup']}_")
-                    st.caption(f"Off: {worst_lineup['Off. Eff.']} | Def: {worst_lineup['Def. Eff.']} | {worst_lineup['Minutes']} min")
-            
     else:
         st.info("No lineup plus/minus data available yet.")
+    
+    st.divider()
     
     display_defensive_analytics()
 
