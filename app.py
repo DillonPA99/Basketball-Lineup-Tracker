@@ -6261,6 +6261,15 @@ with st.sidebar:
         st.rerun()
 
     st.divider()
+
+    # App Performance at the bottom
+    st.subheader("⚡ App Performance")
+    st.caption("Clear cache if data seems outdated")
+    if st.button("🔄 Clear Cache", use_container_width=True):
+        st.cache_data.clear()
+        st.success("Cache cleared!")
+        time.sleep(0.5)
+        st.rerun()
         
     # User info and logout
     st.subheader(f"👤 {st.session_state.user_info['username']}")
@@ -6311,14 +6320,6 @@ with st.sidebar:
         # Clear session
         for key in list(st.session_state.keys()):
             del st.session_state[key]
-        st.rerun()
-
-with st.expander("⚡ App Performance"):
-    st.caption("If data seems outdated, clear the cache to force a refresh")
-    if st.button("🔄 Clear Cache & Refresh"):
-        st.cache_data.clear()
-        st.success("Cache cleared! Reloading...")
-        time.sleep(0.5)
         st.rerun()
 
 # ------------------------------------------------------------------
