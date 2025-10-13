@@ -7702,59 +7702,7 @@ with tab2:
             if player_shooting_data:
                 player_shooting_df = pd.DataFrame(player_shooting_data)
                 player_shooting_df = player_shooting_df.sort_values('Points', ascending=False)
-
-                # ===== TOP PERFORMERS CARDS =====
-                st.write("**🌟 Top Performers**")
-                perf_col1, perf_col2, perf_col3, perf_col4 = st.columns(4)
         
-                with perf_col1:
-                    top_scorer = player_shooting_df.iloc[0]
-                    st.metric(
-                        "Leading Scorer",
-                        f"{top_scorer['Player']}",
-                        f"{top_scorer['Points']} pts"
-                    )
-        
-                with perf_col2:
-                    # Best shooter (minimum 3 attempts)
-                    shooters = player_shooting_df[player_shooting_df['FG%'] != '0.0%'].copy()
-                    if len(shooters) > 0:
-                        shooters['fg_numeric'] = shooters['FG%'].str.rstrip('%').astype(float)
-                        best_shooter = shooters.sort_values('fg_numeric', ascending=False).iloc[0]
-                        st.metric(
-                            "Best FG%",
-                            f"{best_shooter['Player']}",
-                            f"{best_shooter['FG%']}"
-                        )
-                    else:
-                        st.metric("Best FG%", "N/A", "0.0%")
-        
-                with perf_col3:
-                    # Best plus/minus
-                    player_shooting_df['pm_numeric'] = player_shooting_df['+/-'].apply(
-                        lambda x: int(x.replace('+', ''))
-                    )
-                    best_pm = player_shooting_df.sort_values('pm_numeric', ascending=False).iloc[0]
-                    st.metric(
-                        "Best +/-",
-                        f"{best_pm['Player']}",
-                        f"{best_pm['+/-']}"
-                    )
-        
-                with perf_col4:
-                    # Most efficient (best PPP with minimum possessions)
-                    player_shooting_df['ppp_numeric'] = player_shooting_df['PPP'].astype(float)
-                    best_eff = player_shooting_df.sort_values('ppp_numeric', ascending=False).iloc[0]
-                    st.metric(
-                        "Best PPP",
-                        f"{best_eff['Player']}",
-                        f"{best_eff['PPP']}"
-                    )
-        
-                st.divider()
-
-                st.header("**Player Statistics**")
-
                 st.divider()
 
                 # Performance Over Time Graph
@@ -8046,7 +7994,56 @@ with tab2:
                     st.info("Start tracking scores to see performance over time")
 
                 st.divider()
+                
+                st.header("**Player Statistics**")
 
+                # ===== TOP PERFORMERS CARDS =====
+                st.write("**🌟 Top Performers**")
+                perf_col1, perf_col2, perf_col3, perf_col4 = st.columns(4)
+        
+                with perf_col1:
+                    top_scorer = player_shooting_df.iloc[0]
+                    st.metric(
+                        "Leading Scorer",
+                        f"{top_scorer['Player']}",
+                        f"{top_scorer['Points']} pts"
+                    )
+        
+                with perf_col2:
+                    # Best shooter (minimum 3 attempts)
+                    shooters = player_shooting_df[player_shooting_df['FG%'] != '0.0%'].copy()
+                    if len(shooters) > 0:
+                        shooters['fg_numeric'] = shooters['FG%'].str.rstrip('%').astype(float)
+                        best_shooter = shooters.sort_values('fg_numeric', ascending=False).iloc[0]
+                        st.metric(
+                            "Best FG%",
+                            f"{best_shooter['Player']}",
+                            f"{best_shooter['FG%']}"
+                        )
+                    else:
+                        st.metric("Best FG%", "N/A", "0.0%")
+        
+                with perf_col3:
+                    # Best plus/minus
+                    player_shooting_df['pm_numeric'] = player_shooting_df['+/-'].apply(
+                        lambda x: int(x.replace('+', ''))
+                    )
+                    best_pm = player_shooting_df.sort_values('pm_numeric', ascending=False).iloc[0]
+                    st.metric(
+                        "Best +/-",
+                        f"{best_pm['Player']}",
+                        f"{best_pm['+/-']}"
+                    )
+        
+                with perf_col4:
+                    # Most efficient (best PPP with minimum possessions)
+                    player_shooting_df['ppp_numeric'] = player_shooting_df['PPP'].astype(float)
+                    best_eff = player_shooting_df.sort_values('ppp_numeric', ascending=False).iloc[0]
+                    st.metric(
+                        "Best PPP",
+                        f"{best_eff['Player']}",
+                        f"{best_eff['PPP']}"
+                    )
 
                 # ===== CORE STATISTICS TABLE =====
                 st.subheader("**📊 Core Statistics**")
