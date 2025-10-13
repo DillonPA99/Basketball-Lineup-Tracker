@@ -5736,6 +5736,55 @@ if st.session_state.roster_set:
 # Sidebar: Game Controls (only when roster is set)
 # ------------------------------------------------------------------
 with st.sidebar:
+
+    st.subheader("Game Setup")
+    setup_col1, setup_col2, setup_col3, setup_col4 = st.columns([2, 2, 2, 1])
+    
+    with setup_col1:
+        home_name = st.text_input(
+            "Home Team Name",
+            value=st.session_state.home_team_name,
+            placeholder="Enter home team name",
+            max_chars=20
+        )
+        
+    with setup_col2:
+        away_name = st.text_input(
+            "Away Team Name", 
+            value=st.session_state.away_team_name,
+            placeholder="Enter opponent name",
+            max_chars=20
+        )
+    
+    with setup_col3:
+        game_name = st.text_input(
+            "Game Name (optional)",
+            value=st.session_state.custom_game_name,
+            placeholder="e.g., 'Championship Game', 'vs Lakers'",
+            max_chars=30,
+            help="Custom name to identify this game in your saved games list"
+        )
+    
+    with setup_col4:
+        if st.button("Update Setup", type="primary"):
+            st.session_state.home_team_name = home_name or "HOME"
+            st.session_state.away_team_name = away_name or "AWAY"
+            st.session_state.custom_game_name = game_name
+            update_session_name_if_needed()
+            st.success("Game setup updated!")
+            st.rerun()
+    
+    # Display current game info
+    game_display_text = ""
+    if st.session_state.custom_game_name:
+        game_display_text = f"🏀 **{st.session_state.custom_game_name}** - "
+    game_display_text += f"**{st.session_state.home_team_name}** vs **{st.session_state.away_team_name}**"
+    
+    if st.session_state.home_team_name != "HOME" or st.session_state.away_team_name != "AWAY" or st.session_state.custom_game_name:
+        st.info(game_display_text)
+    
+    st.divider()
+    
     st.header("Game Controls")
 
     # Quarter management
@@ -6290,12 +6339,6 @@ with st.expander("⚡ App Performance"):
         st.success("Cache cleared! Reloading...")
         time.sleep(0.5)
         st.rerun()
-        
-    # Admin panel access
-    if st.session_state.user_info['role'] == 'admin':
-        if st.button("⚙️ Admin Panel"):
-            st.session_state.show_admin_panel = not st.session_state.show_admin_panel
-            st.rerun()
 
 # ------------------------------------------------------------------
 # Admin Panel Display (when activated)
@@ -6691,55 +6734,6 @@ if st.session_state.get('show_admin_panel', False) and st.session_state.user_inf
     
     # Important: Add this to prevent the main app from showing when admin panel is open
     st.stop()
-
-st.subheader("Game Setup")
-
-setup_col1, setup_col2, setup_col3, setup_col4 = st.columns([2, 2, 2, 1])
-
-with setup_col1:
-    home_name = st.text_input(
-        "Home Team Name",
-        value=st.session_state.home_team_name,
-        placeholder="Enter home team name",
-        max_chars=20
-    )
-    
-with setup_col2:
-    away_name = st.text_input(
-        "Away Team Name", 
-        value=st.session_state.away_team_name,
-        placeholder="Enter opponent name",
-        max_chars=20
-    )
-
-with setup_col3:
-    game_name = st.text_input(
-        "Game Name (optional)",
-        value=st.session_state.custom_game_name,
-        placeholder="e.g., 'Championship Game', 'vs Lakers'",
-        max_chars=30,
-        help="Custom name to identify this game in your saved games list"
-    )
-
-with setup_col4:
-    if st.button("Update Setup", type="primary"):
-        st.session_state.home_team_name = home_name or "HOME"
-        st.session_state.away_team_name = away_name or "AWAY"
-        st.session_state.custom_game_name = game_name
-        update_session_name_if_needed()
-        st.success("Game setup updated!")
-        st.rerun()
-
-# Display current game info
-game_display_text = ""
-if st.session_state.custom_game_name:
-    game_display_text = f"🏀 **{st.session_state.custom_game_name}** - "
-game_display_text += f"**{st.session_state.home_team_name}** vs **{st.session_state.away_team_name}**"
-
-if st.session_state.home_team_name != "HOME" or st.session_state.away_team_name != "AWAY" or st.session_state.custom_game_name:
-    st.info(game_display_text)
-
-st.divider()
 
 # ------------------------------------------------------------------
 # Main content area: Tabs
