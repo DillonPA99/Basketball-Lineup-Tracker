@@ -1663,6 +1663,8 @@ def add_score(team, points):
 
 def add_score_with_player(team, points, scorer_player=None, shot_type='field_goal', made=True, attempted=True):
     """Add points to team score and attribute to specific player with shot tracking."""
+    current_timestamp = get_current_utc_time()
+    
     score_event = {
         'team': team,
         'points': points,
@@ -1673,11 +1675,11 @@ def add_score_with_player(team, points, scorer_player=None, shot_type='field_goa
         'quarter': st.session_state.current_quarter,
         'lineup': st.session_state.current_lineup.copy(),
         'game_time': st.session_state.current_game_time,
-        'timestamp': get_current_utc_time(),
+        'timestamp': current_timestamp,
         'event_sequence': st.session_state.event_counter
     }
     st.session_state.score_history.append(score_event)
-    st.session_state.event_counter += 1  # ADD THIS NEW LINE
+    st.session_state.event_counter += 1
 
     # Update team score
     if team == "home":
@@ -1799,6 +1801,8 @@ def update_lineup(new_lineup, game_time):
         # Ensure we have an active session BEFORE making game state changes
         ensure_active_game_session()
 
+        current_timestamp = get_current_utc_time()       
+
         lineup_event = {
             'quarter': st.session_state.current_quarter,
             'game_time': game_time,
@@ -1807,7 +1811,7 @@ def update_lineup(new_lineup, game_time):
             'home_score': st.session_state.home_score,
             'away_score': st.session_state.away_score,
             'is_quarter_end': False,
-            'timestamp': get_current_utc_time(),
+            'timestamp': current_timestamp,
             'event_sequence': st.session_state.event_counter
         }
 
@@ -2024,6 +2028,8 @@ def clear_turnover_opportunity():
     st.session_state.last_turnover_event = None
 
 def add_turnover(team, player=None):
+
+    current_timestamp = get_current_utc_time()
     """Add a turnover to the game log."""
     turnover_event = {
         'team': team,
@@ -2031,12 +2037,12 @@ def add_turnover(team, player=None):
         'quarter': st.session_state.current_quarter,
         'lineup': st.session_state.current_lineup.copy() if st.session_state.current_lineup else [],
         'game_time': st.session_state.current_game_time,
-        'timestamp': get_current_utc_time(),  # CHANGE THIS
-        'event_sequence': st.session_state.event_counter  # ADD THIS
+        'timestamp': current_timestamp,
+        'event_sequence': st.session_state.event_counter
     }
     
     st.session_state.turnover_history.append(turnover_event)
-    st.session_state.event_counter += 1  # ADD THIS NEW LINE
+    st.session_state.event_counter += 1
     
     # Update individual player stats for home team only
     if team == "home" and player and player != "Team Turnover":
@@ -7709,7 +7715,7 @@ with tab2:
                             })
                     
                     # Sort events by event_sequence (which maintains chronological order)
-                    all_events.sort(key=lambda x: x.get('event_sequence', 0))
+                    all_events.sort(key=lambda x: (x.get('timestamp', datetime.min), x.get('event_sequence', 0)))
                     
                     # Process all events in chronological order
                     for event in all_events:
@@ -8987,15 +8993,14 @@ with tab4:
     if not st.session_state.score_history and not st.session_state.lineup_history and not st.session_state.quarter_end_history:
         st.info("No events logged yet.")
     else:
-        # Combine all events with timestamps for proper chronological ordering
+        # Combine all events with timestamps
         all_events = []
         
         # Add score events
         for i, score in enumerate(st.session_state.score_history):
-            event_seq = score.get('event_sequence', i * 3)  # Use event_sequence if available, otherwise estimate
             all_events.append({
-                'event_sequence': event_seq,
                 'timestamp': score.get('timestamp', datetime.now()),
+                'event_sequence': score.get('event_sequence', i * 3),
                 'type': 'Score',
                 'team': score['team'].title(),
                 'description': f"{score['team'].title()} +{score['points']} points",
@@ -9009,11 +9014,10 @@ with tab4:
         
         # Add turnover events
         for i, turnover in enumerate(st.session_state.turnover_history):
-            event_seq = turnover.get('event_sequence', (len(st.session_state.score_history) + i) * 3 + 1)
             player_text = f" by {turnover['player']}" if turnover.get('player') else " (Team)"
             all_events.append({
-                'event_sequence': event_seq,
                 'timestamp': turnover.get('timestamp', datetime.now()),
+                'event_sequence': turnover.get('event_sequence', (len(st.session_state.score_history) + i) * 3 + 1),
                 'type': 'Turnover',
                 'team': turnover['team'].title(),
                 'description': f"{turnover['team'].title()} turnover{player_text}",
@@ -9022,15 +9026,12 @@ with tab4:
                 'details': f"Lineup: {' | '.join(turnover.get('lineup', []))}" if turnover.get('lineup') else "No lineup info"
             })
         
-        # Add lineup events (excluding quarter-end snapshots)
+        # Add lineup events
         for i, lineup in enumerate(st.session_state.lineup_history):
-            event_seq = lineup.get('event_sequence', (len(st.session_state.score_history) + len(st.session_state.turnover_history) + i) * 3 + 2)
-            
             if lineup.get('is_quarter_end'):
-                # Quarter end snapshot
                 all_events.append({
-                    'event_sequence': event_seq,
                     'timestamp': lineup.get('timestamp', datetime.now()),
+                    'event_sequence': lineup.get('event_sequence', (len(st.session_state.score_history) + len(st.session_state.turnover_history) + i) * 3 + 2),
                     'type': 'Quarter End',
                     'team': 'Both',
                     'description': f"{lineup['quarter']} ended",
@@ -9039,10 +9040,9 @@ with tab4:
                     'details': f"Final Score: {lineup.get('home_score', 0)}-{lineup.get('away_score', 0)}"
                 })
             else:
-                # Regular lineup change
                 all_events.append({
-                    'event_sequence': event_seq,
                     'timestamp': lineup.get('timestamp', datetime.now()),
+                    'event_sequence': lineup.get('event_sequence', (len(st.session_state.score_history) + len(st.session_state.turnover_history) + i) * 3 + 2),
                     'type': 'Lineup Change',
                     'team': 'Home',
                     'description': "Lineup substitution",
@@ -9052,20 +9052,20 @@ with tab4:
                     'previous_lineup': lineup.get('previous_lineup', [])
                 })
         
-        # Sort by event_sequence (which is reliable and always present)
-        all_events.sort(key=lambda x: x.get('event_sequence', 0))
+        # Sort by timestamp (primary) and event_sequence (secondary)
+        all_events.sort(key=lambda x: (x.get('timestamp', datetime.min), x.get('event_sequence', 0)))
         
-        # Display events sequentially
+        # Display events
         if all_events:
             st.info(f"📋 Showing {len(all_events)} game events in chronological order")
             
             for i, event in enumerate(all_events, 1):
-                # Create color-coded header based on event type
+                # Create color-coded header
                 if event['type'] == 'Score':
                     if event.get('made', True):
                         header_color = "🟢" if event['team'] == 'Home' else "🔵"
                     else:
-                        header_color = "⚪"  # Missed shot
+                        header_color = "⚪"
                 elif event['type'] == 'Lineup Change':
                     header_color = "🟠"
                 elif event['type'] == 'Quarter End':
@@ -9075,7 +9075,6 @@ with tab4:
                 else:
                     header_color = "⚫"
                 
-                # Create expander with summary
                 summary = f"{header_color} **Event #{i}** - {event['type']}: {event['description']} ({event['quarter']} @ {event['game_time']})"
                 
                 with st.expander(summary, expanded=False):
@@ -9108,9 +9107,7 @@ with tab4:
                             st.write(f"**Status:** Quarter Completed")
                     
                     st.write(f"**Details:** {event['details']}")
-                    
-                    # Show timestamp for debugging
-                    st.caption(f"Logged at: {event['timestamp'].strftime('%H:%M:%S')}")
+                    st.caption(f"Logged at: {event['timestamp'].strftime('%H:%M:%S.%f')[:-3]}")
         else:
             st.info("No events to display yet.")
 # ------------------------------------------------------------------
