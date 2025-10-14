@@ -3637,13 +3637,13 @@ def display_lineup_recommendation():
     """Display lineup recommendation UI in the Live Game tab."""
     
     # Create columns for title and button
-    title_col, button_col = st.columns([3, 1])
+    title_col, button_col = st.columns([2, 1])
     
     with title_col:
         st.subheader("🎯 AI Lineup Recommendation")
     
     with button_col:
-        generate_button = st.button("Generate Best Lineup", type="primary")
+        generate_button = st.button("Generate Best Lineup", type="primary", use_container_width=True)
     
     if len(st.session_state.roster) < 5:
         st.info("Need at least 5 players in roster to generate recommendations")
