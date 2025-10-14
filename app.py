@@ -6572,15 +6572,15 @@ with st.sidebar:
                     'last_turnover_event': st.session_state.last_turnover_event
                 }
                 
-            with st.spinner("Saving game progress..."):
-                if update_game_session(st.session_state.current_game_session_id, game_data):
-                    # Store success message in session state
-                    st.session_state.save_success_message = "✅ Game progress saved successfully!"
-                    # Reset auto-save timer to prevent immediate auto-save
-                    st.session_state.last_auto_save = datetime.now()
-                    st.rerun()
-                else:
-                    st.error("Failed to save game progress")
+                with st.spinner("Saving game progress..."):
+                    if update_game_session(st.session_state.current_game_session_id, game_data):
+                        # Store success message in session state
+                        st.session_state.save_success_message = "✅ Game progress saved successfully!"
+                        # Reset auto-save timer to prevent immediate auto-save
+                        st.session_state.last_auto_save = datetime.now()
+                        st.rerun()
+                    else:
+                        st.error("Failed to save game progress")
         
         with session_col2:
             if st.button("🏁 Mark Complete", help="Mark this game as finished"):
