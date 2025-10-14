@@ -6578,8 +6578,10 @@ with st.sidebar:
             if st.button("🏁 Mark Complete", help="Mark this game as finished"):
                 if mark_game_completed(st.session_state.current_game_session_id):
                     st.success("Game marked as completed!")
-                    # Set the completion flag BEFORE clearing session
+                    # Set the completion flag BEFORE rerunning
                     st.session_state.game_marked_complete = True
+                    # Add a small delay to ensure state is saved
+                    time.sleep(0.5)
                     st.rerun()
     else:
         st.info("No active game session")
