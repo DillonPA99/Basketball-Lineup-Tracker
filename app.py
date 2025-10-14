@@ -783,6 +783,13 @@ def load_game_session(session_id):
         else:
             st.session_state.event_counter = 0  # Default for games saved before this feature
     
+        # ADD THESE LINES HERE (right before the return statement):
+        # Set completion flag if game is completed
+        if session_data.get('is_completed', False):
+            st.session_state.game_marked_complete = True
+        else:
+            st.session_state.game_marked_complete = False
+        
         return session_data
         
     except Exception as e:
