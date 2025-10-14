@@ -7897,10 +7897,11 @@ with tab2:
     with home_cols[4]:
         st.metric("Free Throws", f"{home_shooting_stats['free_throws_made']}/{home_shooting_stats['free_throws_attempted']}", f"{ft_pct:.1f}%")
     with home_cols[5]:
-        st.metric("Points off TO", home_pot)
-    with home_cols[6]:
         home_team_tos = sum(1 for to in st.session_state.turnover_history if to.get('team') == 'home')
         st.metric("Team Turnovers", home_team_tos)
+    with home_cols[6]:
+        st.metric("Points off TO", home_pot)
+
     
     st.divider()
     
@@ -7928,11 +7929,10 @@ with tab2:
     with away_cols[4]:
         st.metric("Free Throws", f"{away_shooting_stats['free_throws_made']}/{away_shooting_stats['free_throws_attempted']}", f"{away_ft_pct:.1f}%")
     with away_cols[5]:
-        st.metric("Points off TO", away_pot)
-    with away_cols[6]:
         away_team_tos = sum(1 for to in st.session_state.turnover_history if to.get('team') == 'away')
         st.metric("Team Turnovers", away_team_tos)
-
+    with away_cols[6]:
+        st.metric("Points off TO", away_pot)
 
                     
     # Individual Home Team Player Statistics (now includes turnovers)
