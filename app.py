@@ -6188,6 +6188,27 @@ if not st.session_state.roster_set:
     with tab3:
         # Load saved roster tab
         st.subheader("📋 Load Previously Saved Roster")
+
+        # DEBUG - Check game completion status
+        st.write("**DEBUG INFO:**")
+        st.write(f"Session state flag: {st.session_state.get('game_marked_complete', False)}")
+        st.write(f"Current game session ID: {st.session_state.current_game_session_id}")
+        
+        # Check database directly
+        if st.session_state.current_game_session_id:
+            try:
+                session_doc = db.collection('game_sessions').document(
+                    st.session_state.current_game_session_id
+                ).get()
+                if session_doc.exists:
+                    session_data = session_doc.to_dict()
+                    st.write(f"Database is_completed: {session_data.get('is_completed', False)}")
+                    st.write(f"Database completed_at: {session_data.get('completed_at', 'Not set')}")
+            except Exception as e:
+                st.write(f"Error checking database: {e}")
+        
+        # Check if game is completed
+        game_completed = st.session_state.get('game_marked_complete', False)
         
         # Load the user's saved roster
         with st.spinner("Loading saved roster..."):
