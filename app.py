@@ -5358,6 +5358,322 @@ def get_ai_coaching_suggestion():
     
     return suggestions
 
+def generate_game_summary_analysis():
+    """Generate comprehensive AI summary of completed game focusing on game flow and critical moments."""
+    
+    summary = {
+        'game_overview': {},
+        'quarter_analysis': [],
+        'key_runs': [],
+        'momentum_shifts': [],
+        'critical_sequences': [],
+        'efficiency_trends': {}
+    }
+    
+    # Game Overview
+    final_margin = st.session_state.home_score - st.session_state.away_score
+    summary['game_overview'] = {
+        'final_score': f"{st.session_state.home_score}-{st.session_state.away_score}",
+        'result': 'Win' if final_margin > 0 else 'Loss' if final_margin < 0 else 'Tie',
+        'margin': abs(final_margin),
+        'total_quarters': len(st.session_state.quarter_end_history),
+        'lead_changes': 0,
+        'largest_lead': 0,
+        'largest_deficit': 0
+    }
+    
+    # Calculate win probability at end of each quarter
+    if st.session_state.quarter_end_history:
+        prev_home = 0
+        prev_away = 0
+        
+        for qe in st.session_state.quarter_end_history:
+            quarter = qe.get('quarter', 'Unknown')
+            final_score_parts = qe.get('final_score', '0-0').split('-')
+            
+            try:
+                home_score = int(final_score_parts[0])
+                away_score = int(final_score_parts[1])
+            except:
+                continue
+            
+            quarter_home_points = home_score - prev_home
+            quarter_away_points = away_score - prev_away
+            quarter_margin = quarter_home_points - quarter_away_points
+            cumulative_margin = home_score - away_score
+            
+            # Calculate win probability at quarter end (simplified)
+            # Based on score differential and time remaining
+            quarters_remaining = 4 - int(quarter[1]) if quarter.startswith('Q') else 0
+            
+            if quarters_remaining > 0:
+                # Estimate win probability based on lead and time
+                base_prob = 50
+                margin_impact = cumulative_margin * 3  # Each point ~ 3% impact
+                time_factor = 1 + (4 - quarters_remaining) * 0.2  # More weight as game progresses
+                
+                win_prob = base_prob + (margin_impact * time_factor)
+                win_prob = max(5, min(95, win_prob))  # Clamp between 5-95%
+            else:
+                # Final quarter - win prob based on final score
+                win_prob = 95 if cumulative_margin > 0 else 5 if cumulative_margin < 0 else 50
+            
+            # Determine quarter performance category
+            if quarter_margin > 5:
+                performance = "Dominant"
+                performance_emoji = "🔥"
+            elif quarter_margin > 0:
+                performance = "Winning"
+                performance_emoji = "✅"
+            elif quarter_margin == 0:
+                performance = "Even"
+                performance_emoji = "⚖️"
+            elif quarter_margin > -5:
+                performance = "Losing"
+                performance_emoji = "⚠️"
+            else:
+                performance = "Struggled"
+                performance_emoji = "🚨"
+            
+            summary['quarter_analysis'].append({
+                'quarter': quarter,
+                'home_points': quarter_home_points,
+                'away_points': quarter_away_points,
+                'margin': quarter_margin,
+                'cumulative_score': f"{home_score}-{away_score}",
+                'cumulative_margin': cumulative_margin,
+                'win_probability': win_prob,
+                'performance': performance,
+                'performance_emoji': performance_emoji
+            })
+            
+            prev_home = home_score
+            prev_away = away_score
+    
+    # Identify significant runs (scoring streaks)
+    if st.session_state.score_history:
+        current_run = {'team': None, 'points': 0, 'start_idx': 0, 'quarter': None}
+        all_runs = []
+        
+        for i, score_event in enumerate(st.session_state.score_history):
+            if not score_event.get('made', True):
+                continue
+            
+            team = score_event['team']
+            points = score_event['points']
+            quarter = score_event['quarter']
+            
+            if team == current_run['team']:
+                current_run['points'] += points
+            else:
+                # Save previous run if significant (6+ points)
+                if current_run['points'] >= 6:
+                    all_runs.append(current_run.copy())
+                
+                # Start new run
+                current_run = {
+                    'team': team,
+                    'points': points,
+                    'start_idx': i,
+                    'end_idx': i,
+                    'quarter': quarter
+                }
+            
+            current_run['end_idx'] = i
+            current_run['quarter'] = quarter
+        
+        # Don't forget the last run
+        if current_run['points'] >= 6:
+            all_runs.append(current_run)
+        
+        # Get top 5 runs
+        top_runs = sorted(all_runs, key=lambda x: x['points'], reverse=True)[:5]
+        
+        for run in top_runs:
+            # Calculate score context
+            score_before = 0
+            score_after = 0
+            
+            for j, event in enumerate(st.session_state.score_history):
+                if not event.get('made', True):
+                    continue
+                if j < run['start_idx']:
+                    if event['team'] == 'home':
+                        score_before += event['points']
+                    else:
+                        score_before -= event['points']
+                elif j <= run['end_idx']:
+                    if event['team'] == 'home':
+                        score_after += event['points']
+                    else:
+                        score_after -= event['points']
+            
+            margin_change = score_after - score_before
+            
+            summary['key_runs'].append({
+                'team': run['team'].upper(),
+                'points': run['points'],
+                'quarter': run['quarter'],
+                'impact': 'Game-Changing' if run['points'] >= 10 else 'Significant',
+                'margin_swing': margin_change,
+                'description': f"{run['points']}-0 run"
+            })
+    
+    # Identify momentum shifts (lead changes and swing moments)
+    if st.session_state.score_history:
+        prev_margin = 0
+        lead_changes = 0
+        biggest_comeback = 0
+        
+        for i, score_event in enumerate(st.session_state.score_history):
+            if not score_event.get('made', True):
+                continue
+            
+            # Calculate running margin
+            home_total = sum(e['points'] for e in st.session_state.score_history[:i+1] 
+                           if e['team'] == 'home' and e.get('made', True))
+            away_total = sum(e['points'] for e in st.session_state.score_history[:i+1] 
+                           if e['team'] == 'away' and e.get('made', True))
+            current_margin = home_total - away_total
+            
+            # Detect lead change
+            if (prev_margin > 0 and current_margin <= 0) or (prev_margin <= 0 and current_margin > 0):
+                lead_changes += 1
+                
+                summary['momentum_shifts'].append({
+                    'type': 'Lead Change',
+                    'quarter': score_event['quarter'],
+                    'game_time': score_event.get('game_time', 'Unknown'),
+                    'new_leader': 'HOME' if current_margin > 0 else 'AWAY' if current_margin < 0 else 'TIED',
+                    'score': f"{home_total}-{away_total}"
+                })
+            
+            # Detect big swings (5+ point margin change in short time)
+            if i >= 5:  # Look at last 5 scoring events
+                margin_5_ago = sum(e['points'] if e['team'] == 'home' else -e['points'] 
+                                 for e in st.session_state.score_history[max(0, i-5):i] 
+                                 if e.get('made', True))
+                margin_change = current_margin - (prev_margin - margin_5_ago)
+                
+                if abs(margin_change) >= 7:  # 7+ point swing
+                    summary['momentum_shifts'].append({
+                        'type': 'Momentum Swing',
+                        'quarter': score_event['quarter'],
+                        'game_time': score_event.get('game_time', 'Unknown'),
+                        'swing': f"{margin_change:+d} points",
+                        'beneficiary': 'HOME' if margin_change > 0 else 'AWAY'
+                    })
+            
+            prev_margin = current_margin
+        
+        summary['game_overview']['lead_changes'] = lead_changes
+    
+    # Identify critical sequences (high-impact events)
+    if st.session_state.score_history and st.session_state.turnover_history:
+        # Find turnovers that led to points (points off turnovers)
+        for i, to_event in enumerate(st.session_state.turnover_history):
+            to_team = to_event['team']
+            to_quarter = to_event['quarter']
+            to_timestamp = to_event.get('timestamp')
+            
+            # Look for scoring within 30 seconds after turnover
+            if to_timestamp:
+                for score_event in st.session_state.score_history:
+                    score_timestamp = score_event.get('timestamp')
+                    if not score_timestamp:
+                        continue
+                    
+                    # Check if score happened shortly after turnover
+                    if score_event['team'] != to_team and score_event.get('made', True):
+                        try:
+                            time_diff = (score_timestamp - to_timestamp).total_seconds()
+                            
+                            if 0 < time_diff <= 30 and score_event['quarter'] == to_quarter:
+                                summary['critical_sequences'].append({
+                                    'type': 'Points Off Turnover',
+                                    'quarter': to_quarter,
+                                    'beneficiary': score_event['team'].upper(),
+                                    'points': score_event['points'],
+                                    'impact': 'High',
+                                    'description': f"{score_event['team'].upper()} scored {score_event['points']} pts off {to_team.upper()} turnover"
+                                })
+                                break
+                        except:
+                            continue
+    
+    # Calculate efficiency trends over time
+    if st.session_state.score_history and len(st.session_state.score_history) >= 10:
+        # Split game into segments
+        total_events = len(st.session_state.score_history)
+        segment_size = max(5, total_events // 4)
+        
+        segments_ppp = []
+        
+        for i in range(0, total_events, segment_size):
+            segment_scores = st.session_state.score_history[i:i+segment_size]
+            
+            home_points = sum(e['points'] for e in segment_scores if e['team'] == 'home' and e.get('made', True))
+            home_fga = sum(1 for e in segment_scores if e['team'] == 'home' and e.get('attempted', True) and e.get('shot_type') in ['field_goal', 'three_pointer'])
+            home_fta = sum(1 for e in segment_scores if e['team'] == 'home' and e.get('attempted', True) and e.get('shot_type') == 'free_throw')
+            
+            # Count turnovers in segment
+            segment_start_seq = segment_scores[0].get('event_sequence', 0) if segment_scores else 0
+            segment_end_seq = segment_scores[-1].get('event_sequence', float('inf')) if segment_scores else 0
+            
+            home_turnovers = sum(1 for to in st.session_state.turnover_history 
+                               if to.get('team') == 'home' and 
+                               segment_start_seq <= to.get('event_sequence', 0) <= segment_end_seq)
+            
+            estimated_possessions = home_fga + home_turnovers + (0.44 * home_fta)
+            segment_ppp = (home_points / estimated_possessions) if estimated_possessions > 0 else 0
+            
+            segments_ppp.append(segment_ppp)
+        
+        if len(segments_ppp) >= 2:
+            first_half_ppp = sum(segments_ppp[:len(segments_ppp)//2]) / (len(segments_ppp)//2)
+            second_half_ppp = sum(segments_ppp[len(segments_ppp)//2:]) / (len(segments_ppp) - len(segments_ppp)//2)
+            
+            ppp_trend = second_half_ppp - first_half_ppp
+            
+            if ppp_trend > 0.10:
+                trend_description = "Improved significantly"
+            elif ppp_trend > 0.05:
+                trend_description = "Improved moderately"
+            elif ppp_trend < -0.10:
+                trend_description = "Declined significantly"
+            elif ppp_trend < -0.05:
+                trend_description = "Declined moderately"
+            else:
+                trend_description = "Remained stable"
+            
+            summary['efficiency_trends'] = {
+                'first_half_ppp': first_half_ppp,
+                'second_half_ppp': second_half_ppp,
+                'trend': trend_description,
+                'change': ppp_trend
+            }
+    
+    # Track largest lead and deficit
+    if st.session_state.score_history:
+        max_lead = 0
+        max_deficit = 0
+        
+        for i in range(len(st.session_state.score_history)):
+            home_total = sum(e['points'] for e in st.session_state.score_history[:i+1] 
+                           if e['team'] == 'home' and e.get('made', True))
+            away_total = sum(e['points'] for e in st.session_state.score_history[:i+1] 
+                           if e['team'] == 'away' and e.get('made', True))
+            margin = home_total - away_total
+            
+            if margin > max_lead:
+                max_lead = margin
+            if margin < max_deficit:
+                max_deficit = margin
+        
+        summary['game_overview']['largest_lead'] = max_lead
+        summary['game_overview']['largest_deficit'] = abs(max_deficit)
+    
+    return summary
 
 # ============================================================================
 # VISUALIZATION FUNCTIONS
@@ -7938,7 +8254,6 @@ with tab2:
                         
                         with summary_col4:
                             st.metric("Lineup Changes", len(lineup_changes))
-                            st.metric("Quarters Completed", len(quarter_ends))
                         
                         # Trend analysis
                         with st.expander("📊 Performance Trends & Lineup Analysis"):
@@ -8748,106 +9063,290 @@ with tab2:
 # Tab 3: AI Insights
 # ------------------------------------------------------------------
 with tab3:
-    st.header("🤖 AI Game Flow Analysis")
+    st.header("🤖 AI Game Analysis")
     
-    if not st.session_state.score_history or len(st.session_state.score_history) < 5:
-        st.info("📊 Need at least 5 scoring events to generate AI predictions and insights. Keep playing!")
-        st.write("""
-        **What you'll see here once the game progresses:**
+    # Check if game is completed
+    game_completed = False
+    
+    if game_completed:
+        # ===== COMPLETED GAME SUMMARY =====
+        st.success("✅ Game Completed - AI Game Flow Analysis")
         
-        🎯 **Win Probability** - Real-time chances of winning based on:
-        - Current score differential
-        - Recent momentum
-        - Offensive efficiency trends
-        - Time remaining
-        - Turnover differential
-        
-        🔮 **Predicted Final Score** - Projected outcome using:
-        - Current pace and scoring rate
-        - Momentum adjustments
-        - Efficiency trend analysis
-        
-        📈 **Momentum Analysis** - Track scoring runs and momentum shifts
-        
-        ⚠️ **Critical Moments** - Automated alerts for:
-        - Quarter endings
-        - Clutch time situations
-        - Momentum swings
-        - Comeback opportunities
-        
-        💡 **AI Coaching Suggestions** - Strategic recommendations based on:
-        - Momentum trends
-        - Offensive efficiency
-        - Turnover management
-        - Shot selection
-        - Win probability scenarios
-        """)
+        if not st.session_state.score_history:
+            st.info("No game data to analyze.")
+        else:
+            # Generate comprehensive summary
+            summary = generate_game_summary_analysis()
+            
+            # Game Overview
+            st.subheader("📊 Game Overview")
+            
+            overview_col1, overview_col2, overview_col3, overview_col4 = st.columns(4)
+            
+            with overview_col1:
+                result_color = "success" if summary['game_overview']['result'] == 'Win' else "error"
+                getattr(st, result_color)(
+                    f"**{summary['game_overview']['result']}**\n\n"
+                    f"# {summary['game_overview']['final_score']}"
+                )
+            
+            with overview_col2:
+                if summary['game_overview']['largest_lead'] > 0:
+                    st.metric("Largest Lead", f"+{summary['game_overview']['largest_lead']}")
+                else:
+                    st.metric("Largest Lead", "0")
+            
+            with overview_col3:
+                if summary['game_overview']['largest_deficit'] > 0:
+                    st.metric("Largest Deficit", f"-{summary['game_overview']['largest_deficit']}")
+                else:
+                    st.metric("Largest Deficit", "0")
+            
+            with overview_col4:
+                st.metric("Lead Changes", summary['game_overview']['lead_changes'])
+            
+            st.divider()
+            
+            # Quarter-by-Quarter Analysis with Win Probability
+            if summary['quarter_analysis']:
+                st.subheader("📈 Quarter-by-Quarter Analysis")
+                
+                for qa in summary['quarter_analysis']:
+                    with st.expander(
+                        f"{qa['performance_emoji']} {qa['quarter']}: {qa['performance']} "
+                        f"({qa['margin']:+d} margin) - Win Prob: {qa['win_probability']:.0f}%",
+                        expanded=True
+                    ):
+                        qtr_col1, qtr_col2, qtr_col3, qtr_col4 = st.columns(4)
+                        
+                        with qtr_col1:
+                            st.metric("Quarter Scoring", f"{qa['home_points']}-{qa['away_points']}")
+                        
+                        with qtr_col2:
+                            st.metric("Quarter Margin", f"{qa['margin']:+d}")
+                        
+                        with qtr_col3:
+                            st.metric("Cumulative Score", qa['cumulative_score'])
+                        
+                        with qtr_col4:
+                            # Win probability with color coding
+                            win_prob = qa['win_probability']
+                            if win_prob >= 70:
+                                st.success(f"**Win Prob**\n\n# {win_prob:.0f}%")
+                            elif win_prob >= 55:
+                                st.info(f"**Win Prob**\n\n# {win_prob:.0f}%")
+                            elif win_prob >= 45:
+                                st.warning(f"**Win Prob**\n\n# {win_prob:.0f}%")
+                            else:
+                                st.error(f"**Win Prob**\n\n# {win_prob:.0f}%")
+                        
+                        # Performance interpretation
+                        if qa['performance'] == "Dominant":
+                            st.success(f"🔥 **Dominant performance!** Outscored opponent by {qa['margin']} points this quarter")
+                        elif qa['performance'] == "Winning":
+                            st.success(f"✅ **Solid quarter.** Built {qa['margin']}-point advantage")
+                        elif qa['performance'] == "Even":
+                            st.info("⚖️ **Even quarter.** Matched opponent's production")
+                        elif qa['performance'] == "Losing":
+                            st.warning(f"⚠️ **Tough quarter.** Opponent outscored by {abs(qa['margin'])}")
+                        else:
+                            st.error(f"🚨 **Challenging quarter.** Gave up {abs(qa['margin'])}-point deficit")
+            
+            st.divider()
+            
+            # Key Runs
+            if summary['key_runs']:
+                st.subheader("🔥 Significant Scoring Runs")
+                
+                for run in summary['key_runs']:
+                    team_color = "success" if run['team'] == 'HOME' else "info"
+                    getattr(st, team_color)(
+                        f"**{run['team']} {run['description']}** in {run['quarter']}\n\n"
+                        f"Impact: {run['impact']} | Margin Swing: {run['margin_swing']:+d}"
+                    )
+            
+            st.divider()
+            
+            # Momentum Shifts
+            if summary['momentum_shifts']:
+                st.subheader("⚡ Momentum Shifts & Lead Changes")
+                
+                # Separate lead changes from momentum swings
+                lead_changes = [m for m in summary['momentum_shifts'] if m['type'] == 'Lead Change']
+                momentum_swings = [m for m in summary['momentum_shifts'] if m['type'] == 'Momentum Swing']
+                
+                if lead_changes:
+                    st.write("**Lead Changes:**")
+                    for lc in lead_changes:
+                        st.info(
+                            f"📊 **{lc['quarter']} @ {lc['game_time']}** - "
+                            f"{lc['new_leader']} takes lead ({lc['score']})"
+                        )
+                
+                if momentum_swings:
+                    st.write("**Major Momentum Swings:**")
+                    for ms in momentum_swings:
+                        swing_color = "success" if ms['beneficiary'] == 'HOME' else "warning"
+                        getattr(st, swing_color)(
+                            f"⚡ **{ms['quarter']} @ {ms['game_time']}** - "
+                            f"{ms['beneficiary']} goes on {ms['swing']} run"
+                        )
+            
+            st.divider()
+            
+            # Critical Sequences
+            if summary['critical_sequences']:
+                st.subheader("🎯 High-Impact Sequences")
+                
+                for seq in summary['critical_sequences']:
+                    st.warning(f"**{seq['type']}** ({seq['quarter']}): {seq['description']}")
+            
+            st.divider()
+            
+            # Efficiency Trends
+            if summary['efficiency_trends']:
+                st.subheader("📊 Offensive Efficiency Trends")
+                
+                et = summary['efficiency_trends']
+                
+                trend_col1, trend_col2, trend_col3 = st.columns(3)
+                
+                with trend_col1:
+                    st.metric("First Half PPP", f"{et['first_half_ppp']:.2f}")
+                
+                with trend_col2:
+                    st.metric("Second Half PPP", f"{et['second_half_ppp']:.2f}", 
+                             delta=f"{et['change']:+.2f}")
+                
+                with trend_col3:
+                    trend_color = "success" if "Improved" in et['trend'] else "error" if "Declined" in et['trend'] else "info"
+                    getattr(st, trend_color)(f"**Trend**\n\n{et['trend']}")
+                
+                # Interpretation
+                if "Improved significantly" in et['trend']:
+                    st.success("🔥 **Excellent adjustment!** Offensive efficiency improved significantly as game progressed")
+                elif "Improved" in et['trend']:
+                    st.success("✅ **Positive trend.** Made good adjustments to improve efficiency")
+                elif "Declined significantly" in et['trend']:
+                    st.error("⚠️ **Concerning trend.** Efficiency dropped significantly - may indicate fatigue or defensive adjustments")
+                elif "Declined" in et['trend']:
+                    st.warning("📉 **Efficiency dip.** Consider what changed in second half")
+                else:
+                    st.info("➡️ **Consistent performance.** Maintained steady efficiency throughout")
+            
+            # Link to detailed stats
+            st.divider()
+            st.info("📊 **For detailed player and lineup statistics, see the Analytics tab**")
+    
     else:
-        # Display the full AI game flow prediction section
-        display_game_flow_prediction()
+        # ===== LIVE GAME PREDICTIONS (existing code) =====
+        if not st.session_state.score_history or len(st.session_state.score_history) < 5:
+            st.info("📊 Need at least 5 scoring events to generate AI predictions and insights. Keep playing!")
+            st.write("""
+            **What you'll see here once the game progresses:**
+            
+            🎯 **Win Probability** - Real-time chances of winning based on:
+            - Current score differential
+            - Recent momentum
+            - Offensive efficiency trends
+            - Time remaining
+            - Turnover differential
+            
+            🔮 **Predicted Final Score** - Projected outcome using:
+            - Current pace and scoring rate
+            - Momentum adjustments
+            - Efficiency trend analysis
+            
+            📈 **Momentum Analysis** - Track scoring runs and momentum shifts
+            
+            ⚠️ **Critical Moments** - Automated alerts for:
+            - Quarter endings
+            - Clutch time situations
+            - Momentum swings
+            - Comeback opportunities
+            
+            💡 **AI Coaching Suggestions** - Strategic recommendations based on:
+            - Momentum trends
+            - Offensive efficiency
+            - Turnover management
+            - Shot selection
+            - Win probability scenarios
+            
+            ---
+            
+            **After marking the game complete, you'll see:**
+            - Comprehensive game summary
+            - Quarter-by-quarter analysis
+            - Key moments and turning points
+            - Performance highlights
+            - Strategic recommendations for next game
+            """)
+        else:
+            # Display the full AI game flow prediction section (existing code)
+            display_game_flow_prediction()
 
-        # Add PPP comparison for clarity
-        st.divider()
+            # Add PPP comparison for clarity
+            st.divider()
 
-        st.subheader("📊 Efficiency Comparison")
-    
-        comparison_col1, comparison_col2, comparison_col3 = st.columns(3)
-    
-        with comparison_col1:
-            # Calculate overall game PPP
-            total_points = st.session_state.home_score
-            total_turnovers = sum(1 for to in st.session_state.turnover_history if to.get('team') == 'home')
-            
-            # Sum up all shooting attempts
-            total_fga = 0
-            total_fta = 0
-            for score_event in st.session_state.score_history:
-                if score_event.get('team') == 'home' and score_event.get('attempted', True):
-                    shot_type = score_event.get('shot_type', 'field_goal')
-                    if shot_type in ['field_goal', 'three_pointer']:
-                        total_fga += 1
-                    elif shot_type == 'free_throw':
-                        total_fta += 1
-            
-            # Calculate PPP
-            estimated_possessions = total_fga + total_turnovers + (0.44 * total_fta)
-            current_overall_ppp = (total_points / estimated_possessions) if estimated_possessions > 0 else 0
-            
-            if current_overall_ppp >= 1.10:
-                st.success(f"**Overall Game**\n\n# {current_overall_ppp:.2f} PPP")
-            elif current_overall_ppp >= 1.00:
-                st.info(f"**Overall Game**\n\n# {current_overall_ppp:.2f} PPP")
-            else:
-                st.warning(f"**Overall Game**\n\n# {current_overall_ppp:.2f} PPP")
-            st.caption("Average across all possessions")
-    
-        with comparison_col2:
-            # Recent segment PPP (from efficiency trend)
-            eff_trend, current_ppp, projected_ppp = calculate_scoring_efficiency_trend()
-            
-            if current_ppp >= 1.10:
-                st.success(f"**Recent Segment**\n\n# {current_ppp:.2f} PPP")
-            elif current_ppp >= 1.00:
-                st.info(f"**Recent Segment**\n\n# {current_ppp:.2f} PPP")
-            else:
-                st.warning(f"**Recent Segment**\n\n# {current_ppp:.2f} PPP")
-            st.caption("Last ~10 possessions")
-    
-        with comparison_col3:
-            # Show the difference
-            ppp_diff = current_ppp - current_overall_ppp
-            
-            if abs(ppp_diff) < 0.10:
-                st.info(f"**Momentum**\n\n# Stable")
-                st.caption(f"Recent vs Overall: {ppp_diff:+.2f}")
-            elif ppp_diff > 0:
-                st.success(f"**Momentum**\n\n# 🔥 Hot")
-                st.caption(f"Recent +{ppp_diff:.2f} better!")
-            else:
-                st.error(f"**Momentum**\n\n# 📉 Cooling")
-                st.caption(f"Recent {ppp_diff:.2f} worse")
+            st.subheader("📊 Efficiency Comparison")
+        
+            comparison_col1, comparison_col2, comparison_col3 = st.columns(3)
+        
+            with comparison_col1:
+                # Calculate overall game PPP
+                total_points = st.session_state.home_score
+                total_turnovers = sum(1 for to in st.session_state.turnover_history if to.get('team') == 'home')
+                
+                # Sum up all shooting attempts
+                total_fga = 0
+                total_fta = 0
+                for score_event in st.session_state.score_history:
+                    if score_event.get('team') == 'home' and score_event.get('attempted', True):
+                        shot_type = score_event.get('shot_type', 'field_goal')
+                        if shot_type in ['field_goal', 'three_pointer']:
+                            total_fga += 1
+                        elif shot_type == 'free_throw':
+                            total_fta += 1
+                
+                # Calculate PPP
+                estimated_possessions = total_fga + total_turnovers + (0.44 * total_fta)
+                current_overall_ppp = (total_points / estimated_possessions) if estimated_possessions > 0 else 0
+                
+                if current_overall_ppp >= 1.10:
+                    st.success(f"**Overall Game**\n\n# {current_overall_ppp:.2f} PPP")
+                elif current_overall_ppp >= 1.00:
+                    st.info(f"**Overall Game**\n\n# {current_overall_ppp:.2f} PPP")
+                else:
+                    st.warning(f"**Overall Game**\n\n# {current_overall_ppp:.2f} PPP")
+                st.caption("Average across all possessions")
+        
+            with comparison_col2:
+                # Recent segment PPP (from efficiency trend)
+                eff_trend, current_ppp, projected_ppp = calculate_scoring_efficiency_trend()
+                
+                if current_ppp >= 1.10:
+                    st.success(f"**Recent Segment**\n\n# {current_ppp:.2f} PPP")
+                elif current_ppp >= 1.00:
+                    st.info(f"**Recent Segment**\n\n# {current_ppp:.2f} PPP")
+                else:
+                    st.warning(f"**Recent Segment**\n\n# {current_ppp:.2f} PPP")
+                st.caption("Last ~10 possessions")
+        
+            with comparison_col3:
+                # Show the difference
+                ppp_diff = current_ppp - current_overall_ppp
+                
+                if abs(ppp_diff) < 0.10:
+                    st.info(f"**Momentum**\n\n# Stable")
+                    st.caption(f"Recent vs Overall: {ppp_diff:+.2f}")
+                elif ppp_diff > 0:
+                    st.success(f"**Momentum**\n\n# 🔥 Hot")
+                    st.caption(f"Recent +{ppp_diff:.2f} better!")
+                else:
+                    st.error(f"**Momentum**\n\n# 📉 Cooling")
+                    st.caption(f"Recent {ppp_diff:.2f} worse")
 
-        st.divider()
+            st.divider()
         
         # Additional AI Coaching Section
         st.subheader("🧠 Detailed AI Coaching Analysis")
