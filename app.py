@@ -9334,7 +9334,7 @@ with tab3:
             st.info("📊 **For detailed player and lineup statistics, see the Analytics tab**")
     
     else:
-        # ===== LIVE GAME PREDICTIONS (existing code) =====
+        # ===== LIVE GAME PREDICTIONS =====
         if not st.session_state.score_history or len(st.session_state.score_history) < 5:
             st.info("📊 Need at least 5 scoring events to generate AI predictions and insights. Keep playing!")
             st.write("""
@@ -9377,8 +9377,19 @@ with tab3:
             - Strategic recommendations for next game
             """)
         else:
-            # Display the full AI game flow prediction section (existing code)
+            # Display the full AI game flow prediction section
             display_game_flow_prediction()
+            
+            # ===== CRITICAL MOMENTS SECTION - MOVED HERE =====
+            critical_moments = identify_critical_moments()
+            if critical_moments:
+                st.divider()
+                st.subheader("⚠️ Critical Moments")
+                for moment in critical_moments:
+                    if moment['urgency'] == 'high':
+                        st.error(f"**{moment['message']}**\n\n💡 {moment['recommendation']}")
+                    else:
+                        st.warning(f"**{moment['message']}**\n\n💡 {moment['recommendation']}")
 
             # Add PPP comparison for clarity
             st.divider()
