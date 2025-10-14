@@ -7657,8 +7657,8 @@ with tab2:
                 player_shooting_df = player_shooting_df.sort_values('Points', ascending=False)
         
                 st.divider()
-
-                # Performance Over Time Graph
+                
+                # Performance Over Time Graph section in Tab 2
                 st.subheader("📈 Performance Over Time")
                 
                 if st.session_state.score_history or st.session_state.lineup_history:
@@ -7816,7 +7816,19 @@ with tab2:
                         fig.add_hrect(y0=min_margin, y1=0, 
                                      fillcolor="lightcoral", opacity=0.2, line_width=0)
                         
-                        # Update layout
+                        # Update layout with better x-axis display
+                        # Show every nth event based on total events to avoid overcrowding
+                        num_events = len(timeline_df)
+                        tick_interval = max(1, num_events // 12)  # Show ~12 labels max
+                        
+                        # Create tick positions and labels
+                        tick_positions = list(range(0, num_events, tick_interval))
+                        if num_events - 1 not in tick_positions:  # Always include the last event
+                            tick_positions.append(num_events - 1)
+                        
+                        tick_labels = [f"{timeline_df.iloc[i]['Quarter']}\n{timeline_df.iloc[i]['Game Time']}" 
+                                      for i in tick_positions]
+                        
                         fig.update_layout(
                             title=f"Score Margin Throughout Game ({st.session_state.home_team_name} perspective)",
                             xaxis_title="Game Progression (Orange lines = Substitutions)",
@@ -7826,9 +7838,9 @@ with tab2:
                             showlegend=True,
                             xaxis=dict(
                                 tickmode='array',
-                                tickvals=list(range(0, len(timeline_df), max(1, len(timeline_df)//15))),
-                                ticktext=[f"{timeline_df.iloc[i]['Quarter']}\n{timeline_df.iloc[i]['Game Time']}" 
-                                         for i in range(0, len(timeline_df), max(1, len(timeline_df)//15))]
+                                tickvals=tick_positions,
+                                ticktext=tick_labels,
+                                tickangle=-45
                             )
                         )
                         
