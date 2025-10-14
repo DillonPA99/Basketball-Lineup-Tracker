@@ -3636,6 +3636,10 @@ def recommend_best_lineup(include_defense=True):
 def display_lineup_recommendation():
     """Display lineup recommendation UI in the Live Game tab."""
     
+    # Initialize session state for showing/hiding recommendation
+    if 'show_recommendation' not in st.session_state:
+        st.session_state.show_recommendation = False
+    
     # Create columns for title and button
     title_col, button_col, spacer_col = st.columns([2, 2, 2])
     
@@ -3643,65 +3647,83 @@ def display_lineup_recommendation():
         st.subheader("🎯 AI Lineup Recommendation")
     
     with button_col:
-        generate_button = st.button("Generate Best Lineup", type="primary", use_container_width=True)
+        if not st.session_state.show_recommendation:
+            generate_button = st.button("Generate Best Lineup", type="primary", use_container_width=True)
+        else:
+            close_button = st.button("Close Recommendation", type="secondary", use_container_width=True)
+            if close_button:
+                st.session_state.show_recommendation = False
+                st.rerun()
     
     if len(st.session_state.roster) < 5:
         st.info("Need at least 5 players in roster to generate recommendations")
         return
     
-    if generate_button:
+    if not st.session_state.show_recommendation and 'generate_button' in locals() and generate_button:
         with st.spinner("Analyzing all possible lineup combinations..."):
             best_lineup, all_lineup_scores = recommend_best_lineup(include_defense=True)
         
         if best_lineup:
-            st.success("**Recommended Starting Lineup:**")
-            
-            # Display recommended players in a nice format
-            rec_cols = st.columns(5)
-            for i, player in enumerate(best_lineup):
-                with rec_cols[i]:
-                    player_name = player.split('(')[0].strip()
-                    jersey = player.split('#')[1].split(')')[0] if '#' in player else ""
-                    st.info(f"**{player_name}**\n#{jersey}")
-            
-            # Show why this lineup was recommended
-            if all_lineup_scores:
-                best_score_info = all_lineup_scores[0]
-                
-                st.write("**Why this lineup?**")
-                
-                score_col1, score_col2, score_col3 = st.columns(3)
-                
-                with score_col1:
-                    st.metric("Offensive Efficiency", f"{best_score_info['offensive_efficiency']:.1f}")
-                    st.metric("Shooting Bonus", f"+{best_score_info['shooting']:.0f}")
-                
-                with score_col2:
-                    st.metric("Defensive Efficiency", f"{best_score_info['defensive_efficiency']:.1f}")
-                    st.metric("Position Balance", f"{best_score_info['position_balance']:.0f}/30")
-                
-                with score_col3:
-                    st.metric("Total Score", f"{best_score_info['total_score']:.1f}")
-                    st.metric("Chemistry", f"{best_score_info['chemistry']:.0f}/20")
-                
-                # Show top 3 alternatives
-                with st.expander("📊 View Alternative Lineups (Top 3)"):
-                    for i, lineup_score in enumerate(all_lineup_scores[1:4], 2):
-                        st.write(f"**Option {i}:** (Score: {lineup_score['total_score']:.1f})")
-                        st.write(" | ".join([p.split('(')[0].strip() for p in lineup_score['lineup']]))
-                        st.caption(f"Off: {lineup_score['offensive_efficiency']:.1f} | Def: {lineup_score['defensive_efficiency']:.1f}")
-                        st.divider()
-            
-            # Quick set button
-            if st.button("✅ Set This Lineup", type="secondary"):
-                success, message = update_lineup(best_lineup, st.session_state.current_game_time)
-                if success:
-                    st.success("Recommended lineup has been set!")
-                    st.rerun()
-                else:
-                    st.error(f"Error setting lineup: {message}")
+            st.session_state.show_recommendation = True
+            st.session_state.best_lineup = best_lineup
+            st.session_state.all_lineup_scores = all_lineup_scores
+            st.rerun()
         else:
             st.error("Could not generate lineup recommendation")
+            return
+    
+    # Display recommendation if it exists
+    if st.session_state.show_recommendation:
+        best_lineup = st.session_state.best_lineup
+        all_lineup_scores = st.session_state.all_lineup_scores
+        
+        st.success("**Recommended Starting Lineup:**")
+        
+        # Display recommended players in a nice format
+        rec_cols = st.columns(5)
+        for i, player in enumerate(best_lineup):
+            with rec_cols[i]:
+                player_name = player.split('(')[0].strip()
+                jersey = player.split('#')[1].split(')')[0] if '#' in player else ""
+                st.info(f"**{player_name}**\n#{jersey}")
+        
+        # Show why this lineup was recommended
+        if all_lineup_scores:
+            best_score_info = all_lineup_scores[0]
+            
+            st.write("**Why this lineup?**")
+            
+            score_col1, score_col2, score_col3 = st.columns(3)
+            
+            with score_col1:
+                st.metric("Offensive Efficiency", f"{best_score_info['offensive_efficiency']:.1f}")
+                st.metric("Shooting Bonus", f"+{best_score_info['shooting']:.0f}")
+            
+            with score_col2:
+                st.metric("Defensive Efficiency", f"{best_score_info['defensive_efficiency']:.1f}")
+                st.metric("Position Balance", f"{best_score_info['position_balance']:.0f}/30")
+            
+            with score_col3:
+                st.metric("Total Score", f"{best_score_info['total_score']:.1f}")
+                st.metric("Chemistry", f"{best_score_info['chemistry']:.0f}/20")
+            
+            # Show top 3 alternatives
+            with st.expander("📊 View Alternative Lineups (Top 3)"):
+                for i, lineup_score in enumerate(all_lineup_scores[1:4], 2):
+                    st.write(f"**Option {i}:** (Score: {lineup_score['total_score']:.1f})")
+                    st.write(" | ".join([p.split('(')[0].strip() for p in lineup_score['lineup']]))
+                    st.caption(f"Off: {lineup_score['offensive_efficiency']:.1f} | Def: {lineup_score['defensive_efficiency']:.1f}")
+                    st.divider()
+        
+        # Quick set button
+        if st.button("✅ Set This Lineup", type="secondary"):
+            success, message = update_lineup(best_lineup, st.session_state.current_game_time)
+            if success:
+                st.success("Recommended lineup has been set!")
+                st.session_state.show_recommendation = False
+                st.rerun()
+            else:
+                st.error(f"Error setting lineup: {message}")
 
 def calculate_lineup_defensive_rating():
     """Calculate time-based defensive rating for each 5-man lineup combination - UPDATED VERSION."""
