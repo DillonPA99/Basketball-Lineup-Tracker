@@ -7307,6 +7307,8 @@ with tab1:
     # Available players (now from roster)
     available_players = [f"{p['name']} (#{p['jersey']})" for p in st.session_state.roster]
 
+    display_lineup_recommendation()
+    
     # Current lineup display
     if st.session_state.current_lineup:
         st.write("**Players on Court:**")
@@ -7470,8 +7472,6 @@ with tab1:
                 else:
                     st.error(f"Error setting lineup: {message}")
     
-    display_lineup_recommendation()
-
     st.divider()
     
     # Side-by-side team scoring
