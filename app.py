@@ -7657,6 +7657,8 @@ with tab1:
 
         if st.button(undo_text):
             undo_last_score()
+
+    st.divider()
  
     turnover_col1, turnover_col2 = st.columns(2)
     
