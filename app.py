@@ -7664,7 +7664,7 @@ with tab2:
                 if st.session_state.score_history or st.session_state.lineup_history:
                     # Create timeline data from score history
                     timeline_data = []
-                    lineup_changes = []  # Track lineup changes separately
+                    lineup_changes = []
                     
                     # Start with initial state
                     current_home = 0
@@ -7687,26 +7687,28 @@ with tab2:
                     # Create a combined timeline of all events (scores and lineups)
                     all_events = []
                     
-                    # Add score events
+                    # Add score events with their sequence numbers
                     for i, score_event in enumerate(st.session_state.score_history):
                         all_events.append({
                             'type': 'score',
                             'data': score_event,
                             'index': i,
+                            'event_sequence': score_event.get('event_sequence', i * 3),
                             'timestamp': score_event.get('timestamp', datetime.now())
                         })
                     
-                    # Add lineup change events (excluding quarter-end snapshots) - FILTER HERE
+                    # Add lineup change events (excluding quarter-end snapshots)
                     for i, lineup_event in enumerate(st.session_state.lineup_history):
-                        if not lineup_event.get('is_quarter_end', False):  # Only add non-quarter-end events
+                        if not lineup_event.get('is_quarter_end', False):
                             all_events.append({
                                 'type': 'lineup',
                                 'data': lineup_event,
                                 'index': i,
+                                'event_sequence': lineup_event.get('event_sequence', (len(st.session_state.score_history) + i) * 3 + 2),
                                 'timestamp': lineup_event.get('timestamp', datetime.now())
                             })
                     
-                    # Sort events by timestamp (or by order if no timestamp)
+                    # Sort events by event_sequence (which maintains chronological order)
                     all_events.sort(key=lambda x: x.get('event_sequence', 0))
                     
                     # Process all events in chronological order
@@ -7736,9 +7738,9 @@ with tab2:
                         elif event['type'] == 'lineup':
                             lineup_event = event['data']
                             
-                            # Record the lineup change with current score AND the index position
+                            # Record the lineup change at its proper position
                             lineup_changes.append({
-                                'Index': event_counter,  # This is the actual position in the timeline
+                                'Index': event_counter,
                                 'Quarter': lineup_event.get('quarter', 'Unknown'),
                                 'Game Time': lineup_event.get('game_time', 'Unknown'),
                                 'Margin': current_home - current_away,
@@ -7759,16 +7761,13 @@ with tab2:
                             })
                             event_counter += 1
                     
-                    # NOTE: Quarter end markers are now removed from the graph
-                    # The quarter_end_history is not added to timeline_data anymore
-                    
                     if len(timeline_data) > 1:
                         timeline_df = pd.DataFrame(timeline_data)
                         
                         # Create the line chart
                         fig = go.Figure()
                         
-                        # Add margin line - USE Index for x-axis consistently
+                        # Add margin line
                         fig.add_trace(go.Scatter(
                             x=timeline_df['Index'],
                             y=timeline_df['Margin'],
@@ -7785,7 +7784,7 @@ with tab2:
                             customdata=timeline_df[['Event', 'Quarter', 'Game Time', 'Home Score', 'Away Score']].values
                         ))
                         
-                        # Add vertical lines for lineup changes
+                        # Add vertical lines for lineup changes at their correct positions
                         for lineup_change in lineup_changes:
                             fig.add_vline(
                                 x=lineup_change['Index'],
@@ -7794,7 +7793,7 @@ with tab2:
                                 line_width=2,
                                 opacity=0.7
                             )
-                            # Add annotation at the top
+                            # Add annotation
                             fig.add_annotation(
                                 x=lineup_change['Index'],
                                 y=timeline_df['Margin'].max() * 0.9,
@@ -7803,8 +7802,6 @@ with tab2:
                                 font=dict(size=9, color="orange"),
                                 yshift=10
                             )
-                        
-                        # Quarter end lines are removed - no longer adding them to the graph
                         
                         # Add zero line (tie game)
                         fig.add_hline(y=0, line_dash="dash", line_color="gray", 
@@ -7819,7 +7816,7 @@ with tab2:
                         fig.add_hrect(y0=min_margin, y1=0, 
                                      fillcolor="lightcoral", opacity=0.2, line_width=0)
                         
-                        # Update layout - updated subtitle to reflect filtering
+                        # Update layout
                         fig.update_layout(
                             title=f"Score Margin Throughout Game ({st.session_state.home_team_name} perspective)",
                             xaxis_title="Game Progression (Orange lines = Substitutions)",
