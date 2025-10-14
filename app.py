@@ -7317,21 +7317,6 @@ with tab1:
     else:
         st.warning("No players currently on court")
 
-    # 🎯 ADD THE AI RECOMMENDATION HERE - RIGHT AFTER LINEUP DISPLAY
-    st.divider()
-    
-    rec_col1, rec_col2 = st.columns([3, 1])
-    with rec_col1:
-        st.write("**Need lineup suggestions?**")
-    with rec_col2:
-        if st.button("🎯 Get AI Picks", use_container_width=True, key="show_ai_rec_btn"):
-            st.session_state.show_ai_rec = not st.session_state.get('show_ai_rec', False)
-    
-    if st.session_state.get('show_ai_rec', False):
-        display_lineup_recommendation()
-    
-    st.divider()
-
     # Substitution Management (only if lineup is set)
     if st.session_state.quarter_lineup_set:
         st.write("**Make Substitutions:**")
