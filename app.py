@@ -9201,9 +9201,7 @@ with tab3:
             
             with overview_col4:
                 st.metric("Lead Changes", summary['game_overview']['lead_changes'])
-            
-            st.divider()
-            
+                        
             # Quarter-by-Quarter Analysis with Win Probability
             if summary['quarter_analysis']:
                 st.subheader("📈 Quarter-by-Quarter Analysis")
