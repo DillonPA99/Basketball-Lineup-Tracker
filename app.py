@@ -7885,7 +7885,6 @@ with tab2:
     two_pt_pct = (two_pt_made / two_pt_attempted * 100) if two_pt_attempted > 0 else 0
     three_pt_pct = (home_shooting_stats['three_pointers_made'] / home_shooting_stats['three_pointers_attempted'] * 100) if home_shooting_stats['three_pointers_attempted'] > 0 else 0
     ft_pct = (home_shooting_stats['free_throws_made'] / home_shooting_stats['free_throws_attempted'] * 100) if home_shooting_stats['free_throws_attempted'] > 0 else 0
-    home_pot_percentage = (home_pot / home_shooting_stats['total_points'] * 100) if home_shooting_stats['total_points'] > 0 else 0
     
     with home_cols[0]:
         st.metric("Total Points", home_shooting_stats['total_points'])
@@ -7900,7 +7899,8 @@ with tab2:
     with home_cols[5]:
         st.metric("Points off TO", home_pot)
     with home_cols[6]:
-        st.metric("Points off TO %", f"{home_pot_percentage:.1f}%")
+        home_team_tos = sum(1 for to in st.session_state.turnover_history if to.get('team') == 'home')
+        st.metric("Team Turnovers", home_team_tos)
     
     st.divider()
     
@@ -7916,7 +7916,6 @@ with tab2:
     away_two_pt_pct = (away_two_pt_made / away_two_pt_attempted * 100) if away_two_pt_attempted > 0 else 0
     away_three_pt_pct = (away_shooting_stats['three_pointers_made'] / away_shooting_stats['three_pointers_attempted'] * 100) if away_shooting_stats['three_pointers_attempted'] > 0 else 0
     away_ft_pct = (away_shooting_stats['free_throws_made'] / away_shooting_stats['free_throws_attempted'] * 100) if away_shooting_stats['free_throws_attempted'] > 0 else 0
-    away_pot_percentage = (away_pot / away_shooting_stats['total_points'] * 100) if away_shooting_stats['total_points'] > 0 else 0
     
     with away_cols[0]:
         st.metric("Total Points", away_shooting_stats['total_points'])
@@ -7931,7 +7930,8 @@ with tab2:
     with away_cols[5]:
         st.metric("Points off TO", away_pot)
     with away_cols[6]:
-        st.metric("Points off TO %", f"{away_pot_percentage:.1f}%")
+        away_team_tos = sum(1 for to in st.session_state.turnover_history if to.get('team') == 'away')
+        st.metric("Team Turnovers", away_team_tos)
 
 
                     
