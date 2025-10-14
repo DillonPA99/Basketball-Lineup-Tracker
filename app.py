@@ -6550,8 +6550,8 @@ with st.sidebar:
             if st.button("🏁 Mark Complete", help="Mark this game as finished"):
                 if mark_game_completed(st.session_state.current_game_session_id):
                     st.success("Game marked as completed!")
-                    st.session_state.current_game_session_id = None
-                    st.session_state.game_session_name = None
+                    # Set the completion flag BEFORE clearing session
+                    st.session_state.game_marked_complete = True
                     st.rerun()
     else:
         st.info("No active game session")
@@ -9066,7 +9066,7 @@ with tab3:
     st.header("🤖 AI Game Analysis")
     
     # Check if game is completed
-    game_completed = False
+    game_completed = st.session_state.get('game_marked_complete', False)
     
     if game_completed:
         # ===== COMPLETED GAME SUMMARY =====
