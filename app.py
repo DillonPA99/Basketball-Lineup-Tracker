@@ -3488,7 +3488,7 @@ def recommend_best_lineup(include_defense=True):
     
     return best_lineup, lineup_scores
     
-def recommend_best_lineup(include_defense=True):
+def include_defense=True):
     """Recommend the best 5-player lineup using multiple criteria including defense - IMPROVED VERSION."""
     if len(st.session_state.roster) < 5:
         return None, "Need at least 5 players in roster"
@@ -3643,7 +3643,7 @@ def display_lineup_recommendation():
     
     if st.button("Generate Best Lineup Recommendation", type="primary"):
         with st.spinner("Analyzing all possible lineup combinations..."):
-            best_lineup, all_lineup_scores = recommend_best_lineup(include_defense=include_defense)
+            best_lineup, all_lineup_scores = recommend_best_lineup(include_defense=true)
         
         if best_lineup:
             st.success("**Recommended Starting Lineup:**")
