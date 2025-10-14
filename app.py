@@ -3643,7 +3643,7 @@ def display_lineup_recommendation():
     
     if st.button("Generate Best Lineup Recommendation", type="primary"):
         with st.spinner("Analyzing all possible lineup combinations..."):
-            best_lineup, all_lineup_scores = recommend_best_lineup(include_defense=true)
+            best_lineup, all_lineup_scores = recommend_best_lineup(include_defense=True)
         
         if best_lineup:
             st.success("**Recommended Starting Lineup:**")
