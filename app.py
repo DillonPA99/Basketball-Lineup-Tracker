@@ -3488,7 +3488,7 @@ def recommend_best_lineup(include_defense=True):
     
     return best_lineup, lineup_scores
     
-def include_defense=True):
+def recommend_best_lineup(include_defense=True):
     """Recommend the best 5-player lineup using multiple criteria including defense - IMPROVED VERSION."""
     if len(st.session_state.roster) < 5:
         return None, "Need at least 5 players in roster"
