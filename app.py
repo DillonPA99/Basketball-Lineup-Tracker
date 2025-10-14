@@ -3641,6 +3641,7 @@ def display_lineup_recommendation():
     
     with title_col:
         st.subheader("🎯 AI Lineup Recommendation")
+        st.write("**Why this lineup?**")
     
     with button_col:
         generate_button = st.button("Generate Best Lineup", type="primary", use_container_width=True)
