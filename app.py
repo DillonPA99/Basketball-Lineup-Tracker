@@ -3637,7 +3637,7 @@ def display_lineup_recommendation():
     """Display lineup recommendation UI in the Live Game tab."""
     
     # Create columns for title and button
-    title_col, button_col = st.columns([2, 1])
+    title_col, button_col, spacer_col = st.columns([2, 2, 2])
     
     with title_col:
         st.subheader("🎯 AI Lineup Recommendation")
