@@ -6530,6 +6530,10 @@ with st.sidebar:
 
     # Game Session Management
     st.subheader("💾 Game Sessions")
+    
+    if st.session_state.get('save_success_message'):
+        st.success(st.session_state.save_success_message)
+        del st.session_state.save_success_message
 
     # Ensure we have a session if game is active
     ensure_active_game_session()
@@ -6568,8 +6572,12 @@ with st.sidebar:
                     'last_turnover_event': st.session_state.last_turnover_event
                 }
                 
+            with st.spinner("Saving game progress..."):
                 if update_game_session(st.session_state.current_game_session_id, game_data):
-                    st.success("Game progress saved!")
+                    # Store success message in session state
+                    st.session_state.save_success_message = "✅ Game progress saved successfully!"
+                    # Reset auto-save timer to prevent immediate auto-save
+                    st.session_state.last_auto_save = datetime.now()
                     st.rerun()
                 else:
                     st.error("Failed to save game progress")
@@ -6577,10 +6585,8 @@ with st.sidebar:
         with session_col2:
             if st.button("🏁 Mark Complete", help="Mark this game as finished"):
                 if mark_game_completed(st.session_state.current_game_session_id):
-                    st.success("Game marked as completed!")
-                    # Set the completion flag BEFORE rerunning
+                    st.session_state.save_success_message = "✅ Game marked as completed!"
                     st.session_state.game_marked_complete = True
-                    # Add a small delay to ensure state is saved
                     time.sleep(0.5)
                     st.rerun()
     else:
@@ -6659,7 +6665,10 @@ with st.sidebar:
                                 if success:
                                     st.session_state.current_game_session_id = session_id
                                     st.session_state.game_session_name = save_name.strip()
-                                    st.success(f"Game saved as: {save_name.strip()}")
+                                    # Store success message in session state
+                                    st.session_state.save_success_message = f"✅ Game saved as: {save_name.strip()}"
+                                    # Reset auto-save timer
+                                    st.session_state.last_auto_save = datetime.now()
                                     st.rerun()
                                 else:
                                     st.error("Failed to save game. Please try again.")
