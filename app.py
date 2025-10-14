@@ -9026,20 +9026,23 @@ with tab4:
                 'details': f"Lineup: {' | '.join(turnover.get('lineup', []))}" if turnover.get('lineup') else "No lineup info"
             })
         
-        # Add lineup events
+        # Add lineup events (including quarter end snapshots)
         for i, lineup in enumerate(st.session_state.lineup_history):
             if lineup.get('is_quarter_end'):
+                # Quarter end snapshot - these are the LAST events of each quarter at 0:00
                 all_events.append({
                     'timestamp': lineup.get('timestamp', datetime.now()),
                     'event_sequence': lineup.get('event_sequence', (len(st.session_state.score_history) + len(st.session_state.turnover_history) + i) * 3 + 2),
                     'type': 'Quarter End',
                     'team': 'Both',
-                    'description': f"{lineup['quarter']} ended",
+                    'description': f"{lineup['quarter']} ended at 0:00",
                     'quarter': lineup['quarter'],
                     'game_time': '0:00',
-                    'details': f"Final Score: {lineup.get('home_score', 0)}-{lineup.get('away_score', 0)}"
+                    'details': f"Final Score: {lineup.get('home_score', 0)}-{lineup.get('away_score', 0)}",
+                    'final_lineup': lineup.get('new_lineup', [])
                 })
             else:
+                # Regular lineup change
                 all_events.append({
                     'timestamp': lineup.get('timestamp', datetime.now()),
                     'event_sequence': lineup.get('event_sequence', (len(st.session_state.score_history) + len(st.session_state.turnover_history) + i) * 3 + 2),
@@ -9059,6 +9062,11 @@ with tab4:
         if all_events:
             st.info(f"📋 Showing {len(all_events)} game events in chronological order")
             
+            # Count quarter ends for summary
+            quarter_ends = [e for e in all_events if e['type'] == 'Quarter End']
+            if quarter_ends:
+                st.success(f"✅ {len(quarter_ends)} quarter(s) completed")
+            
             for i, event in enumerate(all_events, 1):
                 # Create color-coded header
                 if event['type'] == 'Score':
@@ -9069,7 +9077,7 @@ with tab4:
                 elif event['type'] == 'Lineup Change':
                     header_color = "🟠"
                 elif event['type'] == 'Quarter End':
-                    header_color = "🟣"
+                    header_color = "🟣"  # Purple for quarter end
                 elif event['type'] == 'Turnover':
                     header_color = "🔴"
                 else:
@@ -9077,7 +9085,10 @@ with tab4:
                 
                 summary = f"{header_color} **Event #{i}** - {event['type']}: {event['description']} ({event['quarter']} @ {event['game_time']})"
                 
-                with st.expander(summary, expanded=False):
+                # Expand quarter end events by default to make them more prominent
+                expand_by_default = (event['type'] == 'Quarter End')
+                
+                with st.expander(summary, expanded=expand_by_default):
                     col1, col2 = st.columns(2)
                     
                     with col1:
@@ -9104,9 +9115,15 @@ with tab4:
                             if event.get('previous_lineup'):
                                 st.write(f"**Players Out:** {len(event['previous_lineup'])}")
                         elif event['type'] == 'Quarter End':
-                            st.write(f"**Status:** Quarter Completed")
+                            st.write(f"**Status:** ✅ Quarter Completed")
+                            st.write(f"**Quarter Duration:** Full Quarter")
                     
                     st.write(f"**Details:** {event['details']}")
+                    
+                    # Show final lineup for quarter end events
+                    if event['type'] == 'Quarter End' and event.get('final_lineup'):
+                        st.write(f"**Final Lineup on Court:** {' | '.join(event['final_lineup'])}")
+                    
                     st.caption(f"Logged at: {event['timestamp'].strftime('%H:%M:%S.%f')[:-3]}")
         else:
             st.info("No events to display yet.")
