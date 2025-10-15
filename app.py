@@ -9758,6 +9758,7 @@ with tab4:
                 })
         
         # Sort by timestamp (primary) and event_sequence (secondary)
+        default_timestamp = datetime(1900, 1, 1, tzinfo=timezone.utc)
         all_events.sort(key=lambda x: (x.get('timestamp', datetime.min), x.get('event_sequence', 0)))
         
         # Display events
