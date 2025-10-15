@@ -7501,12 +7501,6 @@ with tab1:
         else:
             st.success(f"⏱️ Substitution at: **{game_time}**")
         
-        # Show what the new lineup will be
-        if len(players_out) == len(players_in) and len(players_out) > 0:
-            new_lineup = [p for p in st.session_state.current_lineup if p not in players_out] + players_in
-            if len(new_lineup) == 5:
-                st.info(f"**New lineup will be:** {' | '.join(new_lineup)}")
-        
         if st.button("🔄 Make Substitution"):
             if len(players_out) != len(players_in):
                 st.error("Number of players coming out must equal number coming in!")
@@ -7529,6 +7523,12 @@ with tab1:
                             st.error(f"Error making substitution: {message}")
                     else:
                         st.error("Invalid lineup after substitution!")
+
+        if len(players_out) == len(players_in) and len(players_out) > 0:
+            new_lineup = [p for p in st.session_state.current_lineup if p not in players_out] + players_in
+            if len(new_lineup) == 5:
+                st.info(f"**New lineup will be:** {' | '.join(new_lineup)}")
+    
     else:
         # Show lineup selection for new quarter
         st.write("**Set Starting Lineup:**")
