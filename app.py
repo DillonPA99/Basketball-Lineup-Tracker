@@ -1607,6 +1607,8 @@ def reset_game(save_current=True):
     st.session_state.points_off_turnovers = {'home': 0, 'away': 0}
     st.session_state.lineup_points_off_turnovers = defaultdict(int)
     st.session_state.last_turnover_event = None
+
+    st.session_state.game_marked_complete = False
     
     # Clear current session (user will need to save new game manually)
     st.session_state.current_game_session_id = None
