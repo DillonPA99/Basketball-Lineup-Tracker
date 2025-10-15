@@ -1482,6 +1482,9 @@ if "game_session_name" not in st.session_state:
 # Add this with your other session state initializations
 if "last_auto_save" not in st.session_state:
     st.session_state.last_auto_save = datetime.now()
+
+if "game_marked_complete" not in st.session_state:
+    st.session_state.game_marked_complete = False
     
 if "turnover_history" not in st.session_state:
     st.session_state.turnover_history = []
@@ -1500,6 +1503,8 @@ if "points_off_turnovers" not in st.session_state:
 
 if "lineup_points_off_turnovers" not in st.session_state:
     st.session_state.lineup_points_off_turnovers = defaultdict(int)
+
+
 
 # ------------------------------------------------------------------
 # Helper functions
