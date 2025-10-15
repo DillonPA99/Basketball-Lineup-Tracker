@@ -4853,7 +4853,10 @@ def calculate_momentum_score(recent_events=10):
     away_points = 0
     
     for i, score in enumerate(recent_scores):
-        recency_weight = (i + 1) / len(recent_scores)
+        # CHANGED: Gentler recency weighting
+        # Old: (i + 1) / len(recent_scores) - ranges from 0.1 to 1.0
+        # New: More gradual curve that doesn't overweight recent events as much
+        recency_weight = 0.5 + (0.5 * (i + 1) / len(recent_scores))  # ranges from 0.55 to 1.0
         
         if score['team'] == 'home':
             home_possessions += recency_weight
@@ -4868,24 +4871,29 @@ def calculate_momentum_score(recent_events=10):
     home_eff = (home_points / home_possessions) if home_possessions > 0 else 0
     away_eff = (away_points / away_possessions) if away_possessions > 0 else 0
     
-    # Normalize to -100 to +100
-    momentum_score = (home_eff - away_eff) * 50
-    momentum_score = max(-100, min(100, momentum_score))
+    # CHANGED: Reduced multiplier from 50 to 35
+    # This reduces the range from -100/+100 to roughly -70/+70 for typical scenarios
+    momentum_score = (home_eff - away_eff) * 35
     
-    # Determine direction
-    if momentum_score > 15:
+    # CHANGED: More conservative clamping
+    # Old: -100 to +100
+    # New: -75 to +75 (high school games are more volatile, less extreme momentum)
+    momentum_score = max(-75, min(75, momentum_score))
+    
+    # CHANGED: Adjusted thresholds to match new scale
+    # Determine direction with more realistic thresholds
+    if momentum_score > 12:  # was 15
         direction = "strong_positive"
-    elif momentum_score > 5:
+    elif momentum_score > 4:  # was 5
         direction = "positive"
-    elif momentum_score < -15:
+    elif momentum_score < -12:  # was -15
         direction = "strong_negative"
-    elif momentum_score < -5:
+    elif momentum_score < -4:  # was -5
         direction = "negative"
     else:
         direction = "neutral"
     
     return momentum_score, direction
-
 def calculate_scoring_efficiency_trend():
     """
     Analyze if team is scoring more/less efficiently over time using proper PPP calculation.
@@ -5195,7 +5203,7 @@ def calculate_win_probability():
     factors = []
     probability = 50  # Start neutral
     
-    # Factor 1: Current Score Differential
+    # Factor 1: Current Score Differential - ADJUSTED FOR HIGH SCHOOL
     score_diff = st.session_state.home_score - st.session_state.away_score
     
     # Estimate game progress
@@ -5203,8 +5211,9 @@ def calculate_win_probability():
     current_quarter_num = quarter_map.get(st.session_state.current_quarter, 1)
     game_progress = current_quarter_num / 4  # 0.25 to 1.0
     
-    # Score differential impact increases with game progress
-    score_impact = score_diff * (5 + (game_progress * 10))
+    # CHANGED: Reduced impact multiplier (was 5 + (game_progress * 10), now 3 + (game_progress * 6))
+    # This means each point margin has less dramatic impact on win probability
+    score_impact = score_diff * (3 + (game_progress * 6))
     probability += score_impact
     
     if abs(score_diff) > 0:
@@ -5213,9 +5222,10 @@ def calculate_win_probability():
             'impact': f"{'+' if score_diff > 0 else ''}{score_impact:.0f}%"
         })
     
-    # Factor 2: Momentum
+    # Factor 2: Momentum - REDUCED IMPACT
     momentum_score, momentum_dir = calculate_momentum_score()
-    momentum_impact = momentum_score * 0.15
+    # CHANGED: Reduced from 0.15 to 0.10
+    momentum_impact = momentum_score * 0.10
     probability += momentum_impact
     
     if abs(momentum_score) > 10:
@@ -5224,17 +5234,19 @@ def calculate_win_probability():
             'impact': f"{'+' if momentum_impact > 0 else ''}{momentum_impact:.0f}%"
         })
     
-    # Factor 3: Efficiency Trend
+    # Factor 3: Efficiency Trend - REDUCED IMPACT
     eff_trend, current_ppp, projected_ppp = calculate_scoring_efficiency_trend()
     
     if eff_trend == "improving":
-        probability += 8
-        factors.append({'factor': 'Improving efficiency', 'impact': '+8%'})
+        # CHANGED: Reduced from +8 to +5
+        probability += 5
+        factors.append({'factor': 'Improving efficiency', 'impact': '+5%'})
     elif eff_trend == "declining":
-        probability -= 8
-        factors.append({'factor': 'Declining efficiency', 'impact': '-8%'})
+        # CHANGED: Reduced from -8 to -5
+        probability -= 5
+        factors.append({'factor': 'Declining efficiency', 'impact': '-5%'})
     
-    # Factor 4: Time Remaining (less time = harder to comeback if trailing)
+    # Factor 4: Time Remaining - ADJUSTED SCALING
     try:
         time_parts = st.session_state.current_game_time.split(':')
         minutes_remaining = int(time_parts[0])
@@ -5243,15 +5255,18 @@ def calculate_win_probability():
         
         if st.session_state.current_quarter in ['Q4', 'OT1', 'OT2']:
             if score_diff < 0 and total_seconds_remaining < 180:  # Less than 3 minutes
-                comeback_difficulty = abs(score_diff) * (1 + (180 - total_seconds_remaining) / 180)
+                # CHANGED: Reduced comeback difficulty multiplier
+                # Was: abs(score_diff) * (1 + (180 - total_seconds_remaining) / 180)
+                # Now uses gentler scaling
+                comeback_difficulty = abs(score_diff) * (0.7 + (180 - total_seconds_remaining) / 360)
                 probability -= comeback_difficulty
                 factors.append({
                     'factor': f'Trailing with {minutes_remaining}min left',
                     'impact': f'-{comeback_difficulty:.0f}%'
                 })
             elif score_diff > 0 and minutes_remaining < 3:
-                # Leading in final minutes
-                hold_advantage = score_diff * 1.5
+                # CHANGED: Reduced hold advantage (was 1.5, now 1.0)
+                hold_advantage = score_diff * 1.0
                 probability += hold_advantage
                 factors.append({
                     'factor': f'Leading with {minutes_remaining}min left',
@@ -5260,20 +5275,22 @@ def calculate_win_probability():
     except:
         pass
     
-    # Factor 5: Turnover differential
+    # Factor 5: Turnover differential - REDUCED IMPACT
     home_tos, away_tos = get_team_turnovers()
     to_diff = away_tos - home_tos  # Positive if we have fewer turnovers
     
     if abs(to_diff) >= 3:
-        to_impact = to_diff * 3
+        # CHANGED: Reduced from 3 to 2
+        to_impact = to_diff * 2
         probability += to_impact
         factors.append({
             'factor': f"{'Fewer' if to_diff > 0 else 'More'} turnovers ({abs(to_diff)})",
             'impact': f"{'+' if to_impact > 0 else ''}{to_impact:.0f}%"
         })
     
-    # Clamp probability between 1 and 99
-    probability = max(1, min(99, probability))
+    # CHANGED: Adjusted clamping range from 1-99 to 5-95
+    # This prevents extreme probabilities that don't reflect high school game volatility
+    probability = max(5, min(95, probability))
     
     return round(probability), factors
     
