@@ -7494,13 +7494,6 @@ with tab1:
         
         game_time = f"{minutes}:{seconds:02d}"
         
-        # Show selected time prominently with helpful context
-        if max_allowed_minutes < st.session_state.quarter_length:
-            st.success(f"⏱️ Substitution at: **{game_time}**")
-            st.caption(f"ℹ️ Time limited based on last sub at {current_quarter_subs[-1].get('game_time')}")
-        else:
-            st.success(f"⏱️ Substitution at: **{game_time}**")
-        
         if st.button("🔄 Make Substitution"):
             if len(players_out) != len(players_in):
                 st.error("Number of players coming out must equal number coming in!")
@@ -7523,6 +7516,12 @@ with tab1:
                             st.error(f"Error making substitution: {message}")
                     else:
                         st.error("Invalid lineup after substitution!")
+
+        if max_allowed_minutes < st.session_state.quarter_length:
+            st.success(f"⏱️ Substitution at: **{game_time}**")
+            st.caption(f"ℹ️ Time based on last sub at {current_quarter_subs[-1].get('game_time')}")
+        else:
+            st.success(f"⏱️ Substitution at: **{game_time}**")
 
         if len(players_out) == len(players_in) and len(players_out) > 0:
             new_lineup = [p for p in st.session_state.current_lineup if p not in players_out] + players_in
