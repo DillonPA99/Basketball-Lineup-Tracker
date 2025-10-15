@@ -6640,11 +6640,42 @@ with st.sidebar:
         
         with session_col2:
             if st.button("🏁 Mark Complete", help="Mark this game as finished"):
-                if mark_game_completed(st.session_state.current_game_session_id):
-                    st.session_state.save_success_message = "✅ Game marked as completed!"
-                    st.session_state.game_marked_complete = True
-                    time.sleep(0.5)
-                    st.rerun()
+                # FIRST: Save current game state
+                game_data = {
+                    'roster': st.session_state.roster,
+                    'home_team_name': st.session_state.home_team_name,
+                    'away_team_name': st.session_state.away_team_name,
+                    'custom_game_name': st.session_state.custom_game_name,
+                    'current_quarter': st.session_state.current_quarter,
+                    'quarter_length': st.session_state.quarter_length,
+                    'home_score': st.session_state.home_score,
+                    'away_score': st.session_state.away_score,
+                    'current_lineup': st.session_state.current_lineup,
+                    'quarter_lineup_set': st.session_state.quarter_lineup_set,
+                    'current_game_time': st.session_state.current_game_time,
+                    'lineup_history': st.session_state.lineup_history,
+                    'score_history': st.session_state.score_history,
+                    'quarter_end_history': st.session_state.quarter_end_history,
+                    'player_stats': st.session_state.player_stats,
+                    'turnover_history': st.session_state.turnover_history,
+                    'player_turnovers': st.session_state.player_turnovers,
+                    'points_off_turnovers': st.session_state.points_off_turnovers,
+                    'lineup_points_off_turnovers': st.session_state.lineup_points_off_turnovers,
+                    'last_turnover_event': st.session_state.last_turnover_event
+                }
+                
+                # Save the game data first
+                if update_game_session(st.session_state.current_game_session_id, game_data):
+                    # THEN mark as completed
+                    if mark_game_completed(st.session_state.current_game_session_id):
+                        st.session_state.save_success_message = "✅ Game marked as completed and saved!"
+                        st.session_state.game_marked_complete = True
+                        time.sleep(0.5)
+                        st.rerun()
+                    else:
+                        st.error("Failed to mark game as completed")
+                else:
+                    st.error("Failed to save game data")
     else:
         st.info("No active game session")
 
