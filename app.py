@@ -6770,7 +6770,7 @@ with st.sidebar:
     # View all saved games
     with st.expander("📋 My Saved Games"):
         try:
-            saved_sessions = get_user_game_sessions_cached(st.session_state.user_info['id'], include_completed=False)
+            saved_sessions = get_user_game_sessions_cached(st.session_state.user_info['id'], include_completed=True)
             
             if saved_sessions:
                 for session in saved_sessions[:5]:  # Show last 5
