@@ -3758,6 +3758,48 @@ def display_lineup_recommendation():
             else:
                 st.error(f"Error setting lineup: {message}")
 
+
+def get_recent_possessions_detail(num_possessions=10):
+    """
+    Get details about recent possessions for transparency in AI calculations.
+    Returns list of possession details in reverse chronological order.
+    """
+    if not st.session_state.score_history:
+        return []
+    
+    recent_scores = st.session_state.score_history[-num_possessions:]
+    
+    possession_details = []
+    for i, score in enumerate(recent_scores):
+        # Calculate possession number (counting backwards)
+        possession_num = len(recent_scores) - i
+        
+        # Determine result
+        if score.get('made', True) and score.get('points', 0) > 0:
+            result = f"✅ {score['team'].upper()} made {score['points']}pts"
+        else:
+            result = f"❌ {score['team'].upper()} missed"
+        
+        # Get shot type
+        shot_type_map = {
+            'free_throw': 'FT',
+            'field_goal': '2PT',
+            'three_pointer': '3PT'
+        }
+        shot_type = shot_type_map.get(score.get('shot_type', 'unknown'), 'Shot')
+        
+        possession_details.append({
+            'Possession': f"#{possession_num}",
+            'Quarter': score.get('quarter', 'Unknown'),
+            'Time': score.get('game_time', 'Unknown'),
+            'Team': score['team'].upper(),
+            'Type': shot_type,
+            'Result': result,
+            'Points': score.get('points', 0) if score.get('made', True) else 0
+        })
+    
+    return possession_details
+
 def calculate_lineup_defensive_rating():
     """Calculate time-based defensive rating for each 5-man lineup combination - UPDATED VERSION."""
     lineup_defensive_ratings = {}
@@ -9507,6 +9549,72 @@ with tab3:
                     st.caption(f"Recent {ppp_diff:.2f} worse")
 
             st.divider()
+                    
+            st.subheader("📋 Possessions Being Analyzed")
+            
+            with st.expander("View Recent Possessions Used in Calculations", expanded=False):
+                possession_details = get_recent_possessions_detail(10)
+                
+                if possession_details:
+                    st.info(f"Showing last {len(possession_details)} possessions used for momentum and recent efficiency calculations")
+                    
+                    # Create DataFrame for better display
+                    possession_df = pd.DataFrame(possession_details)
+                    
+                    # Apply color coding
+                    def color_possession_result(val):
+                        if "made" in val.lower():
+                            return 'background-color: #90EE90; color: black'
+                        elif "missed" in val.lower():
+                            return 'background-color: #FFB6C1; color: black'
+                        return ''
+                    
+                    st.dataframe(
+                        possession_df.style.applymap(
+                            color_possession_result, subset=['Result']
+                        ),
+                        use_container_width=True,
+                        hide_index=True
+                    )
+                    
+                    # Show summary statistics
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        home_possessions = len([p for p in possession_details if p['Team'] == 'HOME'])
+                        st.metric("Home Possessions", home_possessions)
+                    
+                    with col2:
+                        away_possessions = len([p for p in possession_details if p['Team'] == 'AWAY'])
+                        st.metric("Away Possessions", away_possessions)
+                    
+                    with col3:
+                        total_points = sum(p['Points'] for p in possession_details)
+                        st.metric("Total Points", total_points)
+                    
+                    # Efficiency breakdown
+                    st.write("**Efficiency Breakdown for These Possessions:**")
+                    
+                    home_points = sum(p['Points'] for p in possession_details if p['Team'] == 'HOME')
+                    away_points = sum(p['Points'] for p in possession_details if p['Team'] == 'AWAY')
+                    
+                    if home_possessions > 0:
+                        home_eff = home_points / home_possessions
+                        st.write(f"- **HOME:** {home_points} points in {home_possessions} possessions = {home_eff:.2f} points/possession")
+                    
+                    if away_possessions > 0:
+                        away_eff = away_points / away_possessions
+                        st.write(f"- **AWAY:** {away_points} points in {away_possessions} possessions = {away_eff:.2f} points/possession")
+                    
+                    # Recency weighting explanation
+                    st.caption("""
+                    **Note on Momentum Calculation:**
+                    - These possessions are weighted by recency (most recent = highest weight)
+                    - Possession #10 (most recent) has ~2x the impact of Possession #1
+                    - This weighting captures momentum shifts in real-time
+                    """)
+                else:
+                    st.info("No possessions recorded yet")
         
         # Additional AI Coaching Section
         st.subheader("🧠 Detailed AI Coaching Analysis")
@@ -9577,6 +9685,24 @@ with tab3:
             - **Recent Segment PPP**: Efficiency in your last ~10 possessions (shown below)
             - **Projected PPP**: Where your efficiency is trending
             """)
+
+            # Add possession tracking
+            recent_possessions = get_recent_possessions_detail(10)
+            if recent_possessions:
+                st.write(f"**Analyzing {len(recent_possessions)} Recent Possessions:**")
+                
+                # Quick summary
+                home_recent = [p for p in recent_possessions if p['Team'] == 'HOME']
+                away_recent = [p for p in recent_possessions if p['Team'] == 'AWAY']
+                
+                summary_col1, summary_col2, summary_col3 = st.columns(3)
+                with summary_col1:
+                    st.caption(f"HOME: {len(home_recent)} possessions")
+                with summary_col2:
+                    st.caption(f"AWAY: {len(away_recent)} possessions")
+                with summary_col3:
+                    recent_points = sum(p['Points'] for p in recent_possessions)
+                    st.caption(f"Total points: {recent_points}")
         
             col1, col2, col3 = st.columns(3)
         
