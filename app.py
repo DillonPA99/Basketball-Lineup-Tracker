@@ -5876,6 +5876,7 @@ def display_game_flow_prediction():
     
     st.divider()
     
+    
     # Critical Moments Section
     critical_moments = identify_critical_moments()
     if critical_moments:
