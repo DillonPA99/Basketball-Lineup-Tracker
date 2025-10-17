@@ -9613,15 +9613,14 @@ with tab3:
             else:
                 st.info("Play more to get AI recommendations")
             
-            # Link to live predictions
-            st.divider()
-            st.info("📊 **See the Live Game Predictions section below for real-time win probability and momentum analysis**")
             
             st.divider()
             st.info("📊 **See the Live Game Predictions section below for real-time win probability and momentum analysis**") 
 
     else:
         # ===== LIVE GAME PREDICTIONS =====
+        # Show live predictions regardless of whether quarters are completed
+        # Only hide if game is marked complete
         if not st.session_state.score_history or len(st.session_state.score_history) < 5:
             st.info("📊 Need at least 5 scoring events to generate AI predictions and insights. Keep playing!")
             st.write("""
@@ -9664,6 +9663,10 @@ with tab3:
             - Strategic recommendations for next game
             """)
         else:
+            # ALWAYS show live predictions if we have enough data and game isn't complete
+            st.divider()
+            st.subheader("🎯 Live Game Predictions")
+            
             # Display the full AI game flow prediction section
             display_game_flow_prediction()
             
