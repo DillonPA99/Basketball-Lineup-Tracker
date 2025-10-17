@@ -6332,50 +6332,51 @@ def display_efficiency_comparison():
 def display_possession_details():
     """Display recent possession details for transparency."""
     
-    with st.expander("📋 Recent Possessions Analyzed", expanded=False):
-        possession_details = get_recent_possessions_detail(10)
+    st.subheader("📋 Recent Possessions Analyzed")
+    
+    possession_details = get_recent_possessions_detail(10)
+    
+    if possession_details:
+        st.info(f"Showing last {len(possession_details)} possessions used for calculations")
         
-        if possession_details:
-            st.info(f"Showing last {len(possession_details)} possessions used for calculations")
-            
-            possession_df = pd.DataFrame(possession_details)
-            
-            def color_possession_result(val):
-                if "made" in val.lower():
-                    return 'background-color: #90EE90; color: black'
-                elif "missed" in val.lower():
-                    return 'background-color: #FFB6C1; color: black'
-                return ''
-            
-            st.dataframe(
-                possession_df.style.applymap(
-                    color_possession_result, subset=['Result']
-                ),
-                use_container_width=True,
-                hide_index=True
-            )
-            
-            # Summary stats
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                home_poss = len([p for p in possession_details if p['Team'] == 'HOME'])
-                st.metric("Home Possessions", home_poss)
-            
-            with col2:
-                away_poss = len([p for p in possession_details if p['Team'] == 'AWAY'])
-                st.metric("Away Possessions", away_poss)
-            
-            with col3:
-                total_pts = sum(p['Points'] for p in possession_details)
-                st.metric("Total Points", total_pts)
-            
-            st.caption("""
-            **Note:** These possessions are weighted by recency in momentum calculations.
-            Most recent possessions have ~2x the impact of earliest shown.
-            """)
-        else:
-            st.info("No possessions recorded yet")
+        possession_df = pd.DataFrame(possession_details)
+        
+        def color_possession_result(val):
+            if "made" in val.lower():
+                return 'background-color: #90EE90; color: black'
+            elif "missed" in val.lower():
+                return 'background-color: #FFB6C1; color: black'
+            return ''
+        
+        st.dataframe(
+            possession_df.style.applymap(
+                color_possession_result, subset=['Result']
+            ),
+            use_container_width=True,
+            hide_index=True
+        )
+        
+        # Summary stats
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            home_poss = len([p for p in possession_details if p['Team'] == 'HOME'])
+            st.metric("Home Possessions", home_poss)
+        
+        with col2:
+            away_poss = len([p for p in possession_details if p['Team'] == 'AWAY'])
+            st.metric("Away Possessions", away_poss)
+        
+        with col3:
+            total_pts = sum(p['Points'] for p in possession_details)
+            st.metric("Total Points", total_pts)
+        
+        st.caption("""
+        **Note:** These possessions are weighted by recency in momentum calculations.
+        Most recent possessions have ~2x the impact of earliest shown.
+        """)
+    else:
+        st.info("No possessions recorded yet")
     
 # ------------------------------------------------------------------
 # User Authentication Gate
