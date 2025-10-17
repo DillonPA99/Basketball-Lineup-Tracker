@@ -5810,37 +5810,50 @@ def generate_game_summary_analysis():
 
 def display_game_flow_prediction():
     """
-    Main display function for AI Game Flow Analysis.
+    Main display function for AI Game Flow Analysis with detailed explanations.
     Add this to your Analytics tab.
     """    
     if not st.session_state.score_history or len(st.session_state.score_history) < 5:
         st.info("📊 Need at least 5 scoring events to generate predictions. Keep playing!")
         return
     
+    # Calculate all metrics upfront
+    win_prob, factors = calculate_win_probability()
+    pred_home, pred_away, confidence = predict_final_score()
+    eff_trend, current_ppp, projected_ppp = calculate_scoring_efficiency_trend()
+    momentum_score, momentum_dir = calculate_momentum_score()
+    
     # Top metrics row
     metric_col1, metric_col2, metric_col3 = st.columns(3)
     
-    # Win Probability
-    win_prob, factors = calculate_win_probability()
+    # Win Probability with context
     with metric_col1:
         if win_prob >= 70:
             st.success(f"**Win Probability**\n### {win_prob}%")
+            st.caption("🟢 Strong position")
         elif win_prob >= 45:
             st.info(f"**Win Probability**\n### {win_prob}%")
+            st.caption("🟡 Competitive game")
         else:
             st.warning(f"**Win Probability**\n### {win_prob}%")
+            st.caption("🔴 Uphill battle")
     
-    # Predicted Final Score
-    pred_home, pred_away, confidence = predict_final_score()
+    # Predicted Final Score with reasoning
     with metric_col2:
+        score_diff = pred_home - pred_away
         st.metric(
             "Predicted Final",
             f"{pred_home}-{pred_away}",
             f"{confidence}% confidence"
         )
+        if score_diff > 0:
+            st.caption(f"Win by {score_diff} pts")
+        elif score_diff < 0:
+            st.caption(f"Lose by {abs(score_diff)} pts")
+        else:
+            st.caption("Overtime likely")
         
-    # Efficiency Trend
-    eff_trend, current_ppp, projected_ppp = calculate_scoring_efficiency_trend()
+    # Efficiency Trend with explanation
     with metric_col3:
         trend_emoji = "📈" if eff_trend == "improving" else "📉" if eff_trend == "declining" else "➡️"
         ppp_change = projected_ppp - current_ppp
@@ -5849,23 +5862,193 @@ def display_game_flow_prediction():
             f"{trend_emoji} {eff_trend.title()}",
             f"{ppp_change:+.2f} PPP"
         )
+        
+        # Add specific explanation
+        if eff_trend == "improving":
+            st.caption("✅ Getting better shots")
+        elif eff_trend == "declining":
+            st.caption("⚠️ Shot quality dropping")
+        else:
+            st.caption("➡️ Consistent performance")
     
     st.divider()
     
+    # Enhanced Analysis Section
+    st.subheader("🎯 Detailed Game Analysis")
+    
+    analysis_col1, analysis_col2 = st.columns(2)
+    
+    with analysis_col1:
+        # Win Probability Deep Dive
+        st.write("**🎲 Win Probability Breakdown**")
+        
+        # Explain what's driving the win probability
+        if win_prob >= 70:
+            st.success(f"**{win_prob}% Win Probability**")
+            st.write("**Why you're favored:**")
+        elif win_prob >= 45:
+            st.info(f"**{win_prob}% Win Probability**")
+            st.write("**Competitive factors:**")
+        else:
+            st.warning(f"**{win_prob}% Win Probability**")
+            st.write("**Why it's challenging:**")
+        
+        # Show top 3 most impactful factors
+        if factors:
+            sorted_factors = sorted(factors, key=lambda x: abs(float(x['impact'].replace('%', '').replace('+', ''))), reverse=True)
+            
+            for i, factor in enumerate(sorted_factors[:3], 1):
+                impact_value = float(factor['impact'].replace('%', '').replace('+', ''))
+                impact_abs = abs(impact_value)
+                
+                if impact_abs >= 10:
+                    emoji = "🔥" if impact_value > 0 else "❄️"
+                    strength = "Major impact"
+                elif impact_abs >= 5:
+                    emoji = "⚡" if impact_value > 0 else "⚠️"
+                    strength = "Significant factor"
+                else:
+                    emoji = "📊"
+                    strength = "Minor factor"
+                
+                st.write(f"{emoji} **{factor['factor']}** ({factor['impact']})")
+                st.caption(f"   {strength} - This is {'helping' if impact_value > 0 else 'hurting'} your chances by {impact_abs:.0f} percentage points")
+            
+            # Show total impact
+            total_impact = sum(float(f['impact'].replace('%', '').replace('+', '')) for f in factors)
+            if total_impact > 0:
+                st.success(f"✅ Net positive factors: +{total_impact:.0f}%")
+            else:
+                st.error(f"⚠️ Net negative factors: {total_impact:.0f}%")
+    
+    with analysis_col2:
+        # Momentum & Efficiency Analysis
+        st.write("**📈 Performance Trajectory**")
+        
+        # Momentum analysis
+        if momentum_dir in ["strong_positive"]:
+            st.success(f"**Strong Positive Momentum** ({momentum_score:+.0f})")
+            st.write("**What this means:**")
+            st.write("- You're scoring efficiently on recent possessions")
+            st.write("- Opponent struggling to match your output")
+            st.write("- Keep playing this way to extend the lead")
+        elif momentum_dir == "positive":
+            st.info(f"**Positive Momentum** ({momentum_score:+.0f})")
+            st.write("**What this means:**")
+            st.write("- Recent possessions trending in your favor")
+            st.write("- Building confidence and rhythm")
+            st.write("- Good time to push tempo")
+        elif momentum_dir in ["strong_negative"]:
+            st.error(f"**Strong Negative Momentum** ({momentum_score:+.0f})")
+            st.write("**What this means:**")
+            st.write("- Opponent scoring more efficiently than you lately")
+            st.write("- Need to stop the bleeding quickly")
+            st.write("- Consider timeout to reset")
+        elif momentum_dir == "negative":
+            st.warning(f"**Negative Momentum** ({momentum_score:+.0f})")
+            st.write("**What this means:**")
+            st.write("- Opponent gaining confidence")
+            st.write("- Recent possessions not going your way")
+            st.write("- Time to adjust strategy")
+        else:
+            st.info(f"**Neutral Momentum** ({momentum_score:+.0f})")
+            st.write("**What this means:**")
+            st.write("- Even battle in recent possessions")
+            st.write("- Next few plays could swing momentum")
+            st.write("- Execute fundamentals to gain edge")
+        
+        st.divider()
+        
+        # Efficiency trend analysis
+        st.write("**⚡ Scoring Efficiency Trend**")
+        
+        if eff_trend == "improving":
+            st.success(f"**Improving** ({current_ppp:.2f} → {projected_ppp:.2f} PPP)")
+            st.write("**Why you're improving:**")
+            
+            # Analyze what's driving improvement
+            improvement = projected_ppp - current_ppp
+            if improvement > 0.15:
+                st.write("- 🎯 Shot selection dramatically better")
+                st.write("- 📈 Finding higher percentage looks")
+                st.write("- ✅ Making key adjustments that work")
+            elif improvement > 0.05:
+                st.write("- ✅ Getting slightly better shots")
+                st.write("- 📊 Minor improvements adding up")
+                st.write("- 🔄 Keep current approach")
+            
+            st.caption("**Action:** Maintain current offensive strategy")
+            
+        elif eff_trend == "declining":
+            st.warning(f"**Declining** ({current_ppp:.2f} → {projected_ppp:.2f} PPP)")
+            st.write("**Why efficiency is dropping:**")
+            
+            # Analyze what's causing decline
+            decline = current_ppp - projected_ppp
+            if decline > 0.15:
+                st.write("- 🚫 Shot quality significantly worse")
+                st.write("- ❌ Taking more contested/rushed shots")
+                st.write("- ⚠️ Opponent defense tightening")
+            elif decline > 0.05:
+                st.write("- 📉 Slightly worse shot selection")
+                st.write("- 🔄 Need to reset offensive flow")
+                st.write("- 💭 Consider timeout/adjustment")
+            
+            # Check turnover impact
+            home_tos, _ = get_team_turnovers()
+            if home_tos >= 5:
+                st.write("- 🔴 High turnovers hurting efficiency")
+            
+            st.caption("**Action:** Adjust offensive approach immediately")
+            
+        else:
+            st.info(f"**Stable** ({current_ppp:.2f} PPP)")
+            st.write("**Maintaining consistency:**")
+            st.write("- 📊 Steady offensive output")
+            st.write("- ➡️ No major changes needed")
+            st.write("- 🎯 Solid, reliable performance")
+            
+            if current_ppp >= 1.10:
+                st.caption("**Status:** Excellent efficiency - keep it up!")
+            elif current_ppp >= 1.00:
+                st.caption("**Status:** Good efficiency - above average")
+            elif current_ppp >= 0.90:
+                st.caption("**Status:** Average efficiency - room for improvement")
+            else:
+                st.caption("**Status:** Below average - needs attention")
+    
+    st.divider()
     
     # Critical Moments Section
     critical_moments = identify_critical_moments()
     if critical_moments:
-        st.subheader("⚠️ Critical Moments")
+        st.subheader("⚠️ Critical Moments & Alerts")
+        
         for moment in critical_moments:
             if moment['urgency'] == 'high':
-                st.error(f"**{moment['message']}**\n\n💡 {moment['recommendation']}")
+                st.error(f"**🚨 {moment['message']}**")
+                st.write(f"**Recommendation:** {moment['recommendation']}")
+                
+                # Add context based on moment type
+                if moment['type'] == 'clutch_time':
+                    st.caption("💡 Key factors in clutch situations:")
+                    st.caption("   • Minimize turnovers (protect ball)")
+                    st.caption("   • High-percentage shots only")
+                    st.caption("   • Get best defenders on court")
+                    
+                elif moment['type'] == 'momentum_shift':
+                    st.caption("💡 Breaking opponent momentum:")
+                    st.caption("   • Timeout can disrupt their flow")
+                    st.caption("   • Focus on defensive stops")
+                    st.caption("   • Run a set play to regain confidence")
+                    
             else:
-                st.warning(f"**{moment['message']}**\n\n💡 {moment['recommendation']}")
+                st.warning(f"**⚠️ {moment['message']}**")
+                st.write(f"**Recommendation:** {moment['recommendation']}")
     
     st.divider()
     
-    # AI Coaching Suggestions
+    # AI Coaching Suggestions with detailed reasoning
     suggestions = get_ai_coaching_suggestion()
     if suggestions:
         st.subheader("🧠 AI Coaching Insights")
@@ -5875,44 +6058,97 @@ def display_game_flow_prediction():
         medium_priority = [s for s in suggestions if s['priority'] == 'medium']
         
         if high_priority:
-            st.write("**🔴 High Priority:**")
+            st.write("**🔴 High Priority Actions:**")
             for suggestion in high_priority:
-                st.error(f"**{suggestion['category']}:** {suggestion['suggestion']}\n\n_{suggestion['data']}_")
+                st.error(f"**{suggestion['category']}:** {suggestion['suggestion']}")
+                st.write(f"📊 Data: {suggestion['data']}")
+                
+                # Add specific reasoning based on category
+                if suggestion['category'] == 'Momentum':
+                    st.caption("**Why this matters:** Opponent runs can snowball quickly. Breaking momentum now prevents larger deficits later.")
+                    
+                elif suggestion['category'] == 'Offense':
+                    st.caption("**Why this matters:** Lower efficiency means more possessions to score same points. Must improve shot quality or turnover rate.")
+                    
+                elif suggestion['category'] == 'Ball Security':
+                    st.caption("**Why this matters:** Each turnover = lost possession + potential opponent points. Turnovers in bunches often signal rushing or poor decision-making.")
+                    
+                elif suggestion['category'] == 'Shot Selection':
+                    st.caption("**Why this matters:** Low 3PT% means taking wrong shots or poor execution. Either drive more or get better 3PT looks.")
+                
+                st.divider()
         
         if medium_priority:
-            st.write("**🟡 Consider:**")
+            st.write("**🟡 Consider These Adjustments:**")
             for suggestion in medium_priority:
-                st.warning(f"**{suggestion['category']}:** {suggestion['suggestion']}\n\n_{suggestion['data']}_")
+                st.warning(f"**{suggestion['category']}:** {suggestion['suggestion']}")
+                st.caption(f"📊 {suggestion['data']}")
+                
+                # Add reasoning for medium priority items
+                if suggestion['category'] == 'Strategy':
+                    st.caption("**Consider:** While not critical yet, proactive adjustments now can prevent problems later.")
     
     st.divider()
     
-    # Win Probability Breakdown
-    st.subheader("📊 Win Probability Factors")
-    if factors:
-        factor_df = pd.DataFrame(factors)
-        st.dataframe(factor_df, use_container_width=True, hide_index=True)
-    
-    # Detailed Predictions
-    with st.expander("🔮 Detailed Predictions & Analysis"):
-        st.write("**Prediction Methodology:**")
+    # Prediction Confidence Explanation
+    with st.expander("🔮 How Predictions Work", expanded=False):
+        st.write("### Prediction Methodology")
+        
+        st.write("**📊 Final Score Prediction:**")
         st.write(f"""
-        - **Current Pace:** {st.session_state.home_score} - {st.session_state.away_score}
-        - **Pace-Based Projection:** Projects current scoring rate to game end
-        - **Momentum Adjustment:** ±{calculate_momentum_score()[0] * 0.1:.1f} points based on recent play
-        - **Efficiency Trend:** {eff_trend.title()} ({current_ppp:.2f} → {projected_ppp:.2f} PPP)
-        - **Confidence Level:** {confidence}% (increases as game progresses)
+        - **Current Pace:** {st.session_state.home_score}-{st.session_state.away_score}
+        - **Projected finish:** {pred_home}-{pred_away}
+        - **Confidence:** {confidence}%
+        
+        **How we calculate this:**
+        1. **Pace-based projection** ({confidence - 20}% of prediction)
+           - Calculates points-per-minute so far
+           - Extrapolates to end of 4 quarters
+           - Accounts for time remaining
+        
+        2. **Momentum adjustment** (±{abs(calculate_momentum_score()[0] * 0.1):.1f} points)
+           - Weighs recent 10 possessions more heavily
+           - {'Adds' if momentum_score > 0 else 'Subtracts'} points based on recent efficiency
+           - Accounts for hot/cold streaks
+        
+        3. **Efficiency trend** ({'+' if projected_ppp > current_ppp else ''}{projected_ppp - current_ppp:.2f} PPP impact)
+           - Analyzes if offense improving/declining
+           - Projects trend continuation
+           - {'Increases' if projected_ppp > current_ppp else 'Decreases'} expected scoring
+        
+        **Confidence factors:**
+        - Base confidence: {min(100, (len(st.session_state.score_history) / 40) * 100):.0f}% (more events = more reliable)
+        - Time remaining: {'Low' if st.session_state.current_quarter in ['Q1', 'Q2'] else 'Medium' if st.session_state.current_quarter == 'Q3' else 'High'} confidence
+        - Score margin: {'High' if abs(st.session_state.home_score - st.session_state.away_score) > 15 else 'Medium' if abs(st.session_state.home_score - st.session_state.away_score) > 7 else 'Low'} confidence
         """)
         
-        st.write("**Win Probability Calculation:**")
+        st.write("**🎲 Win Probability Calculation:**")
         st.write(f"""
-        The {win_prob}% win probability is calculated from:
-        - Score differential impact
-        - Recent momentum (last 10 possessions)
-        - Offensive efficiency trends
-        - Time remaining context
-        - Turnover differential
+        The {win_prob}% win probability combines:
+        
+        1. **Score differential** (Current: {st.session_state.home_score - st.session_state.away_score:+d})
+           - Each point = ~{3 * (1 + (4 - int(st.session_state.current_quarter[1]) if st.session_state.current_quarter.startswith('Q') else 4) / 4):.1f}% win probability
+           - More valuable late in game
+        
+        2. **Momentum** ({momentum_dir})
+           - Recent 10 possessions weighted 2x vs earlier
+           - {'Positive' if momentum_score > 0 else 'Negative'} momentum {'increases' if momentum_score > 0 else 'decreases'} win prob by {abs(momentum_score * 0.1):.0f}%
+        
+        3. **Efficiency trend** ({eff_trend})
+           - {'Improving efficiency adds ~5%' if eff_trend == 'improving' else 'Declining efficiency subtracts ~5%' if eff_trend == 'declining' else 'Stable efficiency = neutral'}
+        
+        4. **Time context**
+           - More time = more uncertainty
+           - Current quarter: {st.session_state.current_quarter}
+           - {'Early game - high variance' if st.session_state.current_quarter in ['Q1', 'Q2'] else 'Late game - more predictable'}
+        
+        5. **Turnover differential** ({sum(1 for to in st.session_state.turnover_history if to['team'] == 'away') - sum(1 for to in st.session_state.turnover_history if to['team'] == 'home'):+d})
+           - Each TO advantage = ~2% win probability
+           - Ball security matters more late
         """)
-
+        
+        st.info("💡 **Remember:** These are probabilities, not guarantees. Basketball games can change quickly with a run or key plays!")
+        
 def display_post_game_comprehensive(summary):
     """Display comprehensive post-game analysis."""
     
