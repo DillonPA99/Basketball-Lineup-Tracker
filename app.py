@@ -5930,7 +5930,7 @@ def display_game_flow_prediction():
             st.write("**Why you're improving:**")
             
             # Analyze what's driving improvement
-            improvement = projected_ppp - current_ppp
+            improvement = current_ppp - starting_ppp
             if improvement > 0.15:
                 st.write("- 🎯 Shot selection dramatically better")
                 st.write("- 📈 Finding higher percentage looks")
@@ -5947,7 +5947,7 @@ def display_game_flow_prediction():
             st.write("**Why efficiency is dropping:**")
             
             # Analyze what's causing decline
-            decline = current_ppp - projected_ppp
+            decline = current_ppp - starting_ppp
             if decline > 0.15:
                 st.write("- 🚫 Shot quality significantly worse")
                 st.write("- ❌ Taking more contested/rushed shots")
@@ -6077,7 +6077,7 @@ def display_game_flow_prediction():
         3. **Efficiency trend** ({'+' if projected_ppp > current_ppp else ''}{projected_ppp - current_ppp:.2f} PPP impact)
            - Analyzes if offense improving/declining
            - Projects trend continuation
-           - {'Increases' if projected_ppp > current_ppp else 'Decreases'} expected scoring
+           - {'Increases' if current_ppp > starting_ppp else 'Decreases'} expected scoring
         
         **Confidence factors:**
         - Base confidence: {min(100, (len(st.session_state.score_history) / 40) * 100):.0f}% (more events = more reliable)
@@ -6481,7 +6481,7 @@ def display_efficiency_comparison():
         st.caption("Average across all possessions")
     
     with comparison_col2:
-        eff_trend, current_ppp, projected_ppp = calculate_scoring_efficiency_trend()
+        eff_trend, current_ppp, starting_ppp = calculate_scoring_efficiency_trend()
         
         if current_ppp >= 1.10:
             st.success(f"**Recent Segment**\n\n## {current_ppp:.2f}\nPPP")
