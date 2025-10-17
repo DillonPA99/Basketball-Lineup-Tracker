@@ -9737,27 +9737,18 @@ with tab3:
     
     # Quick Stats Bar
     st.divider()
-    stat_col1, stat_col2, stat_col3, stat_col4 = st.columns(4)
+    stat_col1, stat_col2, stat_col3 = st.columns(3)
     
     with stat_col1:
-        win_prob, _ = calculate_win_probability()
-        if win_prob >= 60:
-            st.success(f"**Win Probability**\n### {win_prob}%")
-        elif win_prob >= 40:
-            st.info(f"**Win Probability**\n### {win_prob}%")
-        else:
-            st.error(f"**Win Probability**\n### {win_prob}%")
-    
-    with stat_col2:
         pred_home, pred_away, conf = predict_final_score()
         st.metric("Projected Final", f"{pred_home}-{pred_away}", f"{conf}% confidence")
     
-    with stat_col3:
+    with stat_col2:
         momentum_score, momentum_dir = calculate_momentum_score()
         momentum_emoji = "🔥" if "positive" in momentum_dir else "❄️" if "negative" in momentum_dir else "➡️"
         st.metric("Momentum", f"{momentum_emoji} {momentum_score:+.0f}")
     
-    with stat_col4:
+    with stat_col3:
         current_margin = st.session_state.home_score - st.session_state.away_score
         if current_margin > 0:
             st.metric("Current Margin", f"Leading", f"+{current_margin}")
@@ -9768,7 +9759,6 @@ with tab3:
     
     st.divider()
     
-    # Main Content - Context-aware
     if game_completed:
         # Post-game: Comprehensive analysis
         summary = generate_game_summary_analysis()
@@ -9798,7 +9788,6 @@ with tab3:
                 display_quick_coaching_tips()
     
     else:
-        # Early game: Predictions and coaching in two columns
         col1, col2 = st.columns([2, 1])
         
         with col1:
