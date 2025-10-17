@@ -5818,7 +5818,7 @@ def display_game_flow_prediction():
         return
     
     # Top metrics row
-    metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
+    metric_col1, metric_col2, metric_col3 = st.columns(3)
     
     # Win Probability
     win_prob, factors = calculate_win_probability()
@@ -5838,34 +5838,10 @@ def display_game_flow_prediction():
             f"{pred_home}-{pred_away}",
             f"{confidence}% confidence"
         )
-    
-    # Current Efficiency - FIXED VERSION
-    with metric_col3:
-        # Calculate current overall PPP from entire game
-        total_points = st.session_state.home_score
-        total_turnovers = sum(1 for to in st.session_state.turnover_history if to.get('team') == 'home')
-        
-        # Sum up all shooting attempts
-        total_fga = 0
-        total_fta = 0
-        for score_event in st.session_state.score_history:
-            if score_event.get('team') == 'home' and score_event.get('attempted', True):
-                shot_type = score_event.get('shot_type', 'field_goal')
-                if shot_type in ['field_goal', 'three_pointer']:
-                    total_fga += 1
-                elif shot_type == 'free_throw':
-                    total_fta += 1
-        
-        # Calculate PPP using same formula as Analytics tab
-        estimated_possessions = total_fga + total_turnovers + (0.44 * total_fta)
-        current_overall_ppp = (total_points / estimated_possessions) if estimated_possessions > 0 else 0
-        
-        st.metric("Overall Game Efficiency", f"{current_overall_ppp:.2f} PPP")
-        st.caption("Total game average")  
         
     # Efficiency Trend
     eff_trend, current_ppp, projected_ppp = calculate_scoring_efficiency_trend()
-    with metric_col4:
+    with metric_col3:
         trend_emoji = "📈" if eff_trend == "improving" else "📉" if eff_trend == "declining" else "➡️"
         ppp_change = projected_ppp - current_ppp
         st.metric(
