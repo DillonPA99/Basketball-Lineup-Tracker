@@ -9765,13 +9765,16 @@ with tab3:
     
     else:
         # Early game: Predictions and coaching in two columns
+        display_game_flow_prediction()
+    
+        st.divider()
+        
         col1, col2 = st.columns([2, 1])
         
         with col1:              
-            display_game_flow_prediction()
+            display_efficiency_comparison()
                             
         with col2:
-            display_efficiency_comparison()
             display_possession_details()
             
 # ------------------------------------------------------------------
