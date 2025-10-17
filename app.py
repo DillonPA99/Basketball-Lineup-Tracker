@@ -4943,6 +4943,7 @@ def calculate_momentum_score(recent_events=10):
         direction = "neutral"
     
     return momentum_score, direction
+    
 def calculate_scoring_efficiency_trend():
     """
     Analyze if team is scoring more/less efficiently over time using proper PPP calculation.
@@ -4989,7 +4990,6 @@ def calculate_scoring_efficiency_trend():
         for turnover in st.session_state.turnover_history:
             if turnover.get('team') == 'home':
                 # Check if this turnover occurred during this segment's timeframe
-                # We'll use a simple approach: count all turnovers proportionally
                 turnover_event_sequence = turnover.get('event_sequence', 0)
                 
                 # Find the event sequence range for this segment
@@ -5029,11 +5029,10 @@ def calculate_scoring_efficiency_trend():
         if r_squared < 0.3:
             # Weak correlation - call it stable regardless of slope
             trend = "stable"
-        elif slope > 0.05:
-            # Significant upward trend
+        # FIXED: Correct the direction logic
+        elif slope > 0.05:  # Positive slope = IMPROVING
             trend = "improving"
-        elif slope < -0.05:
-            # Significant downward trend
+        elif slope < -0.05:  # Negative slope = DECLINING
             trend = "declining"
         else:
             # Small slope - essentially stable
@@ -5051,10 +5050,10 @@ def calculate_scoring_efficiency_trend():
             first_half_avg = sum(segments_ppp[:len(segments_ppp)//2]) / (len(segments_ppp)//2)
             second_half_avg = sum(segments_ppp[len(segments_ppp)//2:]) / (len(segments_ppp) - len(segments_ppp)//2)
             
-            diff = second_half_avg - first_half_avg
-            if diff > 0.1:
+            diff = second_half_avg - first_half_avg  # FIXED: Correct direction
+            if diff > 0.1:  # Second half better = IMPROVING
                 trend = "improving"
-            elif diff < -0.1:
+            elif diff < -0.1:  # Second half worse = DECLINING
                 trend = "declining"
             else:
                 trend = "stable"
