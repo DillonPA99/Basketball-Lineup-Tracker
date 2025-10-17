@@ -9745,13 +9745,9 @@ with tab3:
         
     elif has_completed_quarters:
         # Mid-game: Quarter analysis + Live insights
-        tab1, tab2 = st.tabs(["📊 Quarter Breakdown", "🎯 Live Insights"])
+        tab1, tab2 = st.tabs(["🎯 Live Insights", "📊 Quarter Breakdown"])
         
         with tab1:
-            summary = generate_game_summary_analysis()
-            display_quarter_breakdown(summary)
-        
-        with tab2:
             col1, col2 = st.columns([2, 1])
             
             with col1:
@@ -9765,6 +9761,10 @@ with tab3:
             
             with col2:
                 display_quick_coaching_tips()
+        
+        with tab2:
+            summary = generate_game_summary_analysis()
+            display_quarter_breakdown(summary)
     
     else:
         # Early game: Predictions and coaching in two columns
