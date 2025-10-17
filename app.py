@@ -4989,10 +4989,8 @@ def calculate_scoring_efficiency_trend():
         home_turnovers = 0
         for turnover in st.session_state.turnover_history:
             if turnover.get('team') == 'home':
-                # Check if this turnover occurred during this segment's timeframe
                 turnover_event_sequence = turnover.get('event_sequence', 0)
                 
-                # Find the event sequence range for this segment
                 segment_start_seq = segment_scores[0].get('event_sequence', 0) if segment_scores else 0
                 segment_end_seq = segment_scores[-1].get('event_sequence', float('inf')) if segment_scores else 0
                 
@@ -5017,50 +5015,54 @@ def calculate_scoring_efficiency_trend():
         
         slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
         
-        # Current and projected PPP
+        # FIXED: Use most recent segment as current
         current_ppp = segments_ppp[-1]
-        projected_ppp = slope * len(segments_ppp) + intercept
         
-        # Determine trend with statistical significance
-        # Use both slope magnitude and R-squared for reliability
+        # FIXED: For projected, compare to beginning rather than extrapolating
+        # This gives us a clearer "where we started vs where we are now" picture
+        first_ppp = segments_ppp[0]
+        
+        # Use the actual slope direction for trend
         r_squared = r_value ** 2
         
-        # Only declare a trend if correlation is meaningful (R² > 0.3)
+        # Determine trend based on SLOPE direction (most reliable)
         if r_squared < 0.3:
-            # Weak correlation - call it stable regardless of slope
             trend = "stable"
-        # FIXED: Correct the direction logic
-        elif slope > 0.05:  # Positive slope = IMPROVING
+        elif slope > 0.05:
+            # Positive slope = PPP increasing over time = IMPROVING
             trend = "improving"
-        elif slope < -0.05:  # Negative slope = DECLINING
+        elif slope < -0.05:
+            # Negative slope = PPP decreasing over time = DECLINING
             trend = "declining"
         else:
-            # Small slope - essentially stable
             trend = "stable"
+        
+        # For display purposes, show where we started vs where we are
+        projected_ppp = first_ppp  # This is just for reference/display
         
         return trend, current_ppp, projected_ppp
     
     except Exception as e:
         # Fallback if regression fails
         current_ppp = segments_ppp[-1] if segments_ppp else 0
-        avg_ppp = sum(segments_ppp) / len(segments_ppp) if segments_ppp else 0
+        first_ppp = segments_ppp[0] if segments_ppp else 0
         
-        # Simple trend check without regression
+        # Simple trend check: compare first half to second half
         if len(segments_ppp) >= 2:
             first_half_avg = sum(segments_ppp[:len(segments_ppp)//2]) / (len(segments_ppp)//2)
             second_half_avg = sum(segments_ppp[len(segments_ppp)//2:]) / (len(segments_ppp) - len(segments_ppp)//2)
             
-            diff = second_half_avg - first_half_avg  # FIXED: Correct direction
-            if diff > 0.1:  # Second half better = IMPROVING
+            diff = second_half_avg - first_half_avg
+            if diff > 0.1:
                 trend = "improving"
-            elif diff < -0.1:  # Second half worse = DECLINING
+            elif diff < -0.1:
                 trend = "declining"
             else:
                 trend = "stable"
         else:
             trend = "stable"
         
-        return trend, current_ppp, avg_ppp
+        return trend, current_ppp, first_ppp
         
 def predict_final_score():
     """
