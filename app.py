@@ -9260,6 +9260,8 @@ with tab3:
     
     # Check if game is completed
     game_completed = st.session_state.get('game_marked_complete', False)
+
+    has_completed_quarters = len(st.session_state.quarter_end_history) > 0 
     
     if game_completed:
         # ===== COMPLETED GAME SUMMARY =====
@@ -9425,10 +9427,199 @@ with tab3:
                 else:
                     st.info("➡️ **Consistent performance.** Maintained steady efficiency throughout")
             
-            # Link to detailed stats
+        # Link to detailed stats
+        st.divider()
+        st.info("📊 **For detailed player and lineup statistics, see the Analytics tab**")
+       
+    elif has_completed_quarters and not game_completed:
+        # ===== QUARTER-END ANALYSIS =====
+        st.success(f"✅ {len(st.session_state.quarter_end_history)} Quarter(s) Completed - Quarter-End Analysis")
+        
+        if not st.session_state.score_history:
+            st.info("No game data to analyze.")
+        else:
+            # Generate analysis for completed quarters only
+            summary = generate_game_summary_analysis()
+            
+            # Quarter Selection
+            st.subheader("📊 Select Quarter to Analyze")
+            
+            available_quarters = [qe.get('quarter', 'Unknown') for qe in st.session_state.quarter_end_history]
+            
+            # Add "All Quarters" option
+            quarter_options = ["All Quarters"] + available_quarters
+            
+            selected_quarter = st.selectbox(
+                "Choose quarter:",
+                options=quarter_options,
+                index=0  # Default to "All Quarters"
+            )
+            
             st.divider()
-            st.info("📊 **For detailed player and lineup statistics, see the Analytics tab**")
-    
+            
+            # Filter analysis based on selection
+            if selected_quarter == "All Quarters":
+                quarters_to_show = summary['quarter_analysis']
+            else:
+                quarters_to_show = [qa for qa in summary['quarter_analysis'] if qa['quarter'] == selected_quarter]
+            
+            # Quarter-by-Quarter Analysis
+            if quarters_to_show:
+                st.subheader(f"📈 Quarter Analysis: {selected_quarter}")
+                
+                for qa in quarters_to_show:
+                    with st.expander(
+                        f"{qa['performance_emoji']} {qa['quarter']}: {qa['performance']} "
+                        f"({qa['margin']:+d} margin) - Win Prob: {qa['win_probability']:.0f}%",
+                        expanded=(selected_quarter != "All Quarters")  # Expand if viewing single quarter
+                    ):
+                        qtr_col1, qtr_col2, qtr_col3, qtr_col4 = st.columns(4)
+                        
+                        with qtr_col1:
+                            st.metric("Quarter Scoring", f"{qa['home_points']}-{qa['away_points']}")
+                        
+                        with qtr_col2:
+                            st.metric("Quarter Margin", f"{qa['margin']:+d}")
+                        
+                        with qtr_col3:
+                            st.metric("Cumulative Score", qa['cumulative_score'])
+                        
+                        with qtr_col4:
+                            # Win probability with color coding
+                            win_prob = qa['win_probability']
+                            if win_prob >= 70:
+                                st.success(f"**Win Prob**\n\n# {win_prob:.0f}%")
+                            elif win_prob >= 55:
+                                st.info(f"**Win Prob**\n\n# {win_prob:.0f}%")
+                            elif win_prob >= 45:
+                                st.warning(f"**Win Prob**\n\n# {win_prob:.0f}%")
+                            else:
+                                st.error(f"**Win Prob**\n\n# {win_prob:.0f}%")
+                        
+                        # Performance interpretation
+                        if qa['performance'] == "Dominant":
+                            st.success(f"🔥 **Dominant performance!** Outscored opponent by {qa['margin']} points this quarter")
+                        elif qa['performance'] == "Winning":
+                            st.success(f"✅ **Solid quarter.** Built {qa['margin']}-point advantage")
+                        elif qa['performance'] == "Even":
+                            st.info("⚖️ **Even quarter.** Matched opponent's production")
+                        elif qa['performance'] == "Losing":
+                            st.warning(f"⚠️ **Tough quarter.** Opponent outscored by {abs(qa['margin'])}")
+                        else:
+                            st.error(f"🚨 **Challenging quarter.** Gave up {abs(qa['margin'])}-point deficit")
+                        
+                        # Quarter-specific key events
+                        st.write("**Key Events This Quarter:**")
+                        
+                        # Filter events for this quarter
+                        quarter_runs = [run for run in summary['key_runs'] if run['quarter'] == qa['quarter']]
+                        quarter_momentum = [m for m in summary['momentum_shifts'] if m['quarter'] == qa['quarter']]
+                        quarter_sequences = [seq for seq in summary['critical_sequences'] if seq['quarter'] == qa['quarter']]
+                        
+                        if quarter_runs:
+                            st.write("*Significant Runs:*")
+                            for run in quarter_runs:
+                                team_color = "success" if run['team'] == 'HOME' else "info"
+                                getattr(st, team_color)(f"• {run['team']} {run['description']} (Impact: {run['impact']})")
+                        
+                        if quarter_momentum:
+                            st.write("*Momentum Shifts:*")
+                            for m in quarter_momentum:
+                                if m['type'] == 'Lead Change':
+                                    st.info(f"• Lead change: {m['new_leader']} ({m['score']})")
+                                else:
+                                    st.warning(f"• {m['beneficiary']} {m['swing']} run")
+                        
+                        if quarter_sequences:
+                            st.write("*High-Impact Plays:*")
+                            for seq in quarter_sequences:
+                                st.caption(f"• {seq['description']}")
+                        
+                        if not quarter_runs and not quarter_momentum and not quarter_sequences:
+                            st.info("No significant events recorded this quarter")
+            
+            st.divider()
+            
+            # Current Game Status Summary
+            st.subheader("📊 Current Game Status")
+            
+            status_col1, status_col2, status_col3, status_col4 = st.columns(4)
+            
+            with status_col1:
+                current_margin = st.session_state.home_score - st.session_state.away_score
+                if current_margin > 0:
+                    st.success(f"**Leading**\n\n# +{current_margin}")
+                elif current_margin < 0:
+                    st.error(f"**Trailing**\n\n# {current_margin}")
+                else:
+                    st.info(f"**Tied**\n\n# 0")
+            
+            with status_col2:
+                st.metric("Current Quarter", st.session_state.current_quarter)
+            
+            with status_col3:
+                st.metric("Score", f"{st.session_state.home_score}-{st.session_state.away_score}")
+            
+            with status_col4:
+                if summary['game_overview']['lead_changes'] > 0:
+                    st.metric("Lead Changes", summary['game_overview']['lead_changes'])
+                else:
+                    st.metric("Lead Changes", "0")
+            
+            # Efficiency trends (if available)
+            if summary['efficiency_trends']:
+                st.divider()
+                st.subheader("📊 Offensive Efficiency Trends")
+                
+                et = summary['efficiency_trends']
+                
+                trend_col1, trend_col2, trend_col3 = st.columns(3)
+                
+                with trend_col1:
+                    st.metric("First Half PPP", f"{et['first_half_ppp']:.2f}")
+                
+                with trend_col2:
+                    st.metric("Second Half PPP", f"{et['second_half_ppp']:.2f}", 
+                             delta=f"{et['change']:+.2f}")
+                
+                with trend_col3:
+                    trend_color = "success" if "Improved" in et['trend'] else "error" if "Declined" in et['trend'] else "info"
+                    getattr(st, trend_color)(f"**Trend**\n\n{et['trend']}")
+            
+            st.divider()
+            
+            # Coaching recommendations for next quarter
+            st.subheader("💡 Recommendations for Next Quarter")
+            
+            # Get AI insights for current game state
+            if len(st.session_state.score_history) >= 5:
+                suggestions = get_ai_coaching_suggestion()
+                
+                if suggestions:
+                    high_priority = [s for s in suggestions if s['priority'] == 'high']
+                    medium_priority = [s for s in suggestions if s['priority'] == 'medium']
+                    
+                    if high_priority:
+                        st.write("**🔴 High Priority Adjustments:**")
+                        for i, s in enumerate(high_priority, 1):
+                            st.error(f"{i}. **{s['category']}:** {s['suggestion']}")
+                    
+                    if medium_priority:
+                        st.write("**🟡 Consider:**")
+                        for i, s in enumerate(medium_priority, 1):
+                            st.warning(f"{i}. **{s['category']}:** {s['suggestion']}")
+                else:
+                    st.success("✅ No major adjustments needed. Continue current approach!")
+            else:
+                st.info("Play more to get AI recommendations")
+            
+            # Link to live predictions
+            st.divider()
+            st.info("📊 **See the Live Game Predictions section below for real-time win probability and momentum analysis**")
+            
+            st.divider()
+            st.info("📊 **See the Live Game Predictions section below for real-time win probability and momentum analysis**") 
+
     else:
         # ===== LIVE GAME PREDICTIONS =====
         if not st.session_state.score_history or len(st.session_state.score_history) < 5:
