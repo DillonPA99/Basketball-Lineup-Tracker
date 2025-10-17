@@ -6276,6 +6276,7 @@ def display_efficiency_comparison():
     
     st.subheader("📊 Efficiency Comparison")
     
+    # Use 3 equal columns for better spacing
     comparison_col1, comparison_col2, comparison_col3 = st.columns(3)
     
     with comparison_col1:
@@ -6297,37 +6298,36 @@ def display_efficiency_comparison():
         current_overall_ppp = (total_points / estimated_possessions) if estimated_possessions > 0 else 0
         
         if current_overall_ppp >= 1.10:
-            st.success(f"**Overall Game**\n\n# {current_overall_ppp:.2f} PPP")
+            st.success(f"**Overall Game**\n\n## {current_overall_ppp:.2f}\nPPP")
         elif current_overall_ppp >= 1.00:
-            st.info(f"**Overall Game**\n\n# {current_overall_ppp:.2f} PPP")
+            st.info(f"**Overall Game**\n\n## {current_overall_ppp:.2f}\nPPP")
         else:
-            st.warning(f"**Overall Game**\n\n# {current_overall_ppp:.2f} PPP")
+            st.warning(f"**Overall Game**\n\n## {current_overall_ppp:.2f}\nPPP")
         st.caption("Average across all possessions")
     
     with comparison_col2:
         eff_trend, current_ppp, projected_ppp = calculate_scoring_efficiency_trend()
         
         if current_ppp >= 1.10:
-            st.success(f"**Recent Segment**\n\n# {current_ppp:.2f} PPP")
+            st.success(f"**Recent Segment**\n\n## {current_ppp:.2f}\nPPP")
         elif current_ppp >= 1.00:
-            st.info(f"**Recent Segment**\n\n# {current_ppp:.2f} PPP")
+            st.info(f"**Recent Segment**\n\n## {current_ppp:.2f}\nPPP")
         else:
-            st.warning(f"**Recent Segment**\n\n# {current_ppp:.2f} PPP")
+            st.warning(f"**Recent Segment**\n\n## {current_ppp:.2f}\nPPP")
         st.caption("Last ~10 possessions")
     
     with comparison_col3:
         ppp_diff = current_ppp - current_overall_ppp
         
         if abs(ppp_diff) < 0.10:
-            st.info(f"**Momentum**\n\n# Stable")
+            st.info(f"**Momentum**\n\n## Stable")
             st.caption(f"Recent vs Overall: {ppp_diff:+.2f}")
         elif ppp_diff > 0:
-            st.success(f"**Momentum**\n\n# 🔥 Hot")
+            st.success(f"**Momentum**\n\n## 🔥 Hot")
             st.caption(f"Recent +{ppp_diff:.2f} better!")
         else:
-            st.error(f"**Momentum**\n\n# 📉 Cooling")
+            st.error(f"**Momentum**\n\n## 📉 Cooling")
             st.caption(f"Recent {ppp_diff:.2f} worse")
-
 
 def display_possession_details():
     """Display recent possession details for transparency."""
