@@ -5783,7 +5783,7 @@ def display_game_flow_prediction():
     # Calculate all metrics upfront
     win_prob, factors = calculate_win_probability()
     pred_home, pred_away, confidence = predict_final_score()
-    eff_trend, current_ppp, projected_ppp = calculate_scoring_efficiency_trend()
+    eff_trend, current_ppp, starting_ppp = calculate_scoring_efficiency_trend()
     momentum_score, momentum_dir = calculate_momentum_score()
     
     # Top metrics row
