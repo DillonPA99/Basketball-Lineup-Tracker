@@ -6326,7 +6326,7 @@ def display_efficiency_comparison():
             st.success(f"**Momentum**\n\n## 🔥 Hot")
             st.caption(f"Recent +{ppp_diff:.2f} better!")
         else:
-            st.error(f"**Momentum**\n\n 📉 Cooling")
+            st.error(f"**Momentum**\n\n# 📉 Cooling")
             st.caption(f"Recent {ppp_diff:.2f} worse")
 
 def display_possession_details():
