@@ -4947,7 +4947,7 @@ def calculate_momentum_score(recent_events=10):
 def calculate_scoring_efficiency_trend():
     """
     Analyze if team is scoring more/less efficiently over time using proper PPP calculation.
-    Returns: efficiency_trend, current_ppp, projected_ppp
+    Returns: efficiency_trend, current_ppp, starting_ppp
     """
     if len(st.session_state.score_history) < 10:
         return "insufficient_data", 0, 0
@@ -5008,61 +5008,23 @@ def calculate_scoring_efficiency_trend():
     if len(segments_ppp) < 2:
         return "insufficient_data", 0, 0
     
-    # Calculate trend using linear regression
-    try:
-        x = np.arange(len(segments_ppp))
-        y = np.array(segments_ppp)
-        
-        slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
-        
-        # FIXED: Use most recent segment as current
-        current_ppp = segments_ppp[-1]
-        
-        # FIXED: For projected, compare to beginning rather than extrapolating
-        # This gives us a clearer "where we started vs where we are now" picture
-        first_ppp = segments_ppp[0]
-        
-        # Use the actual slope direction for trend
-        r_squared = r_value ** 2
-        
-        # Determine trend based on SLOPE direction (most reliable)
-        if r_squared < 0.3:
-            trend = "stable"
-        elif slope > 0.05:
-            # Positive slope = PPP increasing over time = IMPROVING
-            trend = "improving"
-        elif slope < -0.05:
-            # Negative slope = PPP decreasing over time = DECLINING
-            trend = "declining"
-        else:
-            trend = "stable"
-        
-        # For display purposes, show where we started vs where we are
-        projected_ppp = first_ppp  # This is just for reference/display
-        
-        return trend, current_ppp, projected_ppp
+    # SIMPLIFIED APPROACH: Just compare first vs last segment
+    first_segment_ppp = segments_ppp[0]
+    last_segment_ppp = segments_ppp[-1]
     
-    except Exception as e:
-        # Fallback if regression fails
-        current_ppp = segments_ppp[-1] if segments_ppp else 0
-        first_ppp = segments_ppp[0] if segments_ppp else 0
-        
-        # Simple trend check: compare first half to second half
-        if len(segments_ppp) >= 2:
-            first_half_avg = sum(segments_ppp[:len(segments_ppp)//2]) / (len(segments_ppp)//2)
-            second_half_avg = sum(segments_ppp[len(segments_ppp)//2:]) / (len(segments_ppp) - len(segments_ppp)//2)
-            
-            diff = second_half_avg - first_half_avg
-            if diff > 0.1:
-                trend = "improving"
-            elif diff < -0.1:
-                trend = "declining"
-            else:
-                trend = "stable"
-        else:
-            trend = "stable"
-        
-        return trend, current_ppp, first_ppp
+    # Calculate the change
+    ppp_change = last_segment_ppp - first_segment_ppp
+    
+    # Determine trend based on simple comparison
+    if ppp_change > 0.10:
+        trend = "improving"
+    elif ppp_change < -0.10:
+        trend = "declining"
+    else:
+        trend = "stable"
+    
+    # Return: trend, current (last segment), starting (first segment)
+    return trend, last_segment_ppp, first_segment_ppp
         
 def predict_final_score():
     """
@@ -5857,7 +5819,7 @@ def display_game_flow_prediction():
     # Efficiency Trend with explanation
     with metric_col3:
         trend_emoji = "📈" if eff_trend == "improving" else "📉" if eff_trend == "declining" else "➡️"
-        ppp_change = projected_ppp - current_ppp
+        ppp_change = current_ppp - starting_ppp
         st.metric(
             "Efficiency Trend",
             f"{trend_emoji} {eff_trend.title()}",
