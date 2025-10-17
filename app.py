@@ -9751,11 +9751,11 @@ with tab3:
         with tab1:
             col1, col2 = st.columns([2, 1])
             
-            with col1:
-                display_efficiency_comparison()
-                st.divider()
-              
+            with col1:              
                 display_game_flow_prediction()
+                st.divider()
+
+                display_efficiency_comparison()
                 
                 
                 st.divider()
@@ -9773,10 +9773,10 @@ with tab3:
         col1, col2 = st.columns([2, 1])
         
         with col1:
-            display_efficiency_comparison()
-            st.divider()
-              
             display_game_flow_prediction()
+            st.divider()
+
+            display_efficiency_comparison()
             
             st.divider()
             display_possession_details()
