@@ -5077,7 +5077,7 @@ def predict_final_score():
     momentum_adjustment = momentum_score * 0.1  # Can swing prediction by up to ±10 points
     
     # Adjust for efficiency trend
-    eff_trend, current_ppp, projected_ppp = calculate_scoring_efficiency_trend()
+    eff_trend, current_ppp, starting_ppp = calculate_scoring_efficiency_trend()
     
     trend_adjustment = 0
     if eff_trend == "improving":
@@ -5247,7 +5247,7 @@ def calculate_win_probability():
         })
     
     # Factor 3: Efficiency Trend - REDUCED IMPACT
-    eff_trend, current_ppp, projected_ppp = calculate_scoring_efficiency_trend()
+    eff_trend, current_ppp, starting_ppp = calculate_scoring_efficiency_trend()
     
     if eff_trend == "improving":
         # CHANGED: Reduced from +8 to +5
@@ -5377,7 +5377,7 @@ def get_ai_coaching_suggestion():
     
     # Analyze recent performance
     momentum_score, momentum_dir = calculate_momentum_score()
-    eff_trend, current_ppp, projected_ppp = calculate_scoring_efficiency_trend()
+    eff_trend, current_ppp, starting_ppp = calculate_scoring_efficiency_trend()
     win_prob, factors = calculate_win_probability()
     
     # Suggestion based on momentum
