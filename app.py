@@ -5402,7 +5402,7 @@ def get_ai_coaching_suggestion():
             'category': 'Offense',
             'priority': 'high',
             'suggestion': '📉 Offensive efficiency declining - adjust strategy',
-            'data': f'PPP dropped from {current_ppp:.2f} to projected {projected_ppp:.2f}'
+            'data': f'PPP dropped from {starting_ppp:.2f} to projected {current_ppp:.2f}'
         })
     
     # Suggestion based on turnovers
@@ -5926,7 +5926,7 @@ def display_game_flow_prediction():
         st.write("**⚡ Scoring Efficiency Trend**")
         
         if eff_trend == "improving":
-            st.success(f"**Improving** ({current_ppp:.2f} → {projected_ppp:.2f} PPP)")
+            st.success(f"**Improving** ({starting_ppp:.2f} → {current_ppp:.2f} PPP)")
             st.write("**Why you're improving:**")
             
             # Analyze what's driving improvement
@@ -5943,7 +5943,7 @@ def display_game_flow_prediction():
             st.caption("**Action:** Maintain current offensive strategy")
             
         elif eff_trend == "declining":
-            st.warning(f"**Declining** ({current_ppp:.2f} → {projected_ppp:.2f} PPP)")
+            st.warning(f"**Declining** ({starting_ppp:.2f} → {current_ppp:.2f} PPP)")
             st.write("**Why efficiency is dropping:**")
             
             # Analyze what's causing decline
@@ -6074,7 +6074,7 @@ def display_game_flow_prediction():
            - {'Adds' if momentum_score > 0 else 'Subtracts'} points based on recent efficiency
            - Accounts for hot/cold streaks
         
-        3. **Efficiency trend** ({'+' if projected_ppp > current_ppp else ''}{projected_ppp - current_ppp:.2f} PPP impact)
+        3. **Efficiency trend** ({'+' if current_ppp > starting_ppp else ''}{current_ppp - starting_ppp:.2f} PPP impact)
            - Analyzes if offense improving/declining
            - Projects trend continuation
            - {'Increases' if current_ppp > starting_ppp else 'Decreases'} expected scoring
