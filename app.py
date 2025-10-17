@@ -9753,16 +9753,10 @@ with tab3:
             
             with col1:              
                 display_game_flow_prediction()
-                st.divider()
-
-                display_efficiency_comparison()
-                
-                
-                st.divider()
-                display_possession_details()
-            
+                            
             with col2:
-                display_quick_coaching_tips()
+                display_efficiency_comparison()
+                display_possession_details()
         
         with tab2:
             summary = generate_game_summary_analysis()
@@ -9772,17 +9766,12 @@ with tab3:
         # Early game: Predictions and coaching in two columns
         col1, col2 = st.columns([2, 1])
         
-        with col1:
-            display_game_flow_prediction()
-            st.divider()
-
-            display_efficiency_comparison()
-            
-            st.divider()
-            display_possession_details()
-        
-        with col2:
-            display_quick_coaching_tips()
+            with col1:              
+                display_game_flow_prediction()
+                            
+            with col2:
+                display_efficiency_comparison()
+                display_possession_details()
             
 # ------------------------------------------------------------------
 # Tab 4: Event Log
