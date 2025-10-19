@@ -5780,6 +5780,72 @@ def display_game_flow_prediction():
         st.info("📊 Need at least 5 scoring events to generate predictions. Keep playing!")
         return
     
+    Yes, exactly! Here's where to slot it in. I'll show you the complete section with clear markers:
+pythondef display_game_flow_prediction():
+    """
+    Main display function for AI Game Flow Analysis with efficiency comparison at top.
+    """    
+    if not st.session_state.score_history or len(st.session_state.score_history) < 5:
+        st.info("📊 Need at least 5 scoring events to generate predictions. Keep playing!")
+        return
+    
+    st.subheader("📊 Efficiency Comparison")
+    
+    # Use 3 equal columns for better spacing
+    comparison_col1, comparison_col2, comparison_col3 = st.columns(3)
+    
+    with comparison_col1:
+        # Calculate overall game PPP
+        total_points = st.session_state.home_score
+        total_turnovers = sum(1 for to in st.session_state.turnover_history if to.get('team') == 'home')
+        
+        total_fga = 0
+        total_fta = 0
+        for score_event in st.session_state.score_history:
+            if score_event.get('team') == 'home' and score_event.get('attempted', True):
+                shot_type = score_event.get('shot_type', 'field_goal')
+                if shot_type in ['field_goal', 'three_pointer']:
+                    total_fga += 1
+                elif shot_type == 'free_throw':
+                    total_fta += 1
+        
+        estimated_possessions = total_fga + total_turnovers + (0.44 * total_fta)
+        current_overall_ppp = (total_points / estimated_possessions) if estimated_possessions > 0 else 0
+        
+        if current_overall_ppp >= 1.10:
+            st.success(f"**Overall Game**\n\n## {current_overall_ppp:.2f}\nPPP")
+        elif current_overall_ppp >= 1.00:
+            st.info(f"**Overall Game**\n\n## {current_overall_ppp:.2f}\nPPP")
+        else:
+            st.warning(f"**Overall Game**\n\n## {current_overall_ppp:.2f}\nPPP")
+        st.caption("Average across all possessions")
+    
+    with comparison_col2:
+        eff_trend, current_ppp, starting_ppp = calculate_scoring_efficiency_trend()
+        
+        if current_ppp >= 1.10:
+            st.success(f"**Recent Segment**\n\n## {current_ppp:.2f}\nPPP")
+        elif current_ppp >= 1.00:
+            st.info(f"**Recent Segment**\n\n## {current_ppp:.2f}\nPPP")
+        else:
+            st.warning(f"**Recent Segment**\n\n## {current_ppp:.2f}\nPPP")
+        st.caption("Last ~10 possessions")
+    
+    with comparison_col3:
+        ppp_diff = current_ppp - current_overall_ppp
+        
+        if abs(ppp_diff) < 0.10:
+            st.info(f"**Momentum**\n\n## Stable")
+            st.caption(f"Recent vs Overall: {ppp_diff:+.2f}")
+        elif ppp_diff > 0:
+            st.success(f"**Momentum**\n\n## 🔥 Hot")
+            st.caption(f"Recent +{ppp_diff:.2f} better!")
+        else:
+            st.error(f"**Momentum**\n\n## ❄️ Cool")
+            st.caption(f"Recent {ppp_diff:.2f} worse")
+    
+    st.divider()
+    
     # Calculate all metrics upfront
     win_prob, factors = calculate_win_probability()
     pred_home, pred_away, confidence = predict_final_score()
@@ -9916,9 +9982,6 @@ with tab3:
             """)
         st.stop()
     
-    # EFFICIENCY COMPARISON AT THE TOP (right after status)
-    display_efficiency_comparison()
-    
     st.divider()
     
     # Main Content - Context-aware
@@ -9932,7 +9995,7 @@ with tab3:
         tab1, tab2 = st.tabs(["🎯 Live Insights", "📊 Quarter Breakdown"])
         
         with tab1:
-            # Full-width main predictions
+            # Everything in one function now - efficiency at top!
             display_game_flow_prediction()
             
             st.divider()
@@ -9945,7 +10008,7 @@ with tab3:
             display_quarter_breakdown(summary)
     
     else:
-        # Early game: Efficiency at top, predictions below
+        # Early game: Everything in one clean function
         display_game_flow_prediction()
         
         st.divider()
