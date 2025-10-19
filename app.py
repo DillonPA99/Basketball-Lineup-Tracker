@@ -5940,7 +5940,7 @@ def display_game_flow_prediction():
             st.error(f"**Momentum**\n\n## ❄️ Cool")
             st.caption(f"Recent {ppp_diff:.2f} worse")
         
-        st.divider()
+    st.divider()
     
     # Enhanced Analysis Section
     st.subheader("🎯 Detailed Game Analysis")
