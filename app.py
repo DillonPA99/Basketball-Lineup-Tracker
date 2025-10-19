@@ -6073,9 +6073,7 @@ def display_game_flow_prediction():
             else:
                 st.warning(f"**⚠️ {moment['message']}**")
                 st.write(f"**Recommendation:** {moment['recommendation']}")
-    
-    st.divider()
-    
+        
     # AI Coaching Suggestions with detailed reasoning
     suggestions = get_ai_coaching_suggestion()
     if suggestions:
