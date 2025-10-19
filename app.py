@@ -5779,9 +5779,8 @@ def display_game_flow_prediction():
     if not st.session_state.score_history or len(st.session_state.score_history) < 5:
         st.info("📊 Need at least 5 scoring events to generate predictions. Keep playing!")
         return
-    
-    Yes, exactly! Here's where to slot it in. I'll show you the complete section with clear markers:
-pythondef display_game_flow_prediction():
+
+def display_game_flow_prediction():
     """
     Main display function for AI Game Flow Analysis with efficiency comparison at top.
     """    
