@@ -5800,13 +5800,13 @@ def display_game_flow_prediction():
     # Win Probability with context
     with metric_col1:
         if win_prob >= 70:
-            st.success(f"**Win Probability**\n### {win_prob}%")
+            st.success(f"**Win Probability**\n## {win_prob}%")
             st.caption("🟢 Strong position")
         elif win_prob >= 45:
-            st.info(f"**Win Probability**\n### {win_prob}%")
+            st.info(f"**Win Probability**\n## {win_prob}%")
             st.caption("🟡 Competitive game")
         else:
-            st.warning(f"**Win Probability**\n### {win_prob}%")
+            st.warning(f"**Win Probability**\n## {win_prob}%")
             st.caption("🔴 Uphill battle")
     
     # Predicted Final Score with reasoning
@@ -5879,24 +5879,24 @@ def display_game_flow_prediction():
         eff_trend, current_ppp, starting_ppp = calculate_scoring_efficiency_trend()
         
         if current_ppp >= 1.10:
-            st.success(f"**Recent Segment**\n\n### {current_ppp:.2f}\nPPP")
+            st.success(f"**Recent Segment**\n\n## {current_ppp:.2f}\nPPP")
         elif current_ppp >= 1.00:
-            st.info(f"**Recent Segment**\n\n### {current_ppp:.2f}\nPPP")
+            st.info(f"**Recent Segment**\n\n## {current_ppp:.2f}\nPPP")
         else:
-            st.warning(f"**Recent Segment**\n\n### {current_ppp:.2f}\nPPP")
+            st.warning(f"**Recent Segment**\n\n## {current_ppp:.2f}\nPPP")
         st.caption("Last ~10 possessions")
     
     with comparison_col3:
         ppp_diff = current_ppp - current_overall_ppp
         
         if abs(ppp_diff) < 0.10:
-            st.info(f"**Momentum**\n\n### Stable")
+            st.info(f"**Momentum**\n##\n## Stable")
             st.caption(f"Recent vs Overall: {ppp_diff:+.2f}")
         elif ppp_diff > 0:
-            st.success(f"**Momentum**\n\n### 🔥 Hot")
+            st.success(f"**Momentum**\n\n## 🔥 Hot")
             st.caption(f"Recent +{ppp_diff:.2f} better!")
         else:
-            st.error(f"**Momentum**\n\n### ❄️ Cool")
+            st.error(f"**Momentum**\n\n## ❄️ Cool")
             st.caption(f"Recent {ppp_diff:.2f} worse")
     
     st.divider()
