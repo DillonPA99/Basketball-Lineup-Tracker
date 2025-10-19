@@ -5788,6 +5788,62 @@ def display_game_flow_prediction():
         st.info("📊 Need at least 5 scoring events to generate predictions. Keep playing!")
         return
     
+    # Calculate all metrics upfront
+    win_prob, factors = calculate_win_probability()
+    pred_home, pred_away, confidence = predict_final_score()
+    eff_trend, current_ppp, starting_ppp = calculate_scoring_efficiency_trend()
+    momentum_score, momentum_dir = calculate_momentum_score()
+    
+    # Top metrics row
+    metric_col1, metric_col2, metric_col3 = st.columns(3)
+    
+    # Win Probability with context
+    with metric_col1:
+        if win_prob >= 70:
+            st.success(f"**Win Probability**\n### {win_prob}%")
+            st.caption("🟢 Strong position")
+        elif win_prob >= 45:
+            st.info(f"**Win Probability**\n### {win_prob}%")
+            st.caption("🟡 Competitive game")
+        else:
+            st.warning(f"**Win Probability**\n### {win_prob}%")
+            st.caption("🔴 Uphill battle")
+    
+    # Predicted Final Score with reasoning
+    with metric_col2:
+        score_diff = pred_home - pred_away
+        st.metric(
+            "Predicted Final",
+            f"{pred_home}-{pred_away}",
+            f"{confidence}% confidence"
+        )
+        if score_diff > 0:
+            st.caption(f"Win by {score_diff} pts")
+        elif score_diff < 0:
+            st.caption(f"Lose by {abs(score_diff)} pts")
+        else:
+            st.caption("Overtime likely")
+        
+    # Efficiency Trend with explanation
+    with metric_col3:
+        trend_emoji = "📈" if eff_trend == "improving" else "📉" if eff_trend == "declining" else "➡️"
+        ppp_change = current_ppp - starting_ppp
+        st.metric(
+            "Efficiency Trend",
+            f"{trend_emoji} {eff_trend.title()}",
+            f"{ppp_change:+.2f} PPP"
+        )
+        
+        # Add specific explanation
+        if eff_trend == "improving":
+            st.caption("✅ Getting better shots")
+        elif eff_trend == "declining":
+            st.caption("⚠️ Shot quality dropping")
+        else:
+            st.caption("➡️ Consistent performance")
+    
+    st.divider()
+
     st.subheader("📊 Efficiency Comparison")
     
     # Use 3 equal columns for better spacing
@@ -5842,62 +5898,6 @@ def display_game_flow_prediction():
         else:
             st.error(f"**Momentum**\n\n## ❄️ Cool")
             st.caption(f"Recent {ppp_diff:.2f} worse")
-    
-    st.divider()
-    
-    # Calculate all metrics upfront
-    win_prob, factors = calculate_win_probability()
-    pred_home, pred_away, confidence = predict_final_score()
-    eff_trend, current_ppp, starting_ppp = calculate_scoring_efficiency_trend()
-    momentum_score, momentum_dir = calculate_momentum_score()
-    
-    # Top metrics row
-    metric_col1, metric_col2, metric_col3 = st.columns(3)
-    
-    # Win Probability with context
-    with metric_col1:
-        if win_prob >= 70:
-            st.success(f"**Win Probability**\n### {win_prob}%")
-            st.caption("🟢 Strong position")
-        elif win_prob >= 45:
-            st.info(f"**Win Probability**\n### {win_prob}%")
-            st.caption("🟡 Competitive game")
-        else:
-            st.warning(f"**Win Probability**\n### {win_prob}%")
-            st.caption("🔴 Uphill battle")
-    
-    # Predicted Final Score with reasoning
-    with metric_col2:
-        score_diff = pred_home - pred_away
-        st.metric(
-            "Predicted Final",
-            f"{pred_home}-{pred_away}",
-            f"{confidence}% confidence"
-        )
-        if score_diff > 0:
-            st.caption(f"Win by {score_diff} pts")
-        elif score_diff < 0:
-            st.caption(f"Lose by {abs(score_diff)} pts")
-        else:
-            st.caption("Overtime likely")
-        
-    # Efficiency Trend with explanation
-    with metric_col3:
-        trend_emoji = "📈" if eff_trend == "improving" else "📉" if eff_trend == "declining" else "➡️"
-        ppp_change = current_ppp - starting_ppp
-        st.metric(
-            "Efficiency Trend",
-            f"{trend_emoji} {eff_trend.title()}",
-            f"{ppp_change:+.2f} PPP"
-        )
-        
-        # Add specific explanation
-        if eff_trend == "improving":
-            st.caption("✅ Getting better shots")
-        elif eff_trend == "declining":
-            st.caption("⚠️ Shot quality dropping")
-        else:
-            st.caption("➡️ Consistent performance")
     
     st.divider()
     
