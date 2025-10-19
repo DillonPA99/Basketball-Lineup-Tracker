@@ -9996,9 +9996,7 @@ with tab3:
         with tab1:
             # Everything in one function now - efficiency at top!
             display_game_flow_prediction()
-            
-            st.divider()
-            
+                        
             # Possession details at bottom
             display_possession_details()
         
@@ -10009,9 +10007,7 @@ with tab3:
     else:
         # Early game: Everything in one clean function
         display_game_flow_prediction()
-        
-        st.divider()
-        
+                
         display_possession_details()
             
 # ------------------------------------------------------------------
