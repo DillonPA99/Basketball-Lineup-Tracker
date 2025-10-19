@@ -5868,35 +5868,35 @@ def display_game_flow_prediction():
         current_overall_ppp = (total_points / estimated_possessions) if estimated_possessions > 0 else 0
         
         if current_overall_ppp >= 1.10:
-            st.success(f"**Overall Game**\n\n### {current_overall_ppp:.2f}\n**PPP**")
+            st.success(f"**Overall Game**\n\n## {current_overall_ppp:.2f}\n**PPP**")
         elif current_overall_ppp >= 1.00:
-            st.info(f"**Overall Game**\n\n### {current_overall_ppp:.2f}\n**PPP**")
+            st.info(f"**Overall Game**\n\n## {current_overall_ppp:.2f}\n**PPP**")
         else:
-            st.warning(f"**Overall Game**\n\n### {current_overall_ppp:.2f}\n**PPP**")
+            st.warning(f"**Overall Game**\n\n## {current_overall_ppp:.2f}\n**PPP**")
         st.caption("Average across all possessions")
     
     with comparison_col2:
         eff_trend, current_ppp, starting_ppp = calculate_scoring_efficiency_trend()
         
         if current_ppp >= 1.10:
-            st.success(f"**Recent Segment**\n\n### {current_ppp:.2f}\n**PPP**")
+            st.success(f"**Recent Segment**\n\n## {current_ppp:.2f}\n**PPP**")
         elif current_ppp >= 1.00:
-            st.info(f"**Recent Segment**\n\n### {current_ppp:.2f}\n**PPP**")
+            st.info(f"**Recent Segment**\n\n## {current_ppp:.2f}\n**PPP**")
         else:
-            st.warning(f"**Recent Segment**\n\n### {current_ppp:.2f}\n**PPP**")
+            st.warning(f"**Recent Segment**\n\n## {current_ppp:.2f}\n**PPP**")
         st.caption("Last ~10 possessions")
     
     with comparison_col3:
         ppp_diff = current_ppp - current_overall_ppp
         
         if abs(ppp_diff) < 0.10:
-            st.info(f"**Momentum**\n\n### Stable")
+            st.info(f"**Momentum**\n\n## Stable\n** **")
             st.caption(f"Recent vs Overall: {ppp_diff:+.2f}")
         elif ppp_diff > 0:
-            st.success(f"**Momentum**\n\n### 🔥 Hot")
+            st.success(f"**Momentum**\n\n## 🔥 Hot\n** **")
             st.caption(f"Recent +{ppp_diff:.2f} better!")
         else:
-            st.error(f"**Momentum**\n\n### ❄️ Cool")
+            st.error(f"**Momentum**\n\n## ❄️ Cool\n** **")
             st.caption(f"Recent {ppp_diff:.2f} worse")
     
     st.divider()
