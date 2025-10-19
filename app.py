@@ -5923,10 +5923,6 @@ def display_game_flow_prediction():
                 else:
                     st.caption(f"Last ~{segment_event_count} events (Segment {last_meaningful_segment} of {num_segments})")
                     st.caption(f"📈 Recent trend from events {last_meaningful_start}-{last_meaningful_end}")
-                
-                # Additional note if we skipped empty segments
-                if last_meaningful_segment < num_segments:
-                    st.caption(f"ℹ️ Skipped {num_segments - last_meaningful_segment} empty segment(s)")
             else:
                 st.caption("No meaningful data yet")
         else:
@@ -5944,34 +5940,6 @@ def display_game_flow_prediction():
         else:
             st.error(f"**Momentum**\n\n## ❄️ Cool")
             st.caption(f"Recent {ppp_diff:.2f} worse")
-
-    with st.expander("🔍 DEBUG: PPP Calculation Details", expanded=True):
-        st.write("### Overall Game PPP Calculation")
-        
-        # Overall calculation
-        total_points = st.session_state.home_score
-        total_turnovers = sum(1 for to in st.session_state.turnover_history if to.get('team') == 'home')
-        
-        total_fga = 0
-        total_fta = 0
-        for score_event in st.session_state.score_history:
-            if score_event.get('team') == 'home' and score_event.get('attempted', True):
-                shot_type = score_event.get('shot_type', 'field_goal')
-                if shot_type in ['field_goal', 'three_pointer']:
-                    total_fga += 1
-                elif shot_type == 'free_throw':
-                    total_fta += 1
-        
-        estimated_possessions = total_fga + total_turnovers + (0.44 * total_fta)
-        current_overall_ppp = (total_points / estimated_possessions) if estimated_possessions > 0 else 0
-        
-        st.write(f"**Total Points:** {total_points}")
-        st.write(f"**Total FGA:** {total_fga}")
-        st.write(f"**Total FTA:** {total_fta}")
-        st.write(f"**Total Turnovers:** {total_turnovers}")
-        st.write(f"**Estimated Possessions:** {estimated_possessions:.2f}")
-        st.write(f"**Formula:** {total_points} ÷ ({total_fga} + {total_turnovers} + 0.44×{total_fta})")
-        st.write(f"**Overall PPP:** {current_overall_ppp:.4f}")
         
         st.divider()
         
