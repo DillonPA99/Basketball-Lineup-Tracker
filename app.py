@@ -5884,7 +5884,29 @@ def display_game_flow_prediction():
             st.info(f"**Recent Segment**\n\n## {current_ppp:.2f} PPP")
         else:
             st.warning(f"**Recent Segment**\n\n## {current_ppp:.2f} PPP")
-        st.caption("Last ~10 possessions")
+        
+        # Calculate segment details for context
+        total_events = len(st.session_state.score_history)
+        segment_size = max(5, total_events // 4)
+        num_segments = (total_events + segment_size - 1) // segment_size
+        
+        # Determine which events are in the recent segment
+        if total_events > 0:
+            last_segment_start = ((num_segments - 1) * segment_size) + 1
+            last_segment_end = total_events
+            segment_event_count = last_segment_end - last_segment_start + 1
+            
+            st.caption(f"Last ~{segment_event_count} events (Segment {num_segments} of {num_segments})")
+            
+            # Add helpful context about what this means
+            if segment_event_count < 10:
+                st.caption(f"⚠️ Small sample - includes events {last_segment_start}-{last_segment_end}")
+            elif segment_event_count >= 15:
+                st.caption(f"📊 Analyzing events {last_segment_start}-{last_segment_end}")
+            else:
+                st.caption(f"📈 Recent trend from events {last_segment_start}-{last_segment_end}")
+        else:
+            st.caption("Last ~10 possessions")
     
     with comparison_col3:
         ppp_diff = current_ppp - current_overall_ppp
