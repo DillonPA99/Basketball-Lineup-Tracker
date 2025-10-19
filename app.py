@@ -5844,7 +5844,7 @@ def display_game_flow_prediction():
     
     st.divider()
 
-    st.subheader("📊 Efficiency Comparison")
+    st.write("📊 Efficiency Comparison")
     
     # Use 3 equal columns for better spacing
     comparison_col1, comparison_col2, comparison_col3 = st.columns(3)
@@ -5890,13 +5890,13 @@ def display_game_flow_prediction():
         ppp_diff = current_ppp - current_overall_ppp
         
         if abs(ppp_diff) < 0.10:
-            st.info(f"**Momentum**\n\n## Stable")
+            st.info(f"**Momentum**\n\n### Stable")
             st.caption(f"Recent vs Overall: {ppp_diff:+.2f}")
         elif ppp_diff > 0:
-            st.success(f"**Momentum**\n\n## 🔥 Hot")
+            st.success(f"**Momentum**\n\n### 🔥 Hot")
             st.caption(f"Recent +{ppp_diff:.2f} better!")
         else:
-            st.error(f"**Momentum**\n\n## ❄️ Cool")
+            st.error(f"**Momentum**\n\n### ❄️ Cool")
             st.caption(f"Recent {ppp_diff:.2f} worse")
     
     st.divider()
