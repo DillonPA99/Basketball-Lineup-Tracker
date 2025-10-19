@@ -5890,21 +5890,45 @@ def display_game_flow_prediction():
         segment_size = max(5, total_events // 4)
         num_segments = (total_events + segment_size - 1) // segment_size
         
-        # Determine which events are in the recent segment
+        # Find the last non-empty segment with meaningful data
         if total_events > 0:
-            last_segment_start = ((num_segments - 1) * segment_size) + 1
-            last_segment_end = total_events
-            segment_event_count = last_segment_end - last_segment_start + 1
+            last_meaningful_segment = None
+            last_meaningful_start = 0
+            last_meaningful_end = 0
             
-            st.caption(f"Last ~{segment_event_count} events (Segment {num_segments} of {num_segments})")
+            for seg_num in range(num_segments - 1, -1, -1):
+                segment_start = seg_num * segment_size
+                segment_end = min(segment_start + segment_size, total_events)
+                segment_scores = st.session_state.score_history[segment_start:segment_end]
+                
+                # Check if segment has meaningful home team data
+                has_data = any(s.get('team') == 'home' and s.get('attempted', True) for s in segment_scores)
+                
+                if has_data:
+                    last_meaningful_segment = seg_num + 1
+                    last_meaningful_start = segment_start + 1  # +1 for human-readable numbering
+                    last_meaningful_end = segment_end
+                    break
             
-            # Add helpful context about what this means
-            if segment_event_count < 10:
-                st.caption(f"⚠️ Small sample - includes events {last_segment_start}-{last_segment_end}")
-            elif segment_event_count >= 15:
-                st.caption(f"📊 Analyzing events {last_segment_start}-{last_segment_end}")
+            if last_meaningful_segment:
+                segment_event_count = last_meaningful_end - last_meaningful_start + 1
+                
+                # Add helpful context about what this means
+                if segment_event_count < 10:
+                    st.caption(f"Last ~{segment_event_count} events (Segment {last_meaningful_segment} of {num_segments})")
+                    st.caption(f"⚠️ Small sample - includes events {last_meaningful_start}-{last_meaningful_end}")
+                elif segment_event_count >= 15:
+                    st.caption(f"Last ~{segment_event_count} events (Segment {last_meaningful_segment} of {num_segments})")
+                    st.caption(f"📊 Analyzing events {last_meaningful_start}-{last_meaningful_end}")
+                else:
+                    st.caption(f"Last ~{segment_event_count} events (Segment {last_meaningful_segment} of {num_segments})")
+                    st.caption(f"📈 Recent trend from events {last_meaningful_start}-{last_meaningful_end}")
+                
+                # Additional note if we skipped empty segments
+                if last_meaningful_segment < num_segments:
+                    st.caption(f"ℹ️ Skipped {num_segments - last_meaningful_segment} empty segment(s)")
             else:
-                st.caption(f"📈 Recent trend from events {last_segment_start}-{last_segment_end}")
+                st.caption("No meaningful data yet")
         else:
             st.caption("Last ~10 possessions")
     
