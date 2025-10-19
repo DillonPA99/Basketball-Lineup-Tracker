@@ -3759,7 +3759,7 @@ def display_lineup_recommendation():
                 st.error(f"Error setting lineup: {message}")
 
 
-def get_recent_possessions_detail(num_possessions=10):
+def get_recent_possessions_detail(num_possessions=20):  # Changed from 10 to 20
     """
     Get details about recent possessions for transparency in AI calculations.
     Returns list of possession details in reverse chronological order.
@@ -3799,7 +3799,7 @@ def get_recent_possessions_detail(num_possessions=10):
         })
     
     return possession_details
-
+    
 def calculate_lineup_defensive_rating():
     """Calculate time-based defensive rating for each 5-man lineup combination - UPDATED VERSION."""
     lineup_defensive_ratings = {}
@@ -6613,7 +6613,7 @@ def display_possession_details():
     
     st.subheader("📋 Recent Possessions Analyzed")
     
-    possession_details = get_recent_possessions_detail(10)
+    possession_details = get_recent_possessions_detail(20)  # Changed from 10 to 20
     
     if possession_details:
         st.info(f"Showing last {len(possession_details)} possessions used for calculations")
