@@ -9874,6 +9874,8 @@ with tab2:
 # ------------------------------------------------------------------
 # Replace the Tab 3 section with this tablet-optimized version:
 
+# Replace the Tab 3 section with this version:
+
 with tab3:
     st.header("🤖 AI Game Analysis")
     
@@ -9914,6 +9916,9 @@ with tab3:
             """)
         st.stop()
     
+    # EFFICIENCY COMPARISON AT THE TOP (right after status)
+    display_efficiency_comparison()
+    
     st.divider()
     
     # Main Content - Context-aware
@@ -9932,11 +9937,7 @@ with tab3:
             
             st.divider()
             
-            # Stack everything vertically for tablet - no columns!
-            display_efficiency_comparison()
-            
-            st.divider()
-            
+            # Possession details at bottom
             display_possession_details()
         
         with tab2:
@@ -9944,12 +9945,8 @@ with tab3:
             display_quarter_breakdown(summary)
     
     else:
-        # Early game: Full-width vertical stack (tablet-friendly)
+        # Early game: Efficiency at top, predictions below
         display_game_flow_prediction()
-        
-        st.divider()
-        
-        display_efficiency_comparison()
         
         st.divider()
         
