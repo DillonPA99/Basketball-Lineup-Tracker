@@ -5890,13 +5890,13 @@ def display_game_flow_prediction():
         ppp_diff = current_ppp - current_overall_ppp
         
         if abs(ppp_diff) < 0.10:
-            st.info(f"**Momentum**\n\n## Stable\n** **")
+            st.info(f"**Momentum**\n\n## Stable\n****")
             st.caption(f"Recent vs Overall: {ppp_diff:+.2f}")
         elif ppp_diff > 0:
-            st.success(f"**Momentum**\n\n## 🔥 Hot\n** **")
+            st.success(f"**Momentum**\n\n## 🔥 Hot\n****")
             st.caption(f"Recent +{ppp_diff:.2f} better!")
         else:
-            st.error(f"**Momentum**\n\n## ❄️ Cool\n** **")
+            st.error(f"**Momentum**\n\n## ❄️ Cool\n****")
             st.caption(f"Recent {ppp_diff:.2f} worse")
     
     st.divider()
