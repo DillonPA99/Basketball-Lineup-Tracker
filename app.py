@@ -5868,22 +5868,22 @@ def display_game_flow_prediction():
         current_overall_ppp = (total_points / estimated_possessions) if estimated_possessions > 0 else 0
         
         if current_overall_ppp >= 1.10:
-            st.success(f"**Overall Game**\n\n## {current_overall_ppp:.2f}\nPPP")
+            st.success(f"**Overall Game**\n\n### {current_overall_ppp:.2f}\nPPP")
         elif current_overall_ppp >= 1.00:
-            st.info(f"**Overall Game**\n\n## {current_overall_ppp:.2f}\nPPP")
+            st.info(f"**Overall Game**\n\n### {current_overall_ppp:.2f}\nPPP")
         else:
-            st.warning(f"**Overall Game**\n\n## {current_overall_ppp:.2f}\nPPP")
+            st.warning(f"**Overall Game**\n\n### {current_overall_ppp:.2f}\nPPP")
         st.caption("Average across all possessions")
     
     with comparison_col2:
         eff_trend, current_ppp, starting_ppp = calculate_scoring_efficiency_trend()
         
         if current_ppp >= 1.10:
-            st.success(f"**Recent Segment**\n\n## {current_ppp:.2f}\nPPP")
+            st.success(f"**Recent Segment**\n\n### {current_ppp:.2f}\nPPP")
         elif current_ppp >= 1.00:
-            st.info(f"**Recent Segment**\n\n## {current_ppp:.2f}\nPPP")
+            st.info(f"**Recent Segment**\n\n### {current_ppp:.2f}\nPPP")
         else:
-            st.warning(f"**Recent Segment**\n\n## {current_ppp:.2f}\nPPP")
+            st.warning(f"**Recent Segment**\n\n### {current_ppp:.2f}\nPPP")
         st.caption("Last ~10 possessions")
     
     with comparison_col3:
