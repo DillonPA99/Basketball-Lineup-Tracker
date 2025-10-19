@@ -3759,38 +3759,15 @@ def display_lineup_recommendation():
                 st.error(f"Error setting lineup: {message}")
 
 
-def get_recent_possessions_detail(num_possessions=None):
+def get_recent_possessions_detail(num_possessions=10):
     """
     Get details about recent possessions for transparency in AI calculations.
-    Uses the SAME segment logic as calculate_scoring_efficiency_trend() for consistency.
     Returns list of possession details in reverse chronological order.
     """
     if not st.session_state.score_history:
         return []
     
-    # ← NEW: Match the segment calculation logic from calculate_scoring_efficiency_trend()
-    if num_possessions is None:
-        total_events = len(st.session_state.score_history)
-        segment_size = max(5, total_events // 4)
-        
-        # Get the last segment of HOME possessions
-        home_scores = [e for e in st.session_state.score_history if e.get('team') == 'home']
-        
-        # Calculate how many HOME possessions are in the last segment
-        # We need to work backwards from total_events to find the segment boundary
-        segment_start_idx = (total_events // segment_size) * segment_size
-        if segment_start_idx >= total_events:
-            segment_start_idx = total_events - segment_size
-        
-        # Get HOME possessions that fall within the last segment
-        last_segment_scores = st.session_state.score_history[segment_start_idx:]
-        home_in_segment = [e for e in last_segment_scores if e.get('team') == 'home']
-        
-        recent_scores = home_in_segment
-    else:
-        # Manual override - use specific number
-        home_scores = [e for e in st.session_state.score_history if e.get('team') == 'home']
-        recent_scores = home_scores[-num_possessions:]
+    recent_scores = st.session_state.score_history[-num_possessions:]
     
     possession_details = []
     for i, score in enumerate(recent_scores):
@@ -3799,9 +3776,9 @@ def get_recent_possessions_detail(num_possessions=None):
         
         # Determine result
         if score.get('made', True) and score.get('points', 0) > 0:
-            result = f"✅ HOME made {score['points']}pts"
+            result = f"✅ {score['team'].upper()} made {score['points']}pts"
         else:
-            result = f"❌ HOME missed"
+            result = f"❌ {score['team'].upper()} missed"
         
         # Get shot type
         shot_type_map = {
@@ -3815,14 +3792,14 @@ def get_recent_possessions_detail(num_possessions=None):
             'Possession': f"#{possession_num}",
             'Quarter': score.get('quarter', 'Unknown'),
             'Time': score.get('game_time', 'Unknown'),
-            'Team': 'HOME',
+            'Team': score['team'].upper(),
             'Type': shot_type,
             'Result': result,
             'Points': score.get('points', 0) if score.get('made', True) else 0
         })
     
     return possession_details
-    
+
 def calculate_lineup_defensive_rating():
     """Calculate time-based defensive rating for each 5-man lineup combination - UPDATED VERSION."""
     lineup_defensive_ratings = {}
@@ -6595,17 +6572,10 @@ def display_possession_details():
     
     st.subheader("📋 Recent Possessions Analyzed")
     
-    # ← NEW: Calculate segment size to show user
-    total_events = len(st.session_state.score_history)
-    segment_size = max(5, total_events // 4)
-    
-    # Get HOME possessions in last segment
-    possession_details = get_recent_possessions_detail()  # ← No num_possessions parameter = use segment logic
+    possession_details = get_recent_possessions_detail(10)
     
     if possession_details:
-        # ← NEW: Show dynamic message based on actual segment
-        home_poss_count = len(possession_details)
-        st.info(f"Showing last {home_poss_count} HOME possessions used for Recent Segment PPP calculation (segment size: {segment_size} total events)")
+        st.info(f"Showing last {len(possession_details)} possessions used for calculations")
         
         possession_df = pd.DataFrame(possession_details)
         
@@ -6628,60 +6598,20 @@ def display_possession_details():
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            st.metric("Home Possessions", home_poss_count)
+            home_poss = len([p for p in possession_details if p['Team'] == 'HOME'])
+            st.metric("Home Possessions", home_poss)
         
         with col2:
-            st.metric("Away Possessions", "N/A")
-            st.caption("(Not used in HOME PPP calculation)")
+            away_poss = len([p for p in possession_details if p['Team'] == 'AWAY'])
+            st.metric("Away Possessions", away_poss)
         
         with col3:
             total_pts = sum(p['Points'] for p in possession_details)
-            st.metric("HOME Points", total_pts)
-        
-        # ← NEW: Show the actual PPP calculation
-        with st.expander("🔢 See PPP Calculation Breakdown"):
-            home_fga = 0
-            home_fta = 0
-            home_points = 0
-            
-            for p in possession_details:
-                home_points += p['Points']
-                if p['Type'] in ['2PT', '3PT']:
-                    home_fga += 1
-                elif p['Type'] == 'FT':
-                    home_fta += 1
-            
-            # Count turnovers in this segment (if any)
-            segment_start_idx = (total_events // segment_size) * segment_size
-            if segment_start_idx >= total_events:
-                segment_start_idx = total_events - segment_size
-            
-            home_turnovers = 0
-            for to in st.session_state.turnover_history:
-                if to.get('team') == 'home':
-                    to_seq = to.get('event_sequence', 0)
-                    segment_start_seq = st.session_state.score_history[segment_start_idx].get('event_sequence', 0) if segment_start_idx < len(st.session_state.score_history) else 0
-                    segment_end_seq = st.session_state.score_history[-1].get('event_sequence', float('inf'))
-                    
-                    if segment_start_seq <= to_seq <= segment_end_seq:
-                        home_turnovers += 1
-            
-            estimated_poss = home_fga + home_turnovers + (0.44 * home_fta)
-            calculated_ppp = home_points / estimated_poss if estimated_poss > 0 else 0
-            
-            st.write("**Formula: PPP = Points ÷ Estimated Possessions**")
-            st.write(f"- **Field Goal Attempts (FGA):** {home_fga}")
-            st.write(f"- **Free Throw Attempts (FTA):** {home_fta} × 0.44 = {home_fta * 0.44:.2f}")
-            st.write(f"- **Turnovers (TO):** {home_turnovers}")
-            st.write(f"- **Estimated Possessions:** {home_fga} + {home_turnovers} + {home_fta * 0.44:.2f} = **{estimated_poss:.2f}**")
-            st.write(f"- **Points:** {home_points}")
-            st.write(f"- **PPP:** {home_points} ÷ {estimated_poss:.2f} = **{calculated_ppp:.2f}**")
+            st.metric("Total Points", total_pts)
         
         st.caption("""
-        **Note:** Recent Segment uses the last quarter of all game events.
-        - Segment size auto-adjusts based on total game events (minimum 5)
-        - Only HOME team possessions are used for YOUR efficiency metrics
-        - Free throws are weighted at 0.44 possessions each (standard NBA formula)
+        **Note:** These possessions are weighted by recency in momentum calculations.
+        Most recent possessions have ~2x the impact of earliest shown.
         """)
     else:
         st.info("No possessions recorded yet")
