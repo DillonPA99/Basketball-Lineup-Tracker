@@ -3767,7 +3767,9 @@ def get_recent_possessions_detail(num_possessions=10):
     if not st.session_state.score_history:
         return []
     
-    recent_scores = st.session_state.score_history[-num_possessions:]
+    # ← FIX: Filter to HOME team possessions only, then take last N
+    home_scores = [e for e in st.session_state.score_history if e.get('team') == 'home']
+    recent_scores = home_scores[-num_possessions:]
     
     possession_details = []
     for i, score in enumerate(recent_scores):
@@ -3776,9 +3778,9 @@ def get_recent_possessions_detail(num_possessions=10):
         
         # Determine result
         if score.get('made', True) and score.get('points', 0) > 0:
-            result = f"✅ {score['team'].upper()} made {score['points']}pts"
+            result = f"✅ HOME made {score['points']}pts"
         else:
-            result = f"❌ {score['team'].upper()} missed"
+            result = f"❌ HOME missed"
         
         # Get shot type
         shot_type_map = {
@@ -3792,7 +3794,7 @@ def get_recent_possessions_detail(num_possessions=10):
             'Possession': f"#{possession_num}",
             'Quarter': score.get('quarter', 'Unknown'),
             'Time': score.get('game_time', 'Unknown'),
-            'Team': score['team'].upper(),
+            'Team': 'HOME',  # ← Always HOME now
             'Type': shot_type,
             'Result': result,
             'Points': score.get('points', 0) if score.get('made', True) else 0
