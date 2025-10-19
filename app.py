@@ -5919,7 +5919,6 @@ def display_game_flow_prediction():
                     st.caption(f"⚠️ Small sample - includes events {last_meaningful_start}-{last_meaningful_end}")
                 elif segment_event_count >= 15:
                     st.caption(f"Last ~{segment_event_count} events (Segment {last_meaningful_segment} of {num_segments})")
-                    st.caption(f"📊 Analyzing events {last_meaningful_start}-{last_meaningful_end}")
                 else:
                     st.caption(f"Last ~{segment_event_count} events (Segment {last_meaningful_segment} of {num_segments})")
                     st.caption(f"📈 Recent trend from events {last_meaningful_start}-{last_meaningful_end}")
