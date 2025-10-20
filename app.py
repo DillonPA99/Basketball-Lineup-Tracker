@@ -6542,7 +6542,7 @@ def display_game_flow_prediction():
                         actions.append('⚡ Drive to rim aggressively - draw fouls and get to FT line')
                         actions.append('Create easier shots - stop settling for contested jumpers')
                 
-                actions.append('Run more structured offensive sets')
+                actions.append('Focus on getting an easy basket')
                 
                 if hot_players:
                     actions.append(f'🔥 Feature {", ".join(hot_players[:2])} more (efficient tonight)')
