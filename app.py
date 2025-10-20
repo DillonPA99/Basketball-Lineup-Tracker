@@ -3759,10 +3759,10 @@ def display_lineup_recommendation():
                 st.error(f"Error setting lineup: {message}")
 
 
-def get_recent_possessions_detail(num_possessions=20):  # Changed from 10 to 20
+def get_recent_possessions_detail(num_possessions=20):
     """
     Get details about recent possessions for transparency in AI calculations.
-    Returns list of possession details in reverse chronological order.
+    Returns list of possession details in reverse chronological order with momentum impact.
     """
     if not st.session_state.score_history:
         return []
@@ -3773,6 +3773,23 @@ def get_recent_possessions_detail(num_possessions=20):  # Changed from 10 to 20
     for i, score in enumerate(recent_scores):
         # Calculate possession number (counting backwards)
         possession_num = len(recent_scores) - i
+        
+        # Calculate recency weight (same formula used in momentum calculation)
+        recency_weight = 0.5 + (0.5 * (i + 1) / len(recent_scores))
+        
+        # Calculate momentum impact for this possession
+        if score.get('made', True) and score.get('points', 0) > 0:
+            # Made shot - positive for scoring team
+            if score['team'] == 'home':
+                momentum_impact = score['points'] * recency_weight
+            else:
+                momentum_impact = -score['points'] * recency_weight
+        else:
+            # Missed shot - negative for shooting team (smaller impact)
+            if score['team'] == 'home':
+                momentum_impact = -0.5 * recency_weight
+            else:
+                momentum_impact = 0.5 * recency_weight
         
         # Determine result
         if score.get('made', True) and score.get('points', 0) > 0:
@@ -3795,7 +3812,9 @@ def get_recent_possessions_detail(num_possessions=20):  # Changed from 10 to 20
             'Team': score['team'].upper(),
             'Type': shot_type,
             'Result': result,
-            'Points': score.get('points', 0) if score.get('made', True) else 0
+            'Points': score.get('points', 0) if score.get('made', True) else 0,
+            'Momentum Impact': f"{momentum_impact:+.2f}",
+            'Weight': f"{recency_weight:.2f}"
         })
     
     return possession_details
@@ -6613,7 +6632,7 @@ def display_possession_details():
     
     st.subheader("📋 Recent Possessions Analyzed")
     
-    possession_details = get_recent_possessions_detail(20)  # Changed from 10 to 20
+    possession_details = get_recent_possessions_detail(20)
     
     if possession_details:
         st.info(f"Showing last {len(possession_details)} possessions used for calculations")
@@ -6627,9 +6646,28 @@ def display_possession_details():
                 return 'background-color: #FFB6C1; color: black'
             return ''
         
+        def color_momentum_impact(val):
+            """Color code momentum impact values."""
+            try:
+                numeric_val = float(val)
+                if numeric_val > 2:
+                    return 'background-color: #2d5016; color: white'  # Dark green - strong positive
+                elif numeric_val > 0:
+                    return 'background-color: #90EE90; color: black'  # Light green - positive
+                elif numeric_val == 0:
+                    return 'background-color: #FFFACD; color: black'  # Light yellow - neutral
+                elif numeric_val > -2:
+                    return 'background-color: #FFB6C1; color: black'  # Light red - negative
+                else:
+                    return 'background-color: #FF0000; color: white'  # Dark red - strong negative
+            except (ValueError, TypeError):
+                return ''
+        
         st.dataframe(
             possession_df.style.applymap(
                 color_possession_result, subset=['Result']
+            ).applymap(
+                color_momentum_impact, subset=['Momentum Impact']
             ),
             use_container_width=True,
             hide_index=True
@@ -6658,9 +6696,35 @@ def display_possession_details():
             away_ppp = (away_points / away_poss) if away_poss > 0 else 0
             st.metric("Away PPP", f"{away_ppp:.2f}")
         
+        # Add momentum breakdown
+        st.write("**Momentum Breakdown:**")
+        momentum_col1, momentum_col2, momentum_col3 = st.columns(3)
+        
+        with momentum_col1:
+            total_momentum = sum(float(p['Momentum Impact']) for p in possession_details)
+            if total_momentum > 5:
+                st.success(f"**Total: {total_momentum:+.1f}** 🔥")
+            elif total_momentum > 0:
+                st.info(f"**Total: {total_momentum:+.1f}** ➡️")
+            elif total_momentum > -5:
+                st.warning(f"**Total: {total_momentum:+.1f}** ⚠️")
+            else:
+                st.error(f"**Total: {total_momentum:+.1f}** ❄️")
+        
+        with momentum_col2:
+            home_momentum = sum(float(p['Momentum Impact']) for p in possession_details if p['Team'] == 'HOME')
+            st.metric("Home Momentum", f"{home_momentum:+.1f}")
+        
+        with momentum_col3:
+            away_momentum = sum(float(p['Momentum Impact']) for p in possession_details if p['Team'] == 'AWAY')
+            st.metric("Away Momentum", f"{away_momentum:+.1f}")
+        
         st.caption("""
-        **Note:** These possessions are weighted by recency in momentum calculations.
-        Most recent possessions have ~2x the impact of earliest shown.
+        **Note:** Momentum Impact shows how each possession affects the game flow calculation.
+        - Positive values favor HOME team
+        - Negative values favor AWAY team
+        - More recent possessions have higher weights (shown in Weight column)
+        - Made shots have bigger impact than misses
         """)
     else:
         st.info("No possessions recorded yet")
