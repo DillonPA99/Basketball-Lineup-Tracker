@@ -6884,6 +6884,15 @@ def display_quick_coaching_tips():
     
     suggestions = get_ai_coaching_suggestion()
     critical_moments = identify_critical_moments()
+
+    # DEBUG - REMOVE AFTER TESTING
+    st.write(f"DEBUG: Found {len(critical_moments)} critical moments")
+    st.write(f"DEBUG: Current quarter: {st.session_state.current_quarter}")
+    st.write(f"DEBUG: Game time: {st.session_state.current_game_time}")
+    st.write(f"DEBUG: Score diff: {st.session_state.home_score - st.session_state.away_score}")
+    if critical_moments:
+        for cm in critical_moments:
+            st.write(f"DEBUG: Moment type: {cm['type']}, urgency: {cm['urgency']}")
     
     # Critical alerts first
     if critical_moments:
