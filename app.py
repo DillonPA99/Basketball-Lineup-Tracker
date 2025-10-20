@@ -6245,6 +6245,76 @@ def display_game_flow_prediction():
                 elif to_rate > 0.2:
                     turnover_prone.append(player_name)
         
+            # ========== ADD THE DEFENSIVE ANALYSIS CODE HERE ==========
+            # Analyze defensive performance
+            best_defenders = []
+            best_def_lineups = []
+            defensive_strengths = []
+            
+            # Individual defensive analysis
+            defensive_stats = calculate_individual_defensive_impact()
+            for player, def_stats in defensive_stats.items():
+                player_name = player.split('(')[0].strip()
+                minutes = def_stats.get('total_minutes_played', 0)
+                
+                if minutes >= 5:  # Minimum 5 minutes played
+                    def_impact_per_min = def_stats.get('defensive_impact_per_minute', 0)
+                    opp_turnovers = def_stats.get('opponent_turnovers', 0)
+                    opp_misses = def_stats.get('opponent_missed_shots', 0)
+                    
+                    # High defensive impact players
+                    if def_impact_per_min >= 1.2:
+                        best_defenders.append({
+                            'name': player_name,
+                            'impact_per_min': def_impact_per_min,
+                            'opp_tos': opp_turnovers,
+                            'opp_misses': opp_misses
+                        })
+                    
+                    # Players good at forcing turnovers
+                    if opp_turnovers >= 2:
+                        defensive_strengths.append(f"{player_name} forcing turnovers")
+                    
+                    # Players good at contesting shots
+                    if opp_misses >= 3:
+                        defensive_strengths.append(f"{player_name} contesting shots")
+            
+            # Sort defenders by impact
+            best_defenders.sort(key=lambda x: x['impact_per_min'], reverse=True)
+            
+            # Lineup defensive analysis
+            lineup_defensive_ratings = calculate_lineup_defensive_rating()
+            if lineup_defensive_ratings:
+                # Find top defensive lineups (minimum 3 minutes)
+                qualified_def_lineups = [(lineup, stats) for lineup, stats in lineup_defensive_ratings.items() 
+                                         if stats['total_minutes'] >= 3]
+                
+                if qualified_def_lineups:
+                    # Sort by defensive impact per minute
+                    qualified_def_lineups.sort(key=lambda x: x[1]['defensive_impact_per_minute'], reverse=True)
+                    
+                    for lineup, stats in qualified_def_lineups[:2]:  # Top 2 defensive lineups
+                        best_def_lineups.append({
+                            'lineup': lineup,
+                            'impact_per_min': stats['defensive_impact_per_minute'],
+                            'opp_tos': stats['total_opponent_turnovers'],
+                            'opp_misses': stats['total_opponent_missed_shots'],
+                            'minutes': stats['total_minutes']
+                        })
+            
+            # Analyze recent defensive performance
+            recent_opp_scores = [s for s in st.session_state.score_history[-10:] if s.get('team') == 'away']
+            recent_opp_makes = sum(1 for s in recent_opp_scores if s.get('made', True) and s.get('points', 0) > 0)
+            recent_opp_misses = sum(1 for s in recent_opp_scores if not s.get('made', True))
+            recent_opp_attempts = len(recent_opp_scores)
+            
+            recent_def_pct = (recent_opp_misses / recent_opp_attempts * 100) if recent_opp_attempts > 0 else 0
+            
+            # Check for recent opponent turnovers
+            recent_opp_tos = [to for to in st.session_state.turnover_history[-5:] if to.get('team') == 'away']
+            forcing_turnovers = len(recent_opp_tos) >= 2  # 2+ turnovers in last 5 events
+            # ========== END OF DEFENSIVE ANALYSIS CODE ==========
+        
         # Parse game time
         try:
             time_parts = st.session_state.current_game_time.split(':')
@@ -6357,6 +6427,26 @@ def display_game_flow_prediction():
             
             if turnover_prone:
                 actions.append(f'⚠️ Limit {turnover_prone[0]}\'s ball-handling (turnover issues)')
+            
+            # DEFENSIVE ADDITIONS
+            actions.append('🛡️ **DEFENSIVE FOCUS:**')
+            
+            if best_defenders:
+                top_defender = best_defenders[0]
+                actions.append(f'✅ Keep {top_defender["name"]} on their best scorer ({top_defender["impact_per_min"]:.1f} def impact/min)')
+            
+            if forcing_turnovers:
+                actions.append('🔥 Keep pressuring - you\'re forcing turnovers!')
+            elif recent_def_pct >= 50:
+                actions.append('✅ Defense is locked in - keep contesting every shot')
+            else:
+                actions.append('⚠️ Tighten up defense - opponent shooting too well')
+            
+            if best_def_lineups and st.session_state.current_lineup:
+                current_lineup_key = " | ".join(sorted(st.session_state.current_lineup))
+                is_best_def = any(lineup['lineup'] == current_lineup_key for lineup in best_def_lineups)
+                if is_best_def:
+                    actions.append('✅ Current lineup is your best defensive unit - stay with them')
             
             actions.extend([
                 'Box out aggressively on defense',
@@ -6493,6 +6583,58 @@ def display_game_flow_prediction():
                 'reasoning': f'{home_tos} turnovers - giving away possessions',
                 'actions': actions
             })
+
+        # SITUATION 7.5: Opponent scoring too efficiently - defensive adjustment needed
+        if not is_late_game and recent_opp_attempts >= 5:
+            recent_opp_fg_pct = (recent_opp_makes / recent_opp_attempts * 100) if recent_opp_attempts > 0 else 0
+            
+            if recent_opp_fg_pct >= 60:  # Opponent shooting 60%+ recently
+                actions = []
+                
+                # Diagnose the defensive problem
+                recent_opp_three_makes = sum(1 for s in recent_opp_scores if s.get('shot_type') == 'three_pointer' and s.get('made', True))
+                recent_opp_two_makes = sum(1 for s in recent_opp_scores if s.get('shot_type') in ['field_goal'] and s.get('made', True))
+                
+                if recent_opp_three_makes >= 2:
+                    actions.append('🚨 Opponent hot from 3PT - close out harder on shooters')
+                    actions.append('Don\'t let them get comfortable looks from deep')
+                
+                if recent_opp_two_makes >= 3:
+                    actions.append('🚨 Opponent getting too many easy baskets at rim')
+                    actions.append('Pack the paint - make them shoot over you')
+                
+                # Suggest best defenders
+                if best_defenders:
+                    actions.append(f'✅ Get {best_defenders[0]["name"]} in the game (best defensive impact)')
+                    if len(best_defenders) > 1:
+                        actions.append(f'Consider lineup with {best_defenders[0]["name"]} and {best_defenders[1]["name"]}')
+                
+                # Suggest best defensive lineup
+                if best_def_lineups:
+                    top_def_lineup = best_def_lineups[0]
+                    lineup_players = [p.split('(')[0].strip() for p in top_def_lineup['lineup'].split(' | ')]
+                    actions.append(f'🛡️ Your best defensive lineup: {", ".join(lineup_players[:3])}...')
+                    actions.append(f'   (Forces {top_def_lineup["opp_tos"]} TOs, {top_def_lineup["opp_misses"]} misses per stint)')
+                
+                # Specific defensive tactics
+                if forcing_turnovers:
+                    actions.append('✅ Keep applying pressure - turnovers are working')
+                else:
+                    actions.append('⚡ Increase defensive intensity - force them into mistakes')
+                
+                actions.extend([
+                    'Contest every shot - hands up on defense',
+                    'Communicate on switches and screens',
+                    'No easy baskets - make them work for everything'
+                ])
+                
+                suggestions.append({
+                    'priority': 'high',
+                    'icon': '🛡️',
+                    'title': 'Tighten Up Defense NOW',
+                    'reasoning': f'Opponent shooting {recent_opp_fg_pct:.0f}% in last {recent_opp_attempts} attempts',
+                    'actions': actions
+                })
         
         # SITUATION 8: Building large lead (early/mid game)
         if current_score_diff > 15 and not is_late_game:
@@ -6560,6 +6702,56 @@ def display_game_flow_prediction():
                 'reasoning': f'Strong positive momentum (+{momentum_score:.0f})',
                 'actions': actions
             })
+
+        # SITUATION 9.5: Defense is dominating - keep it up
+        if recent_def_pct >= 60 and recent_opp_attempts >= 5 and not any(s['title'] == 'Tighten Up Defense NOW' for s in suggestions):
+            actions = []
+            
+            if forcing_turnovers:
+                actions.append(f'🔥 FORCING TURNOVERS - {len(recent_opp_tos)} in recent possessions!')
+            
+            if recent_def_pct >= 70:
+                actions.append(f'🔥 Opponent only {recent_opp_makes}/{recent_opp_attempts} recently - defense is LOCKED IN')
+            else:
+                actions.append(f'✅ Strong defense - opponent {recent_opp_makes}/{recent_opp_attempts} recently')
+            
+            # Highlight defensive stars
+            if best_defenders:
+                top_defender = best_defenders[0]
+                actions.append(f'⭐ {top_defender["name"]} has been a defensive force:')
+                if top_defender['opp_tos'] >= 2:
+                    actions.append(f'   • Forced {top_defender["opp_tos"]} turnovers')
+                if top_defender['opp_misses'] >= 3:
+                    actions.append(f'   • Contested {top_defender["opp_misses"]} shots into misses')
+            
+            # Maintain defensive identity
+            if forcing_turnovers:
+                actions.append('Keep pressuring ball handlers - they\'re panicking')
+            
+            if recent_def_pct >= 70:
+                actions.append('Keep contesting shots - don\'t give them anything easy')
+            
+            actions.extend([
+                'Maintain this defensive intensity',
+                'Keep communicating on rotations',
+                'Stay aggressive - don\'t let up'
+            ])
+            
+            # Show current lineup if it's elite defensively
+            if best_def_lineups and st.session_state.current_lineup:
+                current_lineup_key = " | ".join(sorted(st.session_state.current_lineup))
+                matching_lineup = next((lineup for lineup in best_def_lineups if lineup['lineup'] == current_lineup_key), None)
+                
+                if matching_lineup:
+                    actions.append(f'🛡️ Current lineup: Elite defensive unit ({matching_lineup["impact_per_min"]:.2f} impact/min)')
+            
+            suggestions.append({
+                'priority': 'medium',
+                'icon': '🛡️',
+                'title': 'Defense is Dominating',
+                'reasoning': f'Opponent shooting {(recent_opp_makes/recent_opp_attempts*100):.0f}% - keep it up!',
+                'actions': actions
+            })
         
         # SITUATION 10: No urgent issues (general good play)
         if not suggestions:
@@ -6574,6 +6766,16 @@ def display_game_flow_prediction():
             
             if home_tos <= away_tos:
                 actions.append('✅ Good ball security - maintain focus')
+            
+            # Defensive praise
+            if recent_def_pct >= 50:
+                actions.append(f'🛡️ Solid defense - opponent {recent_opp_makes}/{recent_opp_attempts} recently')
+            
+            if best_defenders and st.session_state.current_lineup:
+                # Check if best defender is on court
+                current_players = [p.split('(')[0].strip() for p in st.session_state.current_lineup]
+                if best_defenders[0]['name'] in current_players:
+                    actions.append(f'✅ {best_defenders[0]["name"]} anchoring defense well')
             
             actions.extend([
                 'Stay focused and disciplined',
