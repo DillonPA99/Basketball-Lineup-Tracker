@@ -6002,7 +6002,7 @@ def display_game_flow_prediction():
 
     with analysis_col2:
         
-        # AI COACHING SUGGESTIONS - CONTEXT AWARE
+# AI COACHING SUGGESTIONS - CONTEXT AWARE
         st.write("**🎯 AI Coaching Suggestions**")
         
         # Get game context
@@ -6011,6 +6011,56 @@ def display_game_flow_prediction():
         momentum_score, momentum_dir = calculate_momentum_score()
         eff_trend, current_ppp, starting_ppp = calculate_scoring_efficiency_trend()
         home_tos, away_tos = get_team_turnovers()
+        
+        # Get player-specific insights
+        top_scorers = get_top_scorers(5)
+        shooting_stats = calculate_player_shooting_stats()
+        individual_plus_minus = calculate_individual_plus_minus()
+        
+        # Find hot/cold players
+        hot_players = []
+        cold_players = []
+        safe_ball_handlers = []
+        turnover_prone = []
+        
+        for player, stats in st.session_state.player_stats.items():
+            player_name = player.split('(')[0].strip()
+            
+            # Hot players: good shooting % and recent points
+            if stats.get('field_goals_attempted', 0) >= 3:
+                fg_pct = stats['field_goals_made'] / stats['field_goals_attempted']
+                if fg_pct >= 0.5 and stats.get('points', 0) >= 6:
+                    hot_players.append(player_name)
+            
+            # Cold players: poor shooting
+            if stats.get('field_goals_attempted', 0) >= 4:
+                fg_pct = stats['field_goals_made'] / stats['field_goals_attempted']
+                if fg_pct < 0.30:
+                    cold_players.append(player_name)
+            
+            # Safe ball handlers: low turnovers with minutes
+            minutes_played = calculate_player_minutes_played(player)
+            turnovers = st.session_state.player_turnovers.get(player, 0)
+            if minutes_played >= 5:
+                to_rate = turnovers / minutes_played if minutes_played > 0 else 0
+                if to_rate < 0.1:
+                    safe_ball_handlers.append(player_name)
+                elif to_rate > 0.2:
+                    turnover_prone.append(player_name)
+        
+        # Find best 3PT shooters
+        three_pt_shooters = []
+        for player, stats in shooting_stats.items():
+            if stats.get('three_pt_attempted', 0) >= 2 and stats.get('three_pt_percentage', 0) >= 35:
+                three_pt_shooters.append(player.split('(')[0].strip())
+        
+        # Find best +/- players currently on court
+        best_pm_on_court = []
+        if st.session_state.current_lineup:
+            for player in st.session_state.current_lineup:
+                pm = individual_plus_minus.get(player, {}).get('plus_minus', 0)
+                if pm > 5:
+                    best_pm_on_court.append(player.split('(')[0].strip())
         
         # Parse game time
         try:
@@ -6023,163 +6073,274 @@ def display_game_flow_prediction():
             total_seconds = 720
         
         current_quarter = st.session_state.current_quarter
-        is_late_game = current_quarter in ['Q4', 'OT1', 'OT2'] and total_seconds < 300  # Less than 5 min
-        is_crunch_time = current_quarter in ['Q4', 'OT1', 'OT2'] and total_seconds < 120  # Less than 2 min
+        is_late_game = current_quarter in ['Q4', 'OT1', 'OT2'] and total_seconds < 300
+        is_crunch_time = current_quarter in ['Q4', 'OT1', 'OT2'] and total_seconds < 120
         
         suggestions = []
         
         # SITUATION 1: Late game, trailing by small margin (comeback scenario)
         if is_late_game and -6 <= current_score_diff < 0:
+            actions = [
+                'Apply full-court pressure defense',
+                'Force opponent into rushed decisions',
+                'Push pace on offense after steals'
+            ]
+            
+            # Add specific player recommendations
+            if safe_ball_handlers:
+                actions.append(f'✅ Trust {", ".join(safe_ball_handlers[:2])} to handle pressure (low turnover rate)')
+            
+            if hot_players:
+                actions.append(f'🔥 Look for {", ".join(hot_players[:2])} in transition (shooting well today)')
+            
+            actions.append('Consider fouling if time critical (bonus situation)')
+            
             suggestions.append({
                 'priority': 'high',
                 'icon': '🔥',
                 'title': 'Force Turnovers for Quick Points',
                 'reasoning': f'Down {abs(current_score_diff)} with {minutes_left}:{seconds_left:02d} left',
-                'actions': [
-                    'Apply full-court pressure defense',
-                    'Force opponent into rushed decisions',
-                    'Push pace on offense after steals',
-                    'Consider fouling if time is critical (bonus situation)'
-                ]
+                'actions': actions
             })
         
         # SITUATION 2: Late game, trailing by larger margin (need 3s)
         elif is_late_game and current_score_diff < -6:
+            actions = []
+            
+            if three_pt_shooters:
+                actions.append(f'🎯 Run plays for {", ".join(three_pt_shooters[:2])} (best 3PT% today)')
+                actions.append(f'Get {three_pt_shooters[0]} open looks - they\'re hitting today')
+            else:
+                actions.append('Run plays for open three-pointers')
+                actions.append('Get best shooters quality looks')
+            
+            actions.extend([
+                'Attack baseline for kick-out opportunities',
+                'Consider intentional fouls to stop clock (if under 2 min)'
+            ])
+            
+            if cold_players:
+                actions.append(f'⚠️ Avoid forcing shots with {", ".join(cold_players[:1])} (cold tonight)')
+            
             suggestions.append({
                 'priority': 'high',
                 'icon': '🎯',
                 'title': 'Prioritize Three-Point Attempts',
                 'reasoning': f'Down {abs(current_score_diff)} - need quick scoring',
-                'actions': [
-                    'Run plays for open three-pointers',
-                    'Get best shooters quality looks',
-                    'Attack baseline for kick-out opportunities',
-                    'Consider intentional fouls to stop clock (if under 2 min)'
-                ]
+                'actions': actions
             })
         
         # SITUATION 3: Late game, leading (protect lead)
         elif is_late_game and current_score_diff > 3:
+            actions = [
+                'Value each possession - no rushed shots',
+                'Work clock down to 10-15 seconds before shooting',
+                'Take high-percentage shots only'
+            ]
+            
+            if safe_ball_handlers:
+                actions.append(f'✅ {", ".join(safe_ball_handlers[:2])} should handle the ball (reliable)')
+            
+            if turnover_prone:
+                actions.append(f'⚠️ Limit {turnover_prone[0]}\'s ball-handling (turnover issues today)')
+            
+            actions.extend([
+                'Box out aggressively on defense',
+                'Be ready for opponent pressure/fouls'
+            ])
+            
             suggestions.append({
                 'priority': 'high',
                 'icon': '🛡️',
                 'title': 'Protect the Lead',
                 'reasoning': f'Up {current_score_diff} with {minutes_left}:{seconds_left:02d} left',
-                'actions': [
-                    'Value each possession - no rushed shots',
-                    'Work clock down to 10-15 seconds before shooting',
-                    'Take high-percentage shots only',
-                    'Box out aggressively on defense',
-                    'Be ready for opponent pressure/fouls'
-                ]
+                'actions': actions
             })
         
         # SITUATION 4: Crunch time, close game
         elif is_crunch_time and abs(current_score_diff) <= 3:
+            actions = []
+            
+            if safe_ball_handlers:
+                actions.append(f'✅ Give ball to {safe_ball_handlers[0]} (best decision-maker today)')
+            else:
+                actions.append('Get ball to best decision-makers')
+            
+            if hot_players:
+                actions.append(f'🔥 Run plays through {hot_players[0]} (hot hand tonight)')
+            
+            actions.extend([
+                'Run proven set plays - no improvising',
+                'Lock down defensively - no easy baskets'
+            ])
+            
+            if best_pm_on_court:
+                actions.append(f'✅ Keep {", ".join(best_pm_on_court[:2])} on court (positive +/- today)')
+            
+            actions.append('Have timeout ready for last-possession scenarios')
+            
             suggestions.append({
                 'priority': 'high',
                 'icon': '⚡',
                 'title': 'Execute in Crunch Time',
                 'reasoning': f'Game within {abs(current_score_diff)} pts - every possession critical',
-                'actions': [
-                    'Get ball to best decision-makers',
-                    'Run proven set plays - no improvising',
-                    'Lock down defensively - no easy baskets',
-                    'Be aggressive but smart - limit turnovers',
-                    'Have timeout ready for last-possession scenarios'
-                ]
+                'actions': actions
             })
         
         # SITUATION 5: Strong negative momentum
         if momentum_dir in ["strong_negative"] and not is_crunch_time:
+            actions = [
+                'Call timeout immediately to reset'
+            ]
+            
+            # Suggest lineup changes based on +/-
+            worst_pm_players = sorted(
+                [(p, individual_plus_minus.get(p, {}).get('plus_minus', 0)) 
+                 for p in st.session_state.current_lineup],
+                key=lambda x: x[1]
+            )
+            
+            if worst_pm_players and worst_pm_players[0][1] < -3:
+                worst_player = worst_pm_players[0][0].split('(')[0].strip()
+                actions.append(f'⚠️ Consider subbing out {worst_player} (struggling with -{abs(worst_pm_players[0][1])} +/-)')
+            
+            actions.extend([
+                'Slow tempo down - control the game'
+            ])
+            
+            if hot_players:
+                actions.append(f'🔥 Get {hot_players[0]} an easy look to build confidence')
+            else:
+                actions.append('Get an easy basket to build confidence')
+            
             suggestions.append({
                 'priority': 'high',
                 'icon': '🛑',
                 'title': 'Stop Opponent Momentum NOW',
                 'reasoning': f'Opponent on {abs(momentum_score):.0f} point run',
-                'actions': [
-                    'Call timeout immediately to reset',
-                    'Consider lineup change - fresh energy needed',
-                    'Slow tempo down - control the game',
-                    'Get an easy basket to build confidence'
-                ]
+                'actions': actions
             })
         
         # SITUATION 6: Declining offensive efficiency
         if eff_trend == "declining" and not any(s['title'] in ['Force Turnovers for Quick Points', 'Prioritize Three-Point Attempts'] for s in suggestions):
             ppp_drop = starting_ppp - current_ppp
             if ppp_drop > 0.15:
+                actions = [
+                    'Run more structured offensive sets',
+                    'Be patient - find better shots'
+                ]
+                
+                if hot_players:
+                    actions.append(f'🔥 Feature {", ".join(hot_players[:2])} more (efficient tonight)')
+                
+                if cold_players:
+                    actions.append(f'⚠️ {cold_players[0]} needs better looks (forcing shots)')
+                
+                actions.append('Attack the rim more - draw fouls')
+                
                 suggestions.append({
                     'priority': 'medium',
                     'icon': '📉',
                     'title': 'Improve Shot Quality',
                     'reasoning': f'Offensive efficiency dropped {ppp_drop:.2f} PPP',
-                    'actions': [
-                        'Run more structured offensive sets',
-                        'Be patient - find better shots',
-                        'Attack the rim more - draw fouls',
-                        'Consider different offensive spacing'
-                    ]
+                    'actions': actions
                 })
         
         # SITUATION 7: Turnover problems
         if home_tos >= 5 and home_tos > away_tos + 3:
+            actions = [
+                'Slow down - make simple, safe passes'
+            ]
+            
+            if turnover_prone:
+                actions.append(f'⚠️ {", ".join(turnover_prone[:2])} need to value the ball (multiple TOs today)')
+            
+            if safe_ball_handlers:
+                actions.append(f'✅ Run offense through {", ".join(safe_ball_handlers[:2])} (secure handlers)')
+            
+            actions.extend([
+                'Avoid forcing risky passes',
+                'Use timeouts to settle team if rushing'
+            ])
+            
             suggestions.append({
                 'priority': 'medium',
                 'icon': '🔴',
                 'title': 'Reduce Turnovers',
                 'reasoning': f'{home_tos} turnovers - giving away possessions',
-                'actions': [
-                    'Slow down - make simple, safe passes',
-                    'Avoid forcing risky passes',
-                    'Use timeouts to settle team if rushing',
-                    'Consider ball-handlers with fewer turnovers'
-                ]
+                'actions': actions
             })
         
         # SITUATION 8: Building large lead (early/mid game)
         if current_score_diff > 15 and not is_late_game:
+            actions = [
+                'Keep pressure on - don\'t let them back in'
+            ]
+            
+            if best_pm_on_court:
+                actions.append(f'✅ {", ".join(best_pm_on_court[:2])} are dominating (high +/-) - keep them in')
+            
+            actions.extend([
+                'Consider rotating in bench players for experience',
+                'Stay aggressive but smart',
+                'Build good habits for later in game'
+            ])
+            
             suggestions.append({
                 'priority': 'low',
                 'icon': '✅',
                 'title': 'Maintain Dominance',
                 'reasoning': f'Commanding {current_score_diff} point lead',
-                'actions': [
-                    'Keep pressure on - don\'t let them back in',
-                    'Consider rotating in bench players',
-                    'Stay aggressive but smart',
-                    'Build good habits for later in game'
-                ]
+                'actions': actions
             })
         
         # SITUATION 9: Strong positive momentum (capitalize)
         if momentum_dir in ["strong_positive"] and not any(s['priority'] == 'high' for s in suggestions):
+            actions = []
+            
+            if best_pm_on_court:
+                actions.append(f'✅ Keep current lineup: {", ".join(best_pm_on_court[:3])} are on fire')
+            else:
+                actions.append('Keep current lineup on court')
+            
+            actions.append('Push the pace - keep opponent scrambling')
+            
+            if hot_players:
+                actions.append(f'🔥 Feed {", ".join(hot_players[:2])} - they\'re hot ({", ".join([str(shooting_stats[p+" ("+[r["jersey"] for r in st.session_state.roster if r["name"] == p][0]+")"]["fg_percentage"]) + "%" for p in hot_players[:2]])})')
+            else:
+                actions.append('Feed hot players - ride the momentum')
+            
+            actions.append('Stay aggressive on both ends')
+            
             suggestions.append({
                 'priority': 'medium',
                 'icon': '🔥',
                 'title': 'Capitalize on Hot Streak',
                 'reasoning': f'Strong positive momentum (+{momentum_score:.0f})',
-                'actions': [
-                    'Keep current lineup on court',
-                    'Push the pace - keep opponent scrambling',
-                    'Feed hot players - ride the momentum',
-                    'Stay aggressive on both ends'
-                ]
+                'actions': actions
             })
         
         # SITUATION 10: No urgent issues (general good play)
         if not suggestions:
+            actions = [
+                'Continue current strategy - it\'s working',
+                'Stay focused and disciplined'
+            ]
+            
+            if hot_players:
+                actions.append(f'🔥 Keep involving {", ".join(hot_players[:2])} (productive tonight)')
+            
+            actions.extend([
+                'Make smart decisions with the ball',
+                'Keep defensive intensity high'
+            ])
+            
             suggestions.append({
                 'priority': 'low',
                 'icon': '✅',
                 'title': 'Keep Executing',
                 'reasoning': 'Game is under control',
-                'actions': [
-                    'Continue current strategy - it\'s working',
-                    'Stay focused and disciplined',
-                    'Make smart decisions with the ball',
-                    'Keep defensive intensity high'
-                ]
+                'actions': actions
             })
         
         # Display suggestions (prioritize high priority)
