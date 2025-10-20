@@ -6597,7 +6597,6 @@ def display_game_flow_prediction():
                 
                 if recent_opp_three_makes >= 2:
                     actions.append('🚨 Opponent hot from 3PT - close out harder on shooters')
-                    actions.append('Don\'t let them get comfortable looks from deep')
                 
                 if recent_opp_two_makes >= 3:
                     actions.append('🚨 Opponent getting too many easy baskets at rim')
@@ -6622,11 +6621,7 @@ def display_game_flow_prediction():
                 else:
                     actions.append('⚡ Increase defensive intensity - force them into mistakes')
                 
-                actions.extend([
-                    'Contest every shot - hands up on defense',
-                    'Communicate on switches and screens',
-                    'No easy baskets - make them work for everything'
-                ])
+                # REMOVED: Generic statements like "Contest every shot", "Communicate on switches", "No easy baskets"
                 
                 suggestions.append({
                     'priority': 'high',
@@ -6731,11 +6726,9 @@ def display_game_flow_prediction():
             if recent_def_pct >= 70:
                 actions.append('Keep contesting shots - don\'t give them anything easy')
             
-            actions.extend([
-                'Maintain this defensive intensity',
-                'Keep communicating on rotations',
-                'Stay aggressive - don\'t let up'
-            ])
+            actions.append('Maintain this defensive intensity')
+            
+            # REMOVED: "Keep communicating on rotations", "Stay aggressive - don't let up"
             
             # Show current lineup if it's elite defensively
             if best_def_lineups and st.session_state.current_lineup:
