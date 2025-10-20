@@ -6612,7 +6612,7 @@ def display_game_flow_prediction():
                 if best_def_lineups:
                     top_def_lineup = best_def_lineups[0]
                     lineup_players = [p.split('(')[0].strip() for p in top_def_lineup['lineup'].split(' | ')]
-                    actions.append(f'🛡️ Your best defensive lineup: {", ".join(lineup_players[:3])}...')
+                    actions.append(f'🛡️ Your best defensive lineup: {", ".join(lineup_players[:5])}...')
                     actions.append(f'   (Forces {top_def_lineup["opp_tos"]} TOs, {top_def_lineup["opp_misses"]} misses per stint)')
                 
                 # Specific defensive tactics
