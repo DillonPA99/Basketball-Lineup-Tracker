@@ -9740,7 +9740,7 @@ with tab2:
                             'is_quarter_end': lineup_event.get('is_quarter_end', False)  # NEW: Flag for quarter ends
                         })
                     
-                    # Sort events by event_sequence (which maintains chronological order)
+                    default_timestamp = datetime.now(timezone.utc)
                     all_events.sort(key=lambda x: (x.get('timestamp', default_timestamp), x.get('event_sequence', 0)))
 
                     # Process all events in chronological order
@@ -10846,6 +10846,9 @@ with tab4:
     else:
         # Combine all events with timestamps
         all_events = []
+        
+        # ADD THIS LINE - Define default timestamp for missing timestamps
+        default_timestamp = datetime.now(timezone.utc)
         
         # Add score events
         for i, score in enumerate(st.session_state.score_history):
