@@ -5925,8 +5925,10 @@ def display_key_runs():
         st.metric("AWAY Runs (4+)", len(away_runs))
     
     with summary_col3:
-        biggest_run = all_runs[0]
-        st.metric("Biggest Run", f"{biggest_run['points']}-0 {biggest_run['team'].upper()}")
+        if all_runs:
+            # Get the run with the highest end_idx (most recent)
+            most_recent_run = max(all_runs, key=lambda x: x['end_idx'])
+            st.metric("Most Recent Run", f"{most_recent_run['points']}-0 {most_recent_run['team'].upper()}")
 
 # ============================================================================
 # VISUALIZATION FUNCTIONS
