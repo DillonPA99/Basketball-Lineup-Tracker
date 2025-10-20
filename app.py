@@ -6001,26 +6001,6 @@ def display_game_flow_prediction():
                 st.error(f"⚠️ Net negative factors: {total_impact:.0f}%")
 
     with analysis_col2:
-        st.write("**🔮 Game Projection & Alerts**")
-        
-        # Predicted score (compact)
-        pred_home, pred_away, confidence = predict_final_score()
-        margin = pred_home - pred_away
-        
-        proj_col1, proj_col2 = st.columns(2)
-        with proj_col1:
-            if margin > 0:
-                st.success(f"**Projected WIN**\n\n{pred_home}-{pred_away}")
-            elif margin < 0:
-                st.error(f"**Projected LOSS**\n\n{pred_home}-{pred_away}")
-            else:
-                st.info(f"**OT Likely**\n\n{pred_home}-{pred_away}")
-        
-        with proj_col2:
-            st.metric("Confidence", f"{confidence}%")
-            st.caption(f"By {abs(margin)} pts" if margin != 0 else "Close game")
-        
-        st.divider()
         
         # AI COACHING SUGGESTIONS - CONTEXT AWARE
         st.write("**🎯 AI Coaching Suggestions**")
@@ -6395,9 +6375,7 @@ def display_game_flow_prediction():
             else:
                 st.warning(f"**⚠️ {moment['message']}**")
                 st.write(f"**Recommendation:** {moment['recommendation']}")
-    
-    st.divider()
-    
+        
     # Prediction Confidence Explanation
     with st.expander("🔮 How Predictions Work", expanded=False):
         st.write("### Prediction Methodology")
