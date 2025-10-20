@@ -5999,7 +5999,230 @@ def display_game_flow_prediction():
                 st.success(f"✅ Net positive factors: +{total_impact:.0f}%")
             else:
                 st.error(f"⚠️ Net negative factors: {total_impact:.0f}%")
+
+    with analysis_col2:
+    st.write("**🔮 Game Projection & Alerts**")
     
+    # Predicted score (compact)
+    pred_home, pred_away, confidence = predict_final_score()
+    margin = pred_home - pred_away
+    
+    proj_col1, proj_col2 = st.columns(2)
+    with proj_col1:
+        if margin > 0:
+            st.success(f"**Projected WIN**\n\n{pred_home}-{pred_away}")
+        elif margin < 0:
+            st.error(f"**Projected LOSS**\n\n{pred_home}-{pred_away}")
+        else:
+            st.info(f"**OT Likely**\n\n{pred_home}-{pred_away}")
+    
+    with proj_col2:
+        st.metric("Confidence", f"{confidence}%")
+        st.caption(f"By {abs(margin)} pts" if margin != 0 else "Close game")
+    
+    st.divider()
+    
+    # AI COACHING SUGGESTIONS - CONTEXT AWARE
+    st.write("**🎯 AI Coaching Suggestions**")
+    
+    # Get game context
+    current_score_diff = st.session_state.home_score - st.session_state.away_score
+    win_prob, factors = calculate_win_probability()
+    momentum_score, momentum_dir = calculate_momentum_score()
+    eff_trend, current_ppp, starting_ppp = calculate_scoring_efficiency_trend()
+    home_tos, away_tos = get_team_turnovers()
+    
+    # Parse game time
+    try:
+        time_parts = st.session_state.current_game_time.split(':')
+        minutes_left = int(time_parts[0])
+        seconds_left = int(time_parts[1]) if len(time_parts) > 1 else 0
+        total_seconds = minutes_left * 60 + seconds_left
+    except:
+        minutes_left = 12
+        total_seconds = 720
+    
+    current_quarter = st.session_state.current_quarter
+    is_late_game = current_quarter in ['Q4', 'OT1', 'OT2'] and total_seconds < 300  # Less than 5 min
+    is_crunch_time = current_quarter in ['Q4', 'OT1', 'OT2'] and total_seconds < 120  # Less than 2 min
+    
+    suggestions = []
+    
+    # SITUATION 1: Late game, trailing by small margin (comeback scenario)
+    if is_late_game and -6 <= current_score_diff < 0:
+        suggestions.append({
+            'priority': 'high',
+            'icon': '🔥',
+            'title': 'Force Turnovers for Quick Points',
+            'reasoning': f'Down {abs(current_score_diff)} with {minutes_left}:{seconds_left:02d} left',
+            'actions': [
+                'Apply full-court pressure defense',
+                'Force opponent into rushed decisions',
+                'Push pace on offense after steals',
+                'Consider fouling if time is critical (bonus situation)'
+            ]
+        })
+    
+    # SITUATION 2: Late game, trailing by larger margin (need 3s)
+    elif is_late_game and current_score_diff < -6:
+        suggestions.append({
+            'priority': 'high',
+            'icon': '🎯',
+            'title': 'Prioritize Three-Point Attempts',
+            'reasoning': f'Down {abs(current_score_diff)} - need quick scoring',
+            'actions': [
+                'Run plays for open three-pointers',
+                'Get best shooters quality looks',
+                'Attack baseline for kick-out opportunities',
+                'Consider intentional fouls to stop clock (if under 2 min)'
+            ]
+        })
+    
+    # SITUATION 3: Late game, leading (protect lead)
+    elif is_late_game and current_score_diff > 3:
+        suggestions.append({
+            'priority': 'high',
+            'icon': '🛡️',
+            'title': 'Protect the Lead',
+            'reasoning': f'Up {current_score_diff} with {minutes_left}:{seconds_left:02d} left',
+            'actions': [
+                'Value each possession - no rushed shots',
+                'Work clock down to 10-15 seconds before shooting',
+                'Take high-percentage shots only',
+                'Box out aggressively on defense',
+                'Be ready for opponent pressure/fouls'
+            ]
+        })
+    
+    # SITUATION 4: Crunch time, close game
+    elif is_crunch_time and abs(current_score_diff) <= 3:
+        suggestions.append({
+            'priority': 'high',
+            'icon': '⚡',
+            'title': 'Execute in Crunch Time',
+            'reasoning': f'Game within {abs(current_score_diff)} pts - every possession critical',
+            'actions': [
+                'Get ball to best decision-makers',
+                'Run proven set plays - no improvising',
+                'Lock down defensively - no easy baskets',
+                'Be aggressive but smart - limit turnovers',
+                'Have timeout ready for last-possession scenarios'
+            ]
+        })
+    
+    # SITUATION 5: Strong negative momentum
+    if momentum_dir in ["strong_negative"] and not is_crunch_time:
+        suggestions.append({
+            'priority': 'high',
+            'icon': '🛑',
+            'title': 'Stop Opponent Momentum NOW',
+            'reasoning': f'Opponent on {abs(momentum_score):.0f} point run',
+            'actions': [
+                'Call timeout immediately to reset',
+                'Consider lineup change - fresh energy needed',
+                'Slow tempo down - control the game',
+                'Get an easy basket to build confidence'
+            ]
+        })
+    
+    # SITUATION 6: Declining offensive efficiency
+    if eff_trend == "declining" and not any(s['title'] in ['Force Turnovers for Quick Points', 'Prioritize Three-Point Attempts'] for s in suggestions):
+        ppp_drop = starting_ppp - current_ppp
+        if ppp_drop > 0.15:
+            suggestions.append({
+                'priority': 'medium',
+                'icon': '📉',
+                'title': 'Improve Shot Quality',
+                'reasoning': f'Offensive efficiency dropped {ppp_drop:.2f} PPP',
+                'actions': [
+                    'Run more structured offensive sets',
+                    'Be patient - find better shots',
+                    'Attack the rim more - draw fouls',
+                    'Consider different offensive spacing'
+                ]
+            })
+    
+    # SITUATION 7: Turnover problems
+    if home_tos >= 5 and home_tos > away_tos + 3:
+        suggestions.append({
+            'priority': 'medium',
+            'icon': '🔴',
+            'title': 'Reduce Turnovers',
+            'reasoning': f'{home_tos} turnovers - giving away possessions',
+            'actions': [
+                'Slow down - make simple, safe passes',
+                'Avoid forcing risky passes',
+                'Use timeouts to settle team if rushing',
+                'Consider ball-handlers with fewer turnovers'
+            ]
+        })
+    
+    # SITUATION 8: Building large lead (early/mid game)
+    if current_score_diff > 15 and not is_late_game:
+        suggestions.append({
+            'priority': 'low',
+            'icon': '✅',
+            'title': 'Maintain Dominance',
+            'reasoning': f'Commanding {current_score_diff} point lead',
+            'actions': [
+                'Keep pressure on - don\'t let them back in',
+                'Consider rotating in bench players',
+                'Stay aggressive but smart',
+                'Build good habits for later in game'
+            ]
+        })
+    
+    # SITUATION 9: Strong positive momentum (capitalize)
+    if momentum_dir in ["strong_positive"] and not any(s['priority'] == 'high' for s in suggestions):
+        suggestions.append({
+            'priority': 'medium',
+            'icon': '🔥',
+            'title': 'Capitalize on Hot Streak',
+            'reasoning': f'Strong positive momentum (+{momentum_score:.0f})',
+            'actions': [
+                'Keep current lineup on court',
+                'Push the pace - keep opponent scrambling',
+                'Feed hot players - ride the momentum',
+                'Stay aggressive on both ends'
+            ]
+        })
+    
+    # SITUATION 10: No urgent issues (general good play)
+    if not suggestions:
+        suggestions.append({
+            'priority': 'low',
+            'icon': '✅',
+            'title': 'Keep Executing',
+            'reasoning': 'Game is under control',
+            'actions': [
+                'Continue current strategy - it\'s working',
+                'Stay focused and disciplined',
+                'Make smart decisions with the ball',
+                'Keep defensive intensity high'
+            ]
+        })
+    
+    # Display suggestions (prioritize high priority)
+    suggestions.sort(key=lambda x: {'high': 0, 'medium': 1, 'low': 2}[x['priority']])
+    
+    # Show top 2 suggestions
+    for i, suggestion in enumerate(suggestions[:2]):
+        if suggestion['priority'] == 'high':
+            st.error(f"{suggestion['icon']} **{suggestion['title']}**")
+        elif suggestion['priority'] == 'medium':
+            st.warning(f"{suggestion['icon']} **{suggestion['title']}**")
+        else:
+            st.success(f"{suggestion['icon']} **{suggestion['title']}**")
+        
+        st.caption(f"*{suggestion['reasoning']}*")
+        
+        # Show actions in compact format
+        with st.expander("💡 Recommended actions"):
+            for action in suggestion['actions']:
+                st.write(f"• {action}")
+        
+        if i < len(suggestions[:2]) - 1:
+            st.write("")  # Small spacing between suggestions
 
     st.divider()
     st.subheader("🔍 Momentum Analysis")
