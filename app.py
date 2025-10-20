@@ -6612,92 +6612,172 @@ def display_game_flow_prediction():
     
     st.divider()
     
-    # Efficiency trend analysis (keep existing code)
-    st.write("**⚡ Scoring Efficiency Trend**")
-    
-    if eff_trend == "improving":
-        st.success(f"**Improving** ({starting_ppp:.2f} → {current_ppp:.2f} PPP)")
-        st.write("**Why you're improving:**")
+    st.subheader("🔥 Key Runs")
+        if not st.session_state.score_history or len(st.session_state.score_history) < 3:
+            st.info("📊 Track at least 3 scoring events to identify key runs")
+            return
         
-        # Analyze what's driving improvement
-        improvement = current_ppp - starting_ppp
-        if improvement > 0.15:
-            st.write("- 🎯 Shot selection dramatically better")
-            st.write("- 📈 Finding higher percentage looks")
-            st.write("- ✅ Making key adjustments that work")
-        elif improvement > 0.05:
-            st.write("- ✅ Getting slightly better shots")
-            st.write("- 📊 Minor improvements adding up")
-            st.write("- 🔄 Keep current approach")
+        # Identify scoring runs (consecutive makes by same team)
+        current_run = {'team': None, 'points': 0, 'start_idx': 0, 'start_quarter': None, 'start_time': None}
+        all_runs = []
         
-        st.caption("**Action:** Maintain current offensive strategy")
-        
-    elif eff_trend == "declining":
-        st.warning(f"**Declining** ({starting_ppp:.2f} → {current_ppp:.2f} PPP)")
-        st.write("**Why efficiency is dropping:**")
-        
-        # Analyze what's causing decline
-        decline = current_ppp - starting_ppp
-        if decline < -0.15:
-            st.write("- 🚫 Shot quality significantly worse")
-            st.write("- ❌ Taking more contested/rushed shots")
-            st.write("- ⚠️ Opponent defense tightening")
-        elif decline < -0.05:
-            st.write("- 📉 Slightly worse shot selection")
-            st.write("- 🔄 Need to reset offensive flow")
-            st.write("- 💭 Consider timeout/adjustment")
-        
-        # Check turnover impact
-        home_tos, _ = get_team_turnovers()
-        if home_tos >= 5:
-            st.write("- 🔴 High turnovers hurting efficiency")
-        
-        st.caption("**Action:** Adjust offensive approach immediately")
-        
-    else:
-        st.info(f"**Stable** ({current_ppp:.2f} PPP)")
-        st.write("**Maintaining consistency:**")
-        st.write("- 📊 Steady offensive output")
-        st.write("- ➡️ No major changes needed")
-        st.write("- 🎯 Solid, reliable performance")
-        
-        if current_ppp >= 1.10:
-            st.caption("**Status:** Excellent efficiency - keep it up!")
-        elif current_ppp >= 1.00:
-            st.caption("**Status:** Good efficiency - above average")
-        elif current_ppp >= 0.90:
-            st.caption("**Status:** Average efficiency - room for improvement")
-        else:
-            st.caption("**Status:** Below average - needs attention")
-    
-    st.divider()
-    
-    # Critical Moments Section
-    critical_moments = identify_critical_moments()
-    if critical_moments:
-        st.subheader("⚠️ Critical Moments & Alerts")
-        
-        for moment in critical_moments:
-            if moment['urgency'] == 'high':
-                st.error(f"**🚨 {moment['message']}**")
-                st.write(f"**Recommendation:** {moment['recommendation']}")
-                
-                # Add context based on moment type
-                if moment['type'] == 'clutch_time':
-                    st.caption("💡 Key factors in clutch situations:")
-                    st.caption("   • Minimize turnovers (protect ball)")
-                    st.caption("   • High-percentage shots only")
-                    st.caption("   • Get best defenders on court")
-                    
-                elif moment['type'] == 'momentum_shift':
-                    st.caption("💡 Breaking opponent momentum:")
-                    st.caption("   • Timeout can disrupt their flow")
-                    st.caption("   • Focus on defensive stops")
-                    st.caption("   • Run a set play to regain confidence")
-                    
+        for i, score_event in enumerate(st.session_state.score_history):
+            if not score_event.get('made', True):
+                # Missed shot ends the run
+                if current_run['points'] >= 4:  # Only save runs of 4+ points
+                    all_runs.append(current_run.copy())
+                current_run = {'team': None, 'points': 0, 'start_idx': i+1, 'start_quarter': None, 'start_time': None}
+                continue
+            
+            team = score_event['team']
+            points = score_event['points']
+            
+            if team == current_run['team']:
+                # Continue existing run
+                current_run['points'] += points
+                current_run['end_idx'] = i
+                current_run['end_quarter'] = score_event['quarter']
+                current_run['end_time'] = score_event.get('game_time', 'Unknown')
             else:
-                st.warning(f"**⚠️ {moment['message']}**")
-                st.write(f"**Recommendation:** {moment['recommendation']}")
+                # Save previous run if significant
+                if current_run['points'] >= 4:
+                    all_runs.append(current_run.copy())
+                
+                # Start new run
+                current_run = {
+                    'team': team,
+                    'points': points,
+                    'start_idx': i,
+                    'end_idx': i,
+                    'start_quarter': score_event['quarter'],
+                    'start_time': score_event.get('game_time', 'Unknown'),
+                    'end_quarter': score_event['quarter'],
+                    'end_time': score_event.get('game_time', 'Unknown')
+                }
+        
+        # Don't forget the last run
+        if current_run['points'] >= 4:
+            all_runs.append(current_run)
+        
+        if not all_runs:
+            st.info("🎯 No significant runs yet (4+ consecutive points). Keep tracking!")
+            return
+        
+        # Sort by points (biggest runs first)
+        all_runs.sort(key=lambda x: x['points'], reverse=True)
+        
+        # Show top 5 runs
+        st.write(f"**Showing {min(5, len(all_runs))} most significant run(s):**")
+        
+        for idx, run in enumerate(all_runs[:5], 1):
+            # Calculate score context (what was the margin before/after this run)
+            margin_before = 0
+            margin_after = 0
+            
+            for j, event in enumerate(st.session_state.score_history):
+                if not event.get('made', True):
+                    continue
+                    
+                if j < run['start_idx']:
+                    if event['team'] == 'home':
+                        margin_before += event['points']
+                    else:
+                        margin_before -= event['points']
+                elif j <= run['end_idx']:
+                    if event['team'] == 'home':
+                        margin_after += event['points']
+                    else:
+                        margin_after -= event['points']
+            
+            margin_swing = margin_after - margin_before
+            
+            # Determine run impact
+            if run['points'] >= 10:
+                impact_emoji = "🔥"
+                impact_text = "Game-Changing Run"
+            elif run['points'] >= 7:
+                impact_emoji = "⚡"
+                impact_text = "Significant Run"
+            else:
+                impact_emoji = "📈"
+                impact_text = "Notable Run"
+            
+            # Color code by team
+            run_color = "success" if run['team'] == 'home' else "error"
+            
+            # Display the run
+            with st.container():
+                getattr(st, run_color)(
+                    f"{impact_emoji} **Run #{idx}: {run['team'].upper()} {run['points']}-0** ({impact_text})"
+                )
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    if run['start_quarter'] == run['end_quarter']:
+                        st.caption(f"📍 {run['start_quarter']} ({run['start_time']} → {run['end_time']})")
+                    else:
+                        st.caption(f"📍 {run['start_quarter']} {run['start_time']} → {run['end_quarter']} {run['end_time']}")
+                
+                with col2:
+                    st.caption(f"📊 Margin swing: {margin_swing:+d} points")
+                
+                with col3:
+                    num_baskets = run['end_idx'] - run['start_idx'] + 1
+                    st.caption(f"🎯 {num_baskets} consecutive make(s)")
+                
+                # Show lineup if available
+                if run['end_idx'] < len(st.session_state.score_history):
+                    last_score = st.session_state.score_history[run['end_idx']]
+                    if last_score.get('lineup') and run['team'] == 'home':
+                        st.caption(f"👥 Lineup: {' | '.join([p.split('(')[0].strip() for p in last_score['lineup']])}")
+                
+                st.divider()
+        
+        # Summary statistics
+        st.write("**Run Summary:**")
+        summary_col1, summary_col2, summary_col3 = st.columns(3)
+        
+        with summary_col1:
+            home_runs = [r for r in all_runs if r['team'] == 'home']
+            st.metric("HOME Runs (4+)", len(home_runs))
+        
+        with summary_col2:
+            away_runs = [r for r in all_runs if r['team'] == 'away']
+            st.metric("AWAY Runs (4+)", len(away_runs))
+        
+        with summary_col3:
+            biggest_run = all_runs[0]
+            st.metric("Biggest Run", f"{biggest_run['points']}-0 {biggest_run['team'].upper()}")
+        
+        st.divider()
+        
+        # Critical Moments Section
+        critical_moments = identify_critical_moments()
+        if critical_moments:
+            st.subheader("⚠️ Critical Moments & Alerts")
+            
+            for moment in critical_moments:
+                if moment['urgency'] == 'high':
+                    st.error(f"**🚨 {moment['message']}**")
+                    st.write(f"**Recommendation:** {moment['recommendation']}")
+                    
+                    # Add context based on moment type
+                    if moment['type'] == 'clutch_time':
+                        st.caption("💡 Key factors in clutch situations:")
+                        st.caption("   • Minimize turnovers (protect ball)")
+                        st.caption("   • High-percentage shots only")
+                        st.caption("   • Get best defenders on court")
+                        
+                    elif moment['type'] == 'momentum_shift':
+                        st.caption("💡 Breaking opponent momentum:")
+                        st.caption("   • Timeout can disrupt their flow")
+                        st.caption("   • Focus on defensive stops")
+                        st.caption("   • Run a set play to regain confidence")
+                        
+                else:
+                    st.warning(f"**⚠️ {moment['message']}**")
+                    st.write(f"**Recommendation:** {moment['recommendation']}")
         
     # Prediction Confidence Explanation
     with st.expander("🔮 How Predictions Work", expanded=False):
