@@ -9741,8 +9741,9 @@ with tab2:
                         })
                     
                     # Sort events by event_sequence (which maintains chronological order)
-                    all_events.sort(key=lambda x: (x.get('timestamp', datetime.min), x.get('event_sequence', 0)))
-                    
+                    default_timestamp = datetime(1900, 1, 1, tzinfo=timezone.utc)
+                    all_events.sort(key=lambda x: (x.get('timestamp', default_timestamp), x.get('event_sequence', 0)))
+
                     # Process all events in chronological order
                     for event in all_events:
                         if event['type'] == 'score':
