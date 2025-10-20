@@ -5911,9 +5911,7 @@ def display_key_runs():
                 last_score = st.session_state.score_history[run['end_idx']]
                 if last_score.get('lineup') and run['team'] == 'home':
                     st.caption(f"👥 Lineup: {' | '.join([p.split('(')[0].strip() for p in last_score['lineup']])}")
-            
-            st.divider()
-    
+                
     # Summary statistics
     st.write("**Run Summary:**")
     summary_col1, summary_col2, summary_col3 = st.columns(3)
@@ -6613,9 +6611,7 @@ def display_game_flow_prediction():
     st.divider()
 
     display_key_runs()
-    
-    st.divider()
-    
+        
     # Critical Moments Section
     critical_moments = identify_critical_moments()
     if critical_moments:
@@ -10545,7 +10541,6 @@ with tab3:
         
         with tab1:
             display_game_flow_prediction()
-            display_key_runs()  # Single function call!
             display_possession_details()
         
         with tab2:
@@ -10555,7 +10550,6 @@ with tab3:
     else:
         # Early game: Live predictions
         display_game_flow_prediction()
-        display_key_runs()  # Single function call!
         display_possession_details()
             
 # ------------------------------------------------------------------
