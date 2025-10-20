@@ -6002,7 +6002,7 @@ def display_game_flow_prediction():
 
     with analysis_col2:
         
-# AI COACHING SUGGESTIONS - CONTEXT AWARE
+        # AI COACHING SUGGESTIONS - CONTEXT AWARE
         st.write("**🎯 AI Coaching Suggestions**")
         
         # Get game context
@@ -6376,7 +6376,7 @@ def display_game_flow_prediction():
             st.caption(f"*{suggestion['reasoning']}*")
             
             # Show actions in compact format
-            st.write("💡 Recommended actions")
+            st.write("**💡 Recommended Actions**")
             for action in suggestion['actions']:
                 st.write(f"• {action}")
             
