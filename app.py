@@ -6395,46 +6395,6 @@ def display_game_flow_prediction():
             else:
                 st.warning(f"**⚠️ {moment['message']}**")
                 st.write(f"**Recommendation:** {moment['recommendation']}")
-        
-    # AI Coaching Suggestions with detailed reasoning
-    suggestions = get_ai_coaching_suggestion()
-    if suggestions:
-        st.subheader("🧠 AI Coaching Insights")
-        
-        # Sort by priority
-        high_priority = [s for s in suggestions if s['priority'] == 'high']
-        medium_priority = [s for s in suggestions if s['priority'] == 'medium']
-        
-        if high_priority:
-            st.write("**🔴 High Priority Actions:**")
-            for suggestion in high_priority:
-                st.error(f"**{suggestion['category']}:** {suggestion['suggestion']}")
-                st.write(f"📊 Data: {suggestion['data']}")
-                
-                # Add specific reasoning based on category
-                if suggestion['category'] == 'Momentum':
-                    st.caption("**Why this matters:** Opponent runs can snowball quickly. Breaking momentum now prevents larger deficits later.")
-                    
-                elif suggestion['category'] == 'Offense':
-                    st.caption("**Why this matters:** Lower efficiency means more possessions to score same points. Must improve shot quality or turnover rate.")
-                    
-                elif suggestion['category'] == 'Ball Security':
-                    st.caption("**Why this matters:** Each turnover = lost possession + potential opponent points. Turnovers in bunches often signal rushing or poor decision-making.")
-                    
-                elif suggestion['category'] == 'Shot Selection':
-                    st.caption("**Why this matters:** Low 3PT% means taking wrong shots or poor execution. Either drive more or get better 3PT looks.")
-                
-                st.divider()
-        
-        if medium_priority:
-            st.write("**🟡 Consider These Adjustments:**")
-            for suggestion in medium_priority:
-                st.warning(f"**{suggestion['category']}:** {suggestion['suggestion']}")
-                st.caption(f"📊 {suggestion['data']}")
-                
-                # Add reasoning for medium priority items
-                if suggestion['category'] == 'Strategy':
-                    st.caption("**Consider:** While not critical yet, proactive adjustments now can prevent problems later.")
     
     st.divider()
     
