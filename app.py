@@ -6376,7 +6376,7 @@ def display_game_flow_prediction():
             st.caption(f"*{suggestion['reasoning']}*")
             
             # Show actions in compact format
-            with st.expander("💡 Recommended actions"):
+            with st.write("💡 Recommended actions"):
                 for action in suggestion['actions']:
                     st.write(f"• {action}")
             
