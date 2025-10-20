@@ -9741,7 +9741,6 @@ with tab2:
                         })
                     
                     # Sort events by event_sequence (which maintains chronological order)
-                    default_timestamp = datetime(1900, 1, 1, tzinfo=timezone.utc)
                     all_events.sort(key=lambda x: (x.get('timestamp', default_timestamp), x.get('event_sequence', 0)))
 
                     # Process all events in chronological order
@@ -10850,8 +10849,13 @@ with tab4:
         
         # Add score events
         for i, score in enumerate(st.session_state.score_history):
+            # Ensure timestamp is timezone-aware
+            timestamp = score.get('timestamp', datetime.now(timezone.utc))
+            if isinstance(timestamp, datetime) and timestamp.tzinfo is None:
+                timestamp = timestamp.replace(tzinfo=timezone.utc)
+            
             all_events.append({
-                'timestamp': score.get('timestamp', datetime.now()),
+                'timestamp': timestamp,
                 'event_sequence': score.get('event_sequence', i * 3),
                 'type': 'Score',
                 'team': score['team'].title(),
@@ -10866,9 +10870,14 @@ with tab4:
         
         # Add turnover events
         for i, turnover in enumerate(st.session_state.turnover_history):
+            # Ensure timestamp is timezone-aware
+            timestamp = turnover.get('timestamp', datetime.now(timezone.utc))
+            if isinstance(timestamp, datetime) and timestamp.tzinfo is None:
+                timestamp = timestamp.replace(tzinfo=timezone.utc)
+            
             player_text = f" by {turnover['player']}" if turnover.get('player') else " (Team)"
             all_events.append({
-                'timestamp': turnover.get('timestamp', datetime.now()),
+                'timestamp': timestamp,
                 'event_sequence': turnover.get('event_sequence', (len(st.session_state.score_history) + i) * 3 + 1),
                 'type': 'Turnover',
                 'team': turnover['team'].title(),
@@ -10880,10 +10889,15 @@ with tab4:
         
         # Add lineup events (including quarter end snapshots)
         for i, lineup in enumerate(st.session_state.lineup_history):
+            # Ensure timestamp is timezone-aware
+            timestamp = lineup.get('timestamp', datetime.now(timezone.utc))
+            if isinstance(timestamp, datetime) and timestamp.tzinfo is None:
+                timestamp = timestamp.replace(tzinfo=timezone.utc)
+            
             if lineup.get('is_quarter_end'):
-                # Quarter end snapshot - these are the LAST events of each quarter at 0:00
+                # Quarter end snapshot
                 all_events.append({
-                    'timestamp': lineup.get('timestamp', datetime.now()),
+                    'timestamp': timestamp,
                     'event_sequence': lineup.get('event_sequence', (len(st.session_state.score_history) + len(st.session_state.turnover_history) + i) * 3 + 2),
                     'type': 'Quarter End',
                     'team': 'Both',
@@ -10896,7 +10910,7 @@ with tab4:
             else:
                 # Regular lineup change
                 all_events.append({
-                    'timestamp': lineup.get('timestamp', datetime.now()),
+                    'timestamp': timestamp,
                     'event_sequence': lineup.get('event_sequence', (len(st.session_state.score_history) + len(st.session_state.turnover_history) + i) * 3 + 2),
                     'type': 'Lineup Change',
                     'team': 'Home',
@@ -10908,8 +10922,7 @@ with tab4:
                 })
         
         # Sort by timestamp (primary) and event_sequence (secondary)
-        default_timestamp = datetime(1900, 1, 1, tzinfo=timezone.utc)
-        all_events.sort(key=lambda x: (x.get('timestamp', datetime.min), x.get('event_sequence', 0)))
+        all_events.sort(key=lambda x: (x['timestamp'], x.get('event_sequence', 0)))
         
         # Display events
         if all_events:
