@@ -8479,6 +8479,14 @@ with st.sidebar:
     # User info and logout
     st.subheader(f"👤 {st.session_state.user_info['username']}")
     st.caption(f"Role: {st.session_state.user_info['role'].title()}")
+    
+    # ADD THIS SECTION HERE - Admin Panel Access Button
+    if st.session_state.user_info['role'] == 'admin':
+        st.divider()
+        if st.button("🔧 Open Admin Panel", use_container_width=True, type="primary"):
+            st.session_state.show_admin_panel = True
+            st.rerun()
+    # END OF NEW SECTION
 
     if st.button("🚪 Logout"):
         # Save current game progress if there's meaningful data
