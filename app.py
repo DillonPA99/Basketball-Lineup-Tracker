@@ -6000,198 +6000,89 @@ def display_game_flow_prediction():
             else:
                 st.error(f"⚠️ Net negative factors: {total_impact:.0f}%")
     
-    with analysis_col2:
-        # Momentum & Efficiency Analysis
-        st.write("**📈 Performance Trajectory**")
+
+    st.divider()
+    st.subheader("🔍 Momentum Analysis")
+    
+    if len(st.session_state.score_history) >= 2:
+        recent_scores = st.session_state.score_history[-10:]
         
-        # Get momentum details
-        momentum_score, momentum_dir = calculate_momentum_score()
+        # Calculate momentum components
+        home_possessions = 0
+        home_points_weighted = 0
+        away_possessions = 0
+        away_points_weighted = 0
         
-        # Momentum analysis with detailed breakdown
-        if momentum_dir in ["strong_positive"]:
-            st.success(f"**Strong Positive Momentum** ({momentum_score:+.0f})")
-            st.write("**What this means:**")
-            st.write("- You're scoring efficiently on recent possessions")
-            st.write("- Opponent struggling to match your output")
-            st.write("- Keep playing this way to extend the lead")
-        elif momentum_dir == "positive":
-            st.info(f"**Positive Momentum** ({momentum_score:+.0f})")
-            st.write("**What this means:**")
-            st.write("- Recent possessions trending in your favor")
-            st.write("- Building confidence and rhythm")
-            st.write("- Good time to push tempo")
-        elif momentum_dir in ["strong_negative"]:
-            st.error(f"**Strong Negative Momentum** ({momentum_score:+.0f})")
-            st.write("**What this means:**")
-            st.write("- Opponent scoring more efficiently than you lately")
-            st.write("- Need to stop the bleeding quickly")
-            st.write("- Consider timeout to reset")
-        elif momentum_dir == "negative":
-            st.warning(f"**Negative Momentum** ({momentum_score:+.0f})")
-            st.write("**What this means:**")
-            st.write("- Opponent gaining confidence")
-            st.write("- Recent possessions not going your way")
-            st.write("- Time to adjust strategy")
-        else:
-            st.info(f"**Neutral Momentum** ({momentum_score:+.0f})")
-            st.write("**What this means:**")
-            st.write("- Even battle in recent possessions")
-            st.write("- Next few plays could swing momentum")
-            st.write("- Execute fundamentals to gain edge")
+        for i, score in enumerate(recent_scores):
+            recency_weight = 0.5 + (0.5 * (i + 1) / len(recent_scores))
+            
+            if score['team'] == 'home':
+                home_possessions += recency_weight
+                if score.get('made', True):
+                    home_points_weighted += score['points'] * recency_weight
+            else:
+                away_possessions += recency_weight
+                if score.get('made', True):
+                    away_points_weighted += score['points'] * recency_weight
         
-        # ADD THIS - Move the momentum breakdown OUTSIDE the expander
-        st.divider()
-        st.subheader("🔍 Detailed Momentum Breakdown")
+        # Show efficiency calculation in compact format
+        momentum_col1, momentum_col2, momentum_col3 = st.columns(3)
         
-        # Calculate detailed breakdown
-        if len(st.session_state.score_history) >= 2:
-            recent_scores = st.session_state.score_history[-10:]
-            
-            st.write("### How Momentum is Calculated")
-            
-            st.write("""
-            **Formula Overview:**
-            Momentum analyzes the last 10 possessions with emphasis on recent events:
-            
-            1. **Recency Weighting**: More recent possessions matter more
-               - Oldest possession weight: ~0.55
-               - Most recent possession weight: 1.0
-               - Creates gradual curve favoring current performance
-            
-            2. **Efficiency Differential**: Compares scoring efficiency
-               - Home PPP (Points Per Possession) vs Away PPP
-               - Weighted by recency for each possession
-            
-            3. **Final Score**: (Home Efficiency - Away Efficiency) × 35
-               - Range: -75 to +75
-               - Positive = HOME has momentum
-               - Negative = AWAY has momentum
-            """)
-            
-            st.divider()
-            
-            # Analyze recent possessions
-            home_possessions = 0
-            home_points_weighted = 0
-            away_possessions = 0
-            away_points_weighted = 0
-            
-            possession_breakdown = []
-            
-            for i, score in enumerate(recent_scores):
-                recency_weight = 0.5 + (0.5 * (i + 1) / len(recent_scores))
-                
-                if score['team'] == 'home':
-                    home_possessions += recency_weight
-                    if score.get('made', True):
-                        home_points_weighted += score['points'] * recency_weight
-                        impact = f"+{score['points'] * recency_weight:.2f}"
-                        impact_color = "🟢"
-                    else:
-                        impact = f"-{0.5 * recency_weight:.2f}"
-                        impact_color = "🟡"
-                else:
-                    away_possessions += recency_weight
-                    if score.get('made', True):
-                        away_points_weighted += score['points'] * recency_weight
-                        impact = f"+{score['points'] * recency_weight:.2f}"
-                        impact_color = "🔵"
-                    else:
-                        impact = f"-{0.5 * recency_weight:.2f}"
-                        impact_color = "⚪"
-                
-                possession_breakdown.append({
-                    'num': i + 1,
-                    'team': score['team'].upper(),
-                    'made': score.get('made', True),
-                    'points': score.get('points', 0),
-                    'weight': recency_weight,
-                    'impact': impact,
-                    'color': impact_color
-                })
-            
-            # Show efficiency calculation
-            st.write("**Current Momentum Components:**")
-            calc_col1, calc_col2 = st.columns(2)
-            
-            with calc_col1:
-                st.write("**HOME Team Efficiency:**")
-                home_eff = (home_points_weighted / home_possessions) if home_possessions > 0 else 0
-                st.metric("Weighted PPP", f"{home_eff:.3f}")
-                st.caption(f"Weighted Possessions: {home_possessions:.2f}")
-                st.caption(f"Weighted Points: {home_points_weighted:.2f}")
-            
-            with calc_col2:
-                st.write("**AWAY Team Efficiency:**")
-                away_eff = (away_points_weighted / away_possessions) if away_possessions > 0 else 0
-                st.metric("Weighted PPP", f"{away_eff:.3f}")
-                st.caption(f"Weighted Possessions: {away_possessions:.2f}")
-                st.caption(f"Weighted Points: {away_points_weighted:.2f}")
-            
-            # Show the calculation
-            st.write("**Final Momentum Calculation:**")
+        with momentum_col1:
+            home_eff = (home_points_weighted / home_possessions) if home_possessions > 0 else 0
+            st.metric("HOME Efficiency", f"{home_eff:.2f} PPP", 
+                     help="Weighted points per possession (last 10)")
+        
+        with momentum_col2:
+            away_eff = (away_points_weighted / away_possessions) if away_possessions > 0 else 0
+            st.metric("AWAY Efficiency", f"{away_eff:.2f} PPP",
+                     help="Weighted points per possession (last 10)")
+        
+        with momentum_col3:
             efficiency_diff = home_eff - away_eff
-            momentum_raw = efficiency_diff * 35
-            momentum_final = max(-75, min(75, momentum_raw))
+            momentum_final = max(-75, min(75, efficiency_diff * 35))
             
-            st.code(f"""
-    Efficiency Differential = {home_eff:.3f} - {away_eff:.3f} = {efficiency_diff:.3f}
-    Raw Momentum Score = {efficiency_diff:.3f} × 35 = {momentum_raw:.1f}
-    Final Score (clamped) = {momentum_final:.1f}
-            """)
-            
-            # Interpretation thresholds
-            st.write("**Momentum Thresholds:**")
-            threshold_data = [
-                {"Range": "+12 to +75", "Category": "🔥 Strong Positive", "Meaning": "Dominating recent possessions"},
-                {"Range": "+4 to +12", "Category": "✅ Positive", "Meaning": "Slight advantage in flow"},
-                {"Range": "-4 to +4", "Category": "⚖️ Neutral", "Meaning": "Even battle"},
-                {"Range": "-12 to -4", "Category": "⚠️ Negative", "Meaning": "Losing recent possessions"},
-                {"Range": "-75 to -12", "Category": "❄️ Strong Negative", "Meaning": "Opponent dominating"},
-            ]
-            threshold_df = pd.DataFrame(threshold_data)
-            st.dataframe(threshold_df, use_container_width=True, hide_index=True)
-            
-            st.divider()
-            
-            # Show recent possession impacts
-            st.write("### Recent Possession Impact (Newest → Oldest)")
-            
-            for p in reversed(possession_breakdown):
-                result = "Made" if p['made'] else "Miss"
-                pts_text = f"{p['points']}pts" if p['made'] else ""
-                
-                st.write(f"{p['color']} **Possession {p['num']}**: {p['team']} {result} {pts_text}")
-                st.caption(f"   Weight: {p['weight']:.2f} | Momentum Impact: {p['impact']}")
-            
-            st.divider()
-            
-            # Why this matters
-            st.write("### 💡 Why Momentum Matters")
+            if momentum_final > 12:
+                st.metric("Momentum Score", f"{momentum_final:+.0f}", 
+                         delta="🔥 Dominating", delta_color="normal")
+            elif momentum_final > 4:
+                st.metric("Momentum Score", f"{momentum_final:+.0f}", 
+                         delta="✅ Positive", delta_color="normal")
+            elif momentum_final < -12:
+                st.metric("Momentum Score", f"{momentum_final:+.0f}", 
+                         delta="❄️ Opponent run", delta_color="inverse")
+            elif momentum_final < -4:
+                st.metric("Momentum Score", f"{momentum_final:+.0f}", 
+                         delta="⚠️ Negative", delta_color="inverse")
+            else:
+                st.metric("Momentum Score", f"{momentum_final:+.0f}", 
+                         delta="⚖️ Even", delta_color="off")
+        
+        # Compact formula explanation
+        with st.expander("📊 How is this calculated?", expanded=False):
             st.write("""
-            **Strategic Value:**
-            - **Positive Momentum**: Your team is executing well. Stay aggressive, 
-              keep current lineup if possible, maintain tempo.
+            **Quick Formula:**
+            - Analyzes last 10 possessions (recent events weighted more)
+            - Compares HOME vs AWAY scoring efficiency (PPP)
+            - Score = (HOME PPP - AWAY PPP) × 35
+            - Range: -75 to +75
             
-            - **Negative Momentum**: Time to make adjustments. Consider timeout, 
-              substitution, or different offensive sets to break opponent's rhythm.
-            
-            - **Neutral Momentum**: Game is even. Next few possessions are critical 
-              - execute your best plays to seize momentum.
-            
-            **What Affects Momentum:**
-            - Made shots (especially 3-pointers) = big positive impact
-            - Missed shots = small negative impact
-            - Recent events matter MORE than older events
-            - Consistent scoring > sporadic scoring
-            
-            **Momentum vs Score:**
-            - You can have positive momentum while trailing
-            - You can have negative momentum while leading
-            - Momentum shows TREND, not current status
+            **What it means:**
+            - **+12 or higher**: Strong positive momentum - keep it up!
+            - **+4 to +12**: Slight advantage - push tempo
+            - **-4 to +4**: Even battle - next plays matter
+            - **-12 to -4**: Losing momentum - adjust strategy
+            - **-12 or lower**: Strong negative - consider timeout
             """)
-        else:
-            st.info("Need at least 2 possessions to calculate momentum breakdown")
+            
+            # Show calculation
+            st.code(f"""
+    Efficiency Gap = {home_eff:.2f} - {away_eff:.2f} = {efficiency_diff:.2f}
+    Momentum Score = {efficiency_diff:.2f} × 35 = {momentum_final:.0f}
+            """, language="text")
+        
+    else:
+        st.info("Need at least 2 possessions to calculate momentum")
     
     st.divider()
     
