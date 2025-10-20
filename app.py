@@ -6525,7 +6525,6 @@ def display_game_flow_prediction():
             if i < len(suggestions[:2]) - 1:
                 st.write("")  # Small spacing between suggestions
 
-    st.divider()
     st.subheader("🔍 Momentum Analysis")
     
     if len(st.session_state.score_history) >= 2:
