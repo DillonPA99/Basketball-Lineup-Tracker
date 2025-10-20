@@ -6635,20 +6635,28 @@ def display_possession_details():
             hide_index=True
         )
         
-        # Summary stats
-        col1, col2, col3 = st.columns(3)
+        # Enhanced summary stats with PPP
+        col1, col2, col3, col4 = st.columns(4)
         
         with col1:
             home_poss = len([p for p in possession_details if p['Team'] == 'HOME'])
             st.metric("Home Possessions", home_poss)
         
         with col2:
+            # Calculate Home PPP from recent possessions
+            home_points = sum(p['Points'] for p in possession_details if p['Team'] == 'HOME')
+            home_ppp = (home_points / home_poss) if home_poss > 0 else 0
+            st.metric("Home PPP", f"{home_ppp:.2f}")
+        
+        with col3:
             away_poss = len([p for p in possession_details if p['Team'] == 'AWAY'])
             st.metric("Away Possessions", away_poss)
         
-        with col3:
-            total_pts = sum(p['Points'] for p in possession_details)
-            st.metric("Total Points", total_pts)
+        with col4:
+            # Calculate Away PPP from recent possessions
+            away_points = sum(p['Points'] for p in possession_details if p['Team'] == 'AWAY')
+            away_ppp = (away_points / away_poss) if away_poss > 0 else 0
+            st.metric("Away PPP", f"{away_ppp:.2f}")
         
         st.caption("""
         **Note:** These possessions are weighted by recency in momentum calculations.
