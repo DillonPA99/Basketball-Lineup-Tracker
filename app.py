@@ -6607,8 +6607,6 @@ def display_game_flow_prediction():
     else:
         st.info("Need at least 2 possessions to calculate momentum")
     
-    st.divider()
-
     display_key_runs()
         
     # Critical Moments Section
