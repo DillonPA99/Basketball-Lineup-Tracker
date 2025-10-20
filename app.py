@@ -6895,39 +6895,6 @@ def display_possession_details():
             away_points = sum(p['Points'] for p in possession_details if p['Team'] == 'AWAY')
             away_ppp = (away_points / away_poss) if away_poss > 0 else 0
             st.metric("Away PPP", f"{away_ppp:.2f}")
-        
-        # Add momentum breakdown
-        st.write("**Momentum Breakdown:**")
-        momentum_col1, momentum_col2, momentum_col3 = st.columns(3)
-        
-        with momentum_col1:
-            total_momentum = sum(float(p['Momentum Impact']) for p in possession_details)
-            if total_momentum > 5:
-                st.success(f"**Total: {total_momentum:+.1f}** 🔥")
-            elif total_momentum > 0:
-                st.info(f"**Total: {total_momentum:+.1f}** ➡️")
-            elif total_momentum > -5:
-                st.warning(f"**Total: {total_momentum:+.1f}** ⚠️")
-            else:
-                st.error(f"**Total: {total_momentum:+.1f}** ❄️")
-        
-        with momentum_col2:
-            home_momentum = sum(float(p['Momentum Impact']) for p in possession_details if p['Team'] == 'HOME')
-            st.metric("Home Momentum", f"{home_momentum:+.1f}")
-        
-        with momentum_col3:
-            away_momentum = sum(float(p['Momentum Impact']) for p in possession_details if p['Team'] == 'AWAY')
-            st.metric("Away Momentum", f"{away_momentum:+.1f}")
-        
-        st.caption("""
-        **Note:** Momentum Impact shows how each possession affects the game flow calculation.
-        - Positive values favor HOME team
-        - Negative values favor AWAY team
-        - More recent possessions have higher weights (shown in Weight column)
-        - Made shots have bigger impact than misses
-        """)
-    else:
-        st.info("No possessions recorded yet")
     
 # ------------------------------------------------------------------
 # User Authentication Gate
