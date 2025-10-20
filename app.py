@@ -5381,9 +5381,6 @@ def identify_critical_moments():
             'recommendation': 'Focus on defensive stops and efficient possessions. Consider best offensive lineup.'
         })
     
-    # Critical Moment 5: Foul trouble (if implemented)
-    # This would require tracking fouls - placeholder for future
-    
     return critical_moments
 
 
@@ -6612,7 +6609,7 @@ def display_game_flow_prediction():
                 if best_def_lineups:
                     top_def_lineup = best_def_lineups[0]
                     lineup_players = [p.split('(')[0].strip() for p in top_def_lineup['lineup'].split(' | ')]
-                    actions.append(f'🛡️ Your best defensive lineup: {", ".join(lineup_players[:5])}...')
+                    actions.append(f'🛡️ Your best defensive lineup: {", ".join(lineup_players[:5])}')
                     actions.append(f'   (Forces {top_def_lineup["opp_tos"]} TOs, {top_def_lineup["opp_misses"]} misses per stint)')
                 
                 # Specific defensive tactics
