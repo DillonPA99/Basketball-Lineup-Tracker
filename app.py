@@ -6161,16 +6161,55 @@ def display_game_flow_prediction():
         shooting_stats = calculate_player_shooting_stats()
         individual_plus_minus = calculate_individual_plus_minus()
         
+        # Analyze shooting performance
+        team_shooting_stats = {
+            'fg_made': 0, 'fg_attempted': 0,
+            'two_pt_made': 0, 'two_pt_attempted': 0,
+            'three_pt_made': 0, 'three_pt_attempted': 0,
+            'ft_made': 0, 'ft_attempted': 0,
+            'recent_fg_made': 0, 'recent_fg_attempted': 0,
+            'recent_two_pt_made': 0, 'recent_two_pt_attempted': 0,
+            'recent_three_pt_made': 0, 'recent_three_pt_attempted': 0
+        }
+        
+        # Get recent shooting (last 10 attempts)
+        recent_shots = [s for s in st.session_state.score_history[-10:] if s.get('team') == 'home' and s.get('attempted', True)]
+        
+        for shot in recent_shots:
+            shot_type = shot.get('shot_type')
+            made = shot.get('made', True)
+            
+            if shot_type in ['field_goal', 'three_pointer']:
+                team_shooting_stats['recent_fg_attempted'] += 1
+                if made:
+                    team_shooting_stats['recent_fg_made'] += 1
+            
+            if shot_type == 'field_goal':
+                team_shooting_stats['recent_two_pt_attempted'] += 1
+                if made:
+                    team_shooting_stats['recent_two_pt_made'] += 1
+            elif shot_type == 'three_pointer':
+                team_shooting_stats['recent_three_pt_attempted'] += 1
+                if made:
+                    team_shooting_stats['recent_three_pt_made'] += 1
+        
+        # Calculate recent shooting percentages
+        recent_fg_pct = (team_shooting_stats['recent_fg_made'] / team_shooting_stats['recent_fg_attempted'] * 100) if team_shooting_stats['recent_fg_attempted'] > 0 else 0
+        recent_two_pct = (team_shooting_stats['recent_two_pt_made'] / team_shooting_stats['recent_two_pt_attempted'] * 100) if team_shooting_stats['recent_two_pt_attempted'] > 0 else 0
+        recent_three_pct = (team_shooting_stats['recent_three_pt_made'] / team_shooting_stats['recent_three_pt_attempted'] * 100) if team_shooting_stats['recent_three_pt_attempted'] > 0 else 0
+        
         # Find hot/cold players
         hot_players = []
         cold_players = []
         safe_ball_handlers = []
         turnover_prone = []
+        rim_finishers = []
+        three_pt_shooters = []
         
         for player, stats in st.session_state.player_stats.items():
             player_name = player.split('(')[0].strip()
             
-            # Hot players: good shooting % and recent points
+            # Hot players: good recent shooting
             if stats.get('field_goals_attempted', 0) >= 3:
                 fg_pct = stats['field_goals_made'] / stats['field_goals_attempted']
                 if fg_pct >= 0.5 and stats.get('points', 0) >= 6:
@@ -6182,7 +6221,21 @@ def display_game_flow_prediction():
                 if fg_pct < 0.30:
                     cold_players.append(player_name)
             
-            # Safe ball handlers: low turnovers with minutes
+            # Rim finishers: good 2PT%
+            two_pt_made = stats['field_goals_made'] - stats['three_pointers_made']
+            two_pt_attempted = stats['field_goals_attempted'] - stats['three_pointers_attempted']
+            if two_pt_attempted >= 3:
+                two_pct = two_pt_made / two_pt_attempted
+                if two_pct >= 0.55:  # 55%+ on 2PT shots
+                    rim_finishers.append(player_name)
+            
+            # Three-point shooters: good 3PT%
+            if stats.get('three_pointers_attempted', 0) >= 2:
+                three_pct = stats['three_pointers_made'] / stats['three_pointers_attempted']
+                if three_pct >= 0.35:
+                    three_pt_shooters.append(player_name)
+            
+            # Ball security
             minutes_played = calculate_player_minutes_played(player)
             turnovers = st.session_state.player_turnovers.get(player, 0)
             if minutes_played >= 5:
@@ -6191,20 +6244,6 @@ def display_game_flow_prediction():
                     safe_ball_handlers.append(player_name)
                 elif to_rate > 0.2:
                     turnover_prone.append(player_name)
-        
-        # Find best 3PT shooters
-        three_pt_shooters = []
-        for player, stats in shooting_stats.items():
-            if stats.get('three_pt_attempted', 0) >= 2 and stats.get('three_pt_percentage', 0) >= 35:
-                three_pt_shooters.append(player.split('(')[0].strip())
-        
-        # Find best +/- players currently on court
-        best_pm_on_court = []
-        if st.session_state.current_lineup:
-            for player in st.session_state.current_lineup:
-                pm = individual_plus_minus.get(player, {}).get('plus_minus', 0)
-                if pm > 5:
-                    best_pm_on_court.append(player.split('(')[0].strip())
         
         # Parse game time
         try:
@@ -6224,25 +6263,37 @@ def display_game_flow_prediction():
         
         # SITUATION 1: Late game, trailing by small margin (comeback scenario)
         if is_late_game and -6 <= current_score_diff < 0:
-            actions = [
-                'Apply full-court pressure defense',
-                'Force opponent into rushed decisions',
-                'Push pace on offense after steals'
-            ]
+            actions = []
             
-            # Add specific player recommendations
+            # Shot selection based on deficit and time
+            if current_score_diff <= -3 and total_seconds < 180:
+                if three_pt_shooters and recent_three_pct >= 30:
+                    actions.append(f'🎯 Look for 3-pointers from {", ".join(three_pt_shooters[:2])} (need quick points)')
+                else:
+                    actions.append('🎯 Get to the rim - drive and draw fouls for free throws')
+                    if rim_finishers:
+                        actions.append(f'✅ {", ".join(rim_finishers[:2])} efficient at the rim - feed them')
+            else:
+                actions.append('⚡ Attack the rim aggressively - force tempo and draw fouls')
+            
+            actions.extend([
+                'Apply full-court pressure defense',
+                'Force opponent into rushed decisions'
+            ])
+            
             if safe_ball_handlers:
-                actions.append(f'✅ Trust {", ".join(safe_ball_handlers[:2])} to handle pressure (low turnover rate)')
+                actions.append(f'✅ Trust {", ".join(safe_ball_handlers[:2])} to handle pressure (low TO rate)')
             
             if hot_players:
-                actions.append(f'🔥 Look for {", ".join(hot_players[:2])} in transition (shooting well today)')
+                actions.append(f'🔥 Push ball to {", ".join(hot_players[:2])} in transition (shooting well)')
             
-            actions.append('Consider fouling if time critical (bonus situation)')
+            if total_seconds < 120:
+                actions.append('Consider fouling if time critical (bonus situation)')
             
             suggestions.append({
                 'priority': 'high',
                 'icon': '🔥',
-                'title': 'Force Turnovers for Quick Points',
+                'title': 'Execute Comeback Strategy',
                 'reasoning': f'Down {abs(current_score_diff)} with {minutes_left}:{seconds_left:02d} left',
                 'actions': actions
             })
@@ -6251,42 +6302,61 @@ def display_game_flow_prediction():
         elif is_late_game and current_score_diff < -6:
             actions = []
             
-            if three_pt_shooters:
-                actions.append(f'🎯 Run plays for {", ".join(three_pt_shooters[:2])} (best 3PT% today)')
-                actions.append(f'Get {three_pt_shooters[0]} open looks - they\'re hitting today')
+            # Evaluate 3PT shooting
+            if recent_three_pct >= 30 and three_pt_shooters:
+                actions.append(f'🎯 Run plays for {", ".join(three_pt_shooters[:2])} (hitting from deep tonight)')
+                actions.append(f'Set screens to free up {three_pt_shooters[0]} - best 3PT option')
+            elif recent_three_pct < 25:
+                actions.append('⚠️ Cold from 3PT - drive and kick for better looks')
+                actions.append('Attack the rim first, create open 3s from defense collapsing')
             else:
-                actions.append('Run plays for open three-pointers')
-                actions.append('Get best shooters quality looks')
+                actions.append('🎯 Hunt 3-point opportunities - space the floor')
             
             actions.extend([
                 'Attack baseline for kick-out opportunities',
-                'Consider intentional fouls to stop clock (if under 2 min)'
+                'Move ball quickly - find open shooter'
             ])
             
             if cold_players:
-                actions.append(f'⚠️ Avoid forcing shots with {", ".join(cold_players[:1])} (cold tonight)')
+                actions.append(f'⚠️ Avoid forcing shots with {", ".join(cold_players[:1])} (struggling tonight)')
+            
+            if total_seconds < 120:
+                actions.append('Consider intentional fouls to stop clock (if under 2 min)')
             
             suggestions.append({
                 'priority': 'high',
                 'icon': '🎯',
-                'title': 'Prioritize Three-Point Attempts',
+                'title': 'Three-Point Attack Plan',
                 'reasoning': f'Down {abs(current_score_diff)} - need quick scoring',
                 'actions': actions
             })
         
         # SITUATION 3: Late game, leading (protect lead)
         elif is_late_game and current_score_diff > 3:
-            actions = [
+            actions = []
+            
+            # Shot selection when protecting lead
+            if recent_fg_pct >= 45:
+                actions.append('✅ Keep taking good shots - offense is working')
+            
+            if recent_two_pct > recent_three_pct and rim_finishers:
+                actions.append(f'🎯 Attack the rim with {", ".join(rim_finishers[:2])} - high % shots')
+                actions.append('Drive to rim, draw fouls - get to free throw line')
+            elif recent_three_pct >= 35:
+                actions.append('Take open 3s when available - shooting well from deep')
+            else:
+                actions.append('Work for high-percentage shots at the rim')
+            
+            actions.extend([
                 'Value each possession - no rushed shots',
-                'Work clock down to 10-15 seconds before shooting',
-                'Take high-percentage shots only'
-            ]
+                'Work clock down to 10-15 seconds before shooting'
+            ])
             
             if safe_ball_handlers:
                 actions.append(f'✅ {", ".join(safe_ball_handlers[:2])} should handle the ball (reliable)')
             
             if turnover_prone:
-                actions.append(f'⚠️ Limit {turnover_prone[0]}\'s ball-handling (turnover issues today)')
+                actions.append(f'⚠️ Limit {turnover_prone[0]}\'s ball-handling (turnover issues)')
             
             actions.extend([
                 'Box out aggressively on defense',
@@ -6305,39 +6375,38 @@ def display_game_flow_prediction():
         elif is_crunch_time and abs(current_score_diff) <= 3:
             actions = []
             
+            # Best shot selection in clutch
+            if rim_finishers:
+                actions.append(f'🎯 Attack rim with {rim_finishers[0]} - highest % option')
+            
             if safe_ball_handlers:
-                actions.append(f'✅ Give ball to {safe_ball_handlers[0]} (best decision-maker today)')
-            else:
-                actions.append('Get ball to best decision-makers')
+                actions.append(f'✅ Give ball to {safe_ball_handlers[0]} (best decision-maker)')
             
             if hot_players:
                 actions.append(f'🔥 Run plays through {hot_players[0]} (hot hand tonight)')
             
             actions.extend([
                 'Run proven set plays - no improvising',
+                'Take smart shots - quality over speed',
                 'Lock down defensively - no easy baskets'
             ])
             
-            if best_pm_on_court:
-                actions.append(f'✅ Keep {", ".join(best_pm_on_court[:2])} on court (positive +/- today)')
-            
-            actions.append('Have timeout ready for last-possession scenarios')
+            if cold_players:
+                actions.append(f'⚠️ Avoid {cold_players[0]} forcing shots (cold tonight)')
             
             suggestions.append({
                 'priority': 'high',
                 'icon': '⚡',
                 'title': 'Execute in Crunch Time',
-                'reasoning': f'Game within {abs(current_score_diff)} pts - every possession critical',
+                'reasoning': f'Game within {abs(current_score_diff)} pts - every possession matters',
                 'actions': actions
             })
         
         # SITUATION 5: Strong negative momentum
         if momentum_dir in ["strong_negative"] and not is_crunch_time:
-            actions = [
-                'Call timeout immediately to reset'
-            ]
+            actions = ['Call timeout immediately to reset']
             
-            # Suggest lineup changes based on +/-
+            # Suggest lineup changes
             worst_pm_players = sorted(
                 [(p, individual_plus_minus.get(p, {}).get('plus_minus', 0)) 
                  for p in st.session_state.current_lineup],
@@ -6348,14 +6417,15 @@ def display_game_flow_prediction():
                 worst_player = worst_pm_players[0][0].split('(')[0].strip()
                 actions.append(f'⚠️ Consider subbing out {worst_player} (struggling with -{abs(worst_pm_players[0][1])} +/-)')
             
-            actions.extend([
-                'Slow tempo down - control the game'
-            ])
+            actions.append('Slow tempo down - control the game')
             
+            # Shot selection to regain confidence
             if hot_players:
-                actions.append(f'🔥 Get {hot_players[0]} an easy look to build confidence')
+                actions.append(f'🔥 Run play for {hot_players[0]} - get an easy bucket to build confidence')
+            elif rim_finishers:
+                actions.append(f'🎯 Get {rim_finishers[0]} a look at the rim - high % shot to stop bleeding')
             else:
-                actions.append('Get an easy basket to build confidence')
+                actions.append('Get an easy basket at the rim to build confidence')
             
             suggestions.append({
                 'priority': 'high',
@@ -6366,38 +6436,47 @@ def display_game_flow_prediction():
             })
         
         # SITUATION 6: Declining offensive efficiency
-        if eff_trend == "declining" and not any(s['title'] in ['Force Turnovers for Quick Points', 'Prioritize Three-Point Attempts'] for s in suggestions):
+        if eff_trend == "declining" and not any(s['title'] in ['Execute Comeback Strategy', 'Three-Point Attack Plan'] for s in suggestions):
             ppp_drop = starting_ppp - current_ppp
             if ppp_drop > 0.15:
-                actions = [
-                    'Run more structured offensive sets',
-                    'Be patient - find better shots'
-                ]
+                actions = []
+                
+                # Diagnose the problem
+                if recent_fg_pct < 35:
+                    actions.append('📉 Shooting has gone cold - change approach')
+                    
+                    if recent_two_pct > recent_three_pct:
+                        actions.append('✅ Attack the rim - 2PT shots working better than 3s')
+                        if rim_finishers:
+                            actions.append(f'Feed {", ".join(rim_finishers[:2])} inside (efficient finishers)')
+                    elif recent_three_pct >= 30:
+                        actions.append('🎯 Space the floor - 3PT shooting better right now')
+                    else:
+                        actions.append('⚡ Drive to rim aggressively - draw fouls and get to FT line')
+                        actions.append('Create easier shots - stop settling for contested jumpers')
+                
+                actions.append('Run more structured offensive sets')
                 
                 if hot_players:
                     actions.append(f'🔥 Feature {", ".join(hot_players[:2])} more (efficient tonight)')
                 
                 if cold_players:
-                    actions.append(f'⚠️ {cold_players[0]} needs better looks (forcing shots)')
-                
-                actions.append('Attack the rim more - draw fouls')
+                    actions.append(f'⚠️ {cold_players[0]} forcing bad shots - need better looks')
                 
                 suggestions.append({
                     'priority': 'medium',
                     'icon': '📉',
-                    'title': 'Improve Shot Quality',
+                    'title': 'Improve Shot Selection',
                     'reasoning': f'Offensive efficiency dropped {ppp_drop:.2f} PPP',
                     'actions': actions
                 })
         
         # SITUATION 7: Turnover problems
         if home_tos >= 5 and home_tos > away_tos + 3:
-            actions = [
-                'Slow down - make simple, safe passes'
-            ]
+            actions = ['Slow down - make simple, safe passes']
             
             if turnover_prone:
-                actions.append(f'⚠️ {", ".join(turnover_prone[:2])} need to value the ball (multiple TOs today)')
+                actions.append(f'⚠️ {", ".join(turnover_prone[:2])} need to value the ball (multiple TOs)')
             
             if safe_ball_handlers:
                 actions.append(f'✅ Run offense through {", ".join(safe_ball_handlers[:2])} (secure handlers)')
@@ -6417,12 +6496,14 @@ def display_game_flow_prediction():
         
         # SITUATION 8: Building large lead (early/mid game)
         if current_score_diff > 15 and not is_late_game:
-            actions = [
-                'Keep pressure on - don\'t let them back in'
-            ]
+            actions = ['Keep pressure on - don\'t let them back in']
+            
+            best_pm_on_court = [p for p in st.session_state.current_lineup 
+                                if individual_plus_minus.get(p, {}).get('plus_minus', 0) > 5]
             
             if best_pm_on_court:
-                actions.append(f'✅ {", ".join(best_pm_on_court[:2])} are dominating (high +/-) - keep them in')
+                best_players = [p.split('(')[0].strip() for p in best_pm_on_court[:2]]
+                actions.append(f'✅ {", ".join(best_players)} dominating - keep them in')
             
             actions.extend([
                 'Consider rotating in bench players for experience',
@@ -6442,18 +6523,16 @@ def display_game_flow_prediction():
         if momentum_dir in ["strong_positive"] and not any(s['priority'] == 'high' for s in suggestions):
             actions = []
             
-            if best_pm_on_court:
-                actions.append(f'✅ Keep current lineup: {", ".join(best_pm_on_court[:3])} are on fire')
-            else:
-                actions.append('Keep current lineup on court')
+            if best_pm_on_court := [p for p in st.session_state.current_lineup 
+                                     if individual_plus_minus.get(p, {}).get('plus_minus', 0) > 3]:
+                best_players = [p.split('(')[0].strip() for p in best_pm_on_court[:3]]
+                actions.append(f'✅ Keep current lineup: {", ".join(best_players)} on fire')
             
             actions.append('Push the pace - keep opponent scrambling')
             
-            # FIXED VERSION HERE
+            # Capitalize with hot players
             if hot_players:
                 hot_player_displays = []
-                hot_player_percentages = []
-                
                 for player_name in hot_players[:2]:
                     roster_match = next((r for r in st.session_state.roster if r["name"] == player_name), None)
                     if roster_match:
@@ -6462,15 +6541,15 @@ def display_game_flow_prediction():
                         
                         if player_display in shooting_stats:
                             fg_pct = shooting_stats[player_display].get('fg_percentage', 0)
-                            hot_player_percentages.append(f"{fg_pct:.0f}%")
-                
+                            
                 if hot_player_displays:
-                    if hot_player_percentages:
-                        actions.append(f'🔥 Feed {", ".join([p.split(" (")[0] for p in hot_player_displays])} - they\'re hot ({", ".join(hot_player_percentages)} FG%)')
-                    else:
-                        actions.append(f'🔥 Feed {", ".join([p.split(" (")[0] for p in hot_player_displays])} (productive tonight)')
-            else:
-                actions.append('Feed hot players - ride the momentum')
+                    actions.append(f'🔥 Feed {", ".join([p.split(" (")[0] for p in hot_player_displays])} - they\'re hot')
+            
+            # Optimal shot selection when hot
+            if recent_two_pct > recent_three_pct + 15:
+                actions.append('🎯 Keep attacking the rim - 2PT shots falling')
+            elif recent_three_pct >= 40:
+                actions.append('🎯 Space the floor - 3PT shooting on fire')
             
             actions.append('Stay aggressive on both ends')
             
@@ -6484,16 +6563,20 @@ def display_game_flow_prediction():
         
         # SITUATION 10: No urgent issues (general good play)
         if not suggestions:
-            actions = [
-                'Continue current strategy - it\'s working',
-                'Stay focused and disciplined'
-            ]
+            actions = ['Continue current strategy - it\'s working']
+            
+            # Give specific positive reinforcement
+            if recent_fg_pct >= 50:
+                actions.append('✅ Excellent shot selection - keep taking quality shots')
             
             if hot_players:
                 actions.append(f'🔥 Keep involving {", ".join(hot_players[:2])} (productive tonight)')
             
+            if home_tos <= away_tos:
+                actions.append('✅ Good ball security - maintain focus')
+            
             actions.extend([
-                'Make smart decisions with the ball',
+                'Stay focused and disciplined',
                 'Keep defensive intensity high'
             ])
             
