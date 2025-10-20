@@ -6305,8 +6305,26 @@ def display_game_flow_prediction():
             
             actions.append('Push the pace - keep opponent scrambling')
             
+            # FIXED VERSION HERE
             if hot_players:
-                actions.append(f'🔥 Feed {", ".join(hot_players[:2])} - they\'re hot ({", ".join([str(shooting_stats[p+" ("+[r["jersey"] for r in st.session_state.roster if r["name"] == p][0]+")"]["fg_percentage"]) + "%" for p in hot_players[:2]])})')
+                hot_player_displays = []
+                hot_player_percentages = []
+                
+                for player_name in hot_players[:2]:
+                    roster_match = next((r for r in st.session_state.roster if r["name"] == player_name), None)
+                    if roster_match:
+                        player_display = f"{player_name} (#{roster_match['jersey']})"
+                        hot_player_displays.append(player_display)
+                        
+                        if player_display in shooting_stats:
+                            fg_pct = shooting_stats[player_display].get('fg_percentage', 0)
+                            hot_player_percentages.append(f"{fg_pct:.0f}%")
+                
+                if hot_player_displays:
+                    if hot_player_percentages:
+                        actions.append(f'🔥 Feed {", ".join([p.split(" (")[0] for p in hot_player_displays])} - they\'re hot ({", ".join(hot_player_percentages)} FG%)')
+                    else:
+                        actions.append(f'🔥 Feed {", ".join([p.split(" (")[0] for p in hot_player_displays])} (productive tonight)')
             else:
                 actions.append('Feed hot players - ride the momentum')
             
