@@ -6611,64 +6611,8 @@ def display_game_flow_prediction():
         st.info("Need at least 2 possessions to calculate momentum")
     
     st.divider()
-    
-    # Efficiency trend analysis (keep existing code)
-    st.write("**⚡ Scoring Efficiency Trend**")
-    
-    if eff_trend == "improving":
-        st.success(f"**Improving** ({starting_ppp:.2f} → {current_ppp:.2f} PPP)")
-        st.write("**Why you're improving:**")
-        
-        # Analyze what's driving improvement
-        improvement = current_ppp - starting_ppp
-        if improvement > 0.15:
-            st.write("- 🎯 Shot selection dramatically better")
-            st.write("- 📈 Finding higher percentage looks")
-            st.write("- ✅ Making key adjustments that work")
-        elif improvement > 0.05:
-            st.write("- ✅ Getting slightly better shots")
-            st.write("- 📊 Minor improvements adding up")
-            st.write("- 🔄 Keep current approach")
-        
-        st.caption("**Action:** Maintain current offensive strategy")
-        
-    elif eff_trend == "declining":
-        st.warning(f"**Declining** ({starting_ppp:.2f} → {current_ppp:.2f} PPP)")
-        st.write("**Why efficiency is dropping:**")
-        
-        # Analyze what's causing decline
-        decline = current_ppp - starting_ppp
-        if decline < -0.15:
-            st.write("- 🚫 Shot quality significantly worse")
-            st.write("- ❌ Taking more contested/rushed shots")
-            st.write("- ⚠️ Opponent defense tightening")
-        elif decline < -0.05:
-            st.write("- 📉 Slightly worse shot selection")
-            st.write("- 🔄 Need to reset offensive flow")
-            st.write("- 💭 Consider timeout/adjustment")
-        
-        # Check turnover impact
-        home_tos, _ = get_team_turnovers()
-        if home_tos >= 5:
-            st.write("- 🔴 High turnovers hurting efficiency")
-        
-        st.caption("**Action:** Adjust offensive approach immediately")
-        
-    else:
-        st.info(f"**Stable** ({current_ppp:.2f} PPP)")
-        st.write("**Maintaining consistency:**")
-        st.write("- 📊 Steady offensive output")
-        st.write("- ➡️ No major changes needed")
-        st.write("- 🎯 Solid, reliable performance")
-        
-        if current_ppp >= 1.10:
-            st.caption("**Status:** Excellent efficiency - keep it up!")
-        elif current_ppp >= 1.00:
-            st.caption("**Status:** Good efficiency - above average")
-        elif current_ppp >= 0.90:
-            st.caption("**Status:** Average efficiency - room for improvement")
-        else:
-            st.caption("**Status:** Below average - needs attention")
+
+    display_key_runs()
     
     st.divider()
     
