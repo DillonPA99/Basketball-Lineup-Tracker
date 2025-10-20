@@ -5792,15 +5792,6 @@ def generate_game_summary_analysis():
 
 def display_game_flow_prediction():
     """
-    Main display function for AI Game Flow Analysis with detailed explanations.
-    Add this to your Analytics tab.
-    """    
-    if not st.session_state.score_history or len(st.session_state.score_history) < 5:
-        st.info("📊 Need at least 5 scoring events to generate predictions. Keep playing!")
-        return
-
-def display_game_flow_prediction():
-    """
     Main display function for AI Game Flow Analysis with efficiency comparison at top.
     """    
     if not st.session_state.score_history or len(st.session_state.score_history) < 5:
@@ -6013,7 +6004,10 @@ def display_game_flow_prediction():
         # Momentum & Efficiency Analysis
         st.write("**📈 Performance Trajectory**")
         
-        # Momentum analysis
+        # Get momentum details
+        momentum_score, momentum_dir = calculate_momentum_score()
+        
+        # Momentum analysis with detailed breakdown
         if momentum_dir in ["strong_positive"]:
             st.success(f"**Strong Positive Momentum** ({momentum_score:+.0f})")
             st.write("**What this means:**")
@@ -6045,65 +6039,219 @@ def display_game_flow_prediction():
             st.write("- Next few plays could swing momentum")
             st.write("- Execute fundamentals to gain edge")
         
-        st.divider()
-        
-        # Efficiency trend analysis
-        st.write("**⚡ Scoring Efficiency Trend**")
-        
-        if eff_trend == "improving":
-            st.success(f"**Improving** ({starting_ppp:.2f} → {current_ppp:.2f} PPP)")
-            st.write("**Why you're improving:**")
+        # ADD DETAILED MOMENTUM BREAKDOWN HERE
+        with st.expander("🔍 Detailed Momentum Breakdown", expanded=False):
+            st.write("### How Momentum is Calculated")
             
-            # Analyze what's driving improvement
-            improvement = current_ppp - starting_ppp
-            if improvement > 0.15:
-                st.write("- 🎯 Shot selection dramatically better")
-                st.write("- 📈 Finding higher percentage looks")
-                st.write("- ✅ Making key adjustments that work")
-            elif improvement > 0.05:
-                st.write("- ✅ Getting slightly better shots")
-                st.write("- 📊 Minor improvements adding up")
-                st.write("- 🔄 Keep current approach")
+            st.write("""
+            **Formula Overview:**
+            Momentum analyzes the last 10 possessions with emphasis on recent events:
             
-            st.caption("**Action:** Maintain current offensive strategy")
+            1. **Recency Weighting**: More recent possessions matter more
+               - Oldest possession weight: ~0.55
+               - Most recent possession weight: 1.0
+               - Creates gradual curve favoring current performance
             
-        elif eff_trend == "declining":
-            st.warning(f"**Declining** ({starting_ppp:.2f} → {current_ppp:.2f} PPP)")
-            st.write("**Why efficiency is dropping:**")
+            2. **Efficiency Differential**: Compares scoring efficiency
+               - Home PPP (Points Per Possession) vs Away PPP
+               - Weighted by recency for each possession
             
-            # Analyze what's causing decline
-            decline = current_ppp - starting_ppp
-            if decline > 0.15:
-                st.write("- 🚫 Shot quality significantly worse")
-                st.write("- ❌ Taking more contested/rushed shots")
-                st.write("- ⚠️ Opponent defense tightening")
-            elif decline > 0.05:
-                st.write("- 📉 Slightly worse shot selection")
-                st.write("- 🔄 Need to reset offensive flow")
-                st.write("- 💭 Consider timeout/adjustment")
+            3. **Final Score**: (Home Efficiency - Away Efficiency) × 35
+               - Range: -75 to +75
+               - Positive = HOME has momentum
+               - Negative = AWAY has momentum
+            """)
             
-            # Check turnover impact
-            home_tos, _ = get_team_turnovers()
-            if home_tos >= 5:
-                st.write("- 🔴 High turnovers hurting efficiency")
+            st.divider()
             
-            st.caption("**Action:** Adjust offensive approach immediately")
-            
-        else:
-            st.info(f"**Stable** ({current_ppp:.2f} PPP)")
-            st.write("**Maintaining consistency:**")
-            st.write("- 📊 Steady offensive output")
-            st.write("- ➡️ No major changes needed")
-            st.write("- 🎯 Solid, reliable performance")
-            
-            if current_ppp >= 1.10:
-                st.caption("**Status:** Excellent efficiency - keep it up!")
-            elif current_ppp >= 1.00:
-                st.caption("**Status:** Good efficiency - above average")
-            elif current_ppp >= 0.90:
-                st.caption("**Status:** Average efficiency - room for improvement")
+            # Calculate detailed breakdown
+            if len(st.session_state.score_history) >= 2:
+                recent_scores = st.session_state.score_history[-10:]
+                
+                st.write("### Current Momentum Components")
+                
+                # Analyze recent possessions
+                home_possessions = 0
+                home_points_weighted = 0
+                away_possessions = 0
+                away_points_weighted = 0
+                
+                possession_breakdown = []
+                
+                for i, score in enumerate(recent_scores):
+                    recency_weight = 0.5 + (0.5 * (i + 1) / len(recent_scores))
+                    
+                    if score['team'] == 'home':
+                        home_possessions += recency_weight
+                        if score.get('made', True):
+                            home_points_weighted += score['points'] * recency_weight
+                            impact = f"+{score['points'] * recency_weight:.2f}"
+                            impact_color = "🟢"
+                        else:
+                            impact = f"-{0.5 * recency_weight:.2f}"
+                            impact_color = "🟡"
+                    else:
+                        away_possessions += recency_weight
+                        if score.get('made', True):
+                            away_points_weighted += score['points'] * recency_weight
+                            impact = f"+{score['points'] * recency_weight:.2f}"
+                            impact_color = "🔵"
+                        else:
+                            impact = f"-{0.5 * recency_weight:.2f}"
+                            impact_color = "⚪"
+                    
+                    possession_breakdown.append({
+                        'num': i + 1,
+                        'team': score['team'].upper(),
+                        'made': score.get('made', True),
+                        'points': score.get('points', 0),
+                        'weight': recency_weight,
+                        'impact': impact,
+                        'color': impact_color
+                    })
+                
+                # Show efficiency calculation
+                calc_col1, calc_col2 = st.columns(2)
+                
+                with calc_col1:
+                    st.write("**HOME Team Efficiency:**")
+                    home_eff = (home_points_weighted / home_possessions) if home_possessions > 0 else 0
+                    st.metric("Weighted PPP", f"{home_eff:.3f}")
+                    st.caption(f"Weighted Possessions: {home_possessions:.2f}")
+                    st.caption(f"Weighted Points: {home_points_weighted:.2f}")
+                
+                with calc_col2:
+                    st.write("**AWAY Team Efficiency:**")
+                    away_eff = (away_points_weighted / away_possessions) if away_possessions > 0 else 0
+                    st.metric("Weighted PPP", f"{away_eff:.3f}")
+                    st.caption(f"Weighted Possessions: {away_possessions:.2f}")
+                    st.caption(f"Weighted Points: {away_points_weighted:.2f}")
+                
+                # Show the calculation
+                st.write("**Final Momentum Calculation:**")
+                efficiency_diff = home_eff - away_eff
+                momentum_raw = efficiency_diff * 35
+                momentum_final = max(-75, min(75, momentum_raw))
+                
+                st.code(f"""
+    Efficiency Differential = {home_eff:.3f} - {away_eff:.3f} = {efficiency_diff:.3f}
+    Raw Momentum Score = {efficiency_diff:.3f} × 35 = {momentum_raw:.1f}
+    Final Score (clamped) = {momentum_final:.1f}
+                """)
+                
+                # Interpretation thresholds
+                st.write("**Momentum Thresholds:**")
+                threshold_data = [
+                    {"Range": "+12 to +75", "Category": "🔥 Strong Positive", "Meaning": "Dominating recent possessions"},
+                    {"Range": "+4 to +12", "Category": "✅ Positive", "Meaning": "Slight advantage in flow"},
+                    {"Range": "-4 to +4", "Category": "⚖️ Neutral", "Meaning": "Even battle"},
+                    {"Range": "-12 to -4", "Category": "⚠️ Negative", "Meaning": "Losing recent possessions"},
+                    {"Range": "-75 to -12", "Category": "❄️ Strong Negative", "Meaning": "Opponent dominating"},
+                ]
+                threshold_df = pd.DataFrame(threshold_data)
+                st.dataframe(threshold_df, use_container_width=True, hide_index=True)
+                
+                st.divider()
+                
+                # Show recent possession impacts
+                st.write("### Recent Possession Impact (Newest → Oldest)")
+                
+                # Reverse to show newest first
+                for p in reversed(possession_breakdown):
+                    result = "Made" if p['made'] else "Miss"
+                    pts_text = f"{p['points']}pts" if p['made'] else ""
+                    
+                    st.write(f"{p['color']} **Possession {p['num']}**: {p['team']} {result} {pts_text}")
+                    st.caption(f"   Weight: {p['weight']:.2f} | Momentum Impact: {p['impact']}")
+                
+                st.divider()
+                
+                # Why this matters
+                st.write("### 💡 Why Momentum Matters")
+                st.write("""
+                **Strategic Value:**
+                - **Positive Momentum**: Your team is executing well. Stay aggressive, 
+                  keep current lineup if possible, maintain tempo.
+                
+                - **Negative Momentum**: Time to make adjustments. Consider timeout, 
+                  substitution, or different offensive sets to break opponent's rhythm.
+                
+                - **Neutral Momentum**: Game is even. Next few possessions are critical 
+                  - execute your best plays to seize momentum.
+                
+                **What Affects Momentum:**
+                - Made shots (especially 3-pointers) = big positive impact
+                - Missed shots = small negative impact
+                - Recent events matter MORE than older events
+                - Consistent scoring > sporadic scoring
+                
+                **Momentum vs Score:**
+                - You can have positive momentum while trailing
+                - You can have negative momentum while leading
+                - Momentum shows TREND, not current status
+                """)
             else:
-                st.caption("**Status:** Below average - needs attention")
+                st.info("Need at least 2 possessions to calculate momentum breakdown")
+    
+    st.divider()
+    
+    # Efficiency trend analysis (keep existing code)
+    st.write("**⚡ Scoring Efficiency Trend**")
+    
+    if eff_trend == "improving":
+        st.success(f"**Improving** ({starting_ppp:.2f} → {current_ppp:.2f} PPP)")
+        st.write("**Why you're improving:**")
+        
+        # Analyze what's driving improvement
+        improvement = current_ppp - starting_ppp
+        if improvement > 0.15:
+            st.write("- 🎯 Shot selection dramatically better")
+            st.write("- 📈 Finding higher percentage looks")
+            st.write("- ✅ Making key adjustments that work")
+        elif improvement > 0.05:
+            st.write("- ✅ Getting slightly better shots")
+            st.write("- 📊 Minor improvements adding up")
+            st.write("- 🔄 Keep current approach")
+        
+        st.caption("**Action:** Maintain current offensive strategy")
+        
+    elif eff_trend == "declining":
+        st.warning(f"**Declining** ({starting_ppp:.2f} → {current_ppp:.2f} PPP)")
+        st.write("**Why efficiency is dropping:**")
+        
+        # Analyze what's causing decline
+        decline = current_ppp - starting_ppp
+        if decline < -0.15:
+            st.write("- 🚫 Shot quality significantly worse")
+            st.write("- ❌ Taking more contested/rushed shots")
+            st.write("- ⚠️ Opponent defense tightening")
+        elif decline < -0.05:
+            st.write("- 📉 Slightly worse shot selection")
+            st.write("- 🔄 Need to reset offensive flow")
+            st.write("- 💭 Consider timeout/adjustment")
+        
+        # Check turnover impact
+        home_tos, _ = get_team_turnovers()
+        if home_tos >= 5:
+            st.write("- 🔴 High turnovers hurting efficiency")
+        
+        st.caption("**Action:** Adjust offensive approach immediately")
+        
+    else:
+        st.info(f"**Stable** ({current_ppp:.2f} PPP)")
+        st.write("**Maintaining consistency:**")
+        st.write("- 📊 Steady offensive output")
+        st.write("- ➡️ No major changes needed")
+        st.write("- 🎯 Solid, reliable performance")
+        
+        if current_ppp >= 1.10:
+            st.caption("**Status:** Excellent efficiency - keep it up!")
+        elif current_ppp >= 1.00:
+            st.caption("**Status:** Good efficiency - above average")
+        elif current_ppp >= 0.90:
+            st.caption("**Status:** Average efficiency - room for improvement")
+        else:
+            st.caption("**Status:** Below average - needs attention")
     
     st.divider()
     
