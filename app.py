@@ -8940,31 +8940,9 @@ if st.session_state.get('show_admin_panel', False) and st.session_state.user_inf
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏀 Live Game", "📊 Analytics", "🤖 AI Insights", "📝 Event Log", "🏆 Season Stats"])
 
 # ------------------------------------------------------------------
-# Tab 1: Live Game
+# Tab 1: Live Game - FIXED VERSION
 # ------------------------------------------------------------------
 with tab1:
-    # JavaScript-based sticky header (always works)
-    st.markdown("""
-    <script>
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (!entry.isIntersecting) {
-                    entry.target.style.position = 'fixed';
-                    entry.target.style.top = '0';
-                    entry.target.style.width = '100%';
-                } else {
-                    entry.target.style.position = 'relative';
-                }
-            });
-        });
-        
-        setTimeout(() => {
-            const statusBar = document.querySelector('[data-testid="stHorizontalBlock"]');
-            if (statusBar) observer.observe(statusBar);
-        }, 1000);
-    </script>
-    """, unsafe_allow_html=True)
-    
     st.header("Live Game")
     
     # Current game status
@@ -8985,7 +8963,6 @@ with tab1:
                 st.rerun()
             else:
                 st.error("Cannot advance quarter further")
-    
     st.divider()
 
     # Check if lineup is set for current quarter
