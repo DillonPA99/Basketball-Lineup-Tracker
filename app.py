@@ -9348,22 +9348,30 @@ with tab1:
     
     with turnover_col1:
         st.markdown("### **HOME Turnovers**")
-        # Home team turnover player selection
+        
+        # ===== DEFINE home_turnover_player FIRST =====
         if st.session_state.quarter_lineup_set and st.session_state.current_lineup:
-
-            if st.button("HOME Turnover", key="home_turnover", use_container_width=True, type="primary"):
-                player_to_record = None if home_turnover_player == "Team Turnover" else home_turnover_player
-                add_turnover("home", player_to_record)
-                player_text = f" by {home_turnover_player.split('(')[0].strip()}" if home_turnover_player != "Team Turnover" else ""
-                st.success(f"HOME turnover recorded{player_text}")
-                st.rerun()
-            
+            # Use selected player or default to team turnover
+            home_turnover_player = st.session_state.get('selected_turnover_player', "Team Turnover")
+        else:
+            home_turnover_player = "Team Turnover"
+        
+        # ===== NOW TURNOVER BUTTON CAN USE home_turnover_player =====
+        if st.button("HOME Turnover", key="home_turnover", use_container_width=True, type="primary"):
+            player_to_record = None if home_turnover_player == "Team Turnover" else home_turnover_player
+            add_turnover("home", player_to_record)
+            player_text = f" by {home_turnover_player.split('(')[0].strip()}" if home_turnover_player != "Team Turnover" else ""
+            st.success(f"HOME turnover recorded{player_text}")
+            st.rerun()
+        
+        # ===== PLAYER SELECTION UI (AFTER BUTTON) =====
+        if st.session_state.quarter_lineup_set and st.session_state.current_lineup:
             st.write("**Select Player:**")
-
+    
             # Create 5 columns for the 5 players plus team turnover
             player_to_cols = st.columns(3)  # First row: 3 players
             player_to_cols2 = st.columns(3)  # Second row: 2 players + team turnover
-
+    
             # Display first 3 players
             for i, player in enumerate(st.session_state.current_lineup[:3]):
                 with player_to_cols[i]:
@@ -9373,7 +9381,7 @@ with tab1:
                     if st.button(f"{player_name}\n#{jersey}", key=f"select_to_player_{i}", use_container_width=True):
                         st.session_state.selected_turnover_player = player
                         st.rerun()
-
+    
             # Display remaining 2 players + team option
             remaining_players = st.session_state.current_lineup[3:]
             for i, player in enumerate(remaining_players):
@@ -9384,7 +9392,7 @@ with tab1:
                     if st.button(f"{player_name}\n#{jersey}", key=f"select_to_player_{i+3}", use_container_width=True):
                         st.session_state.selected_turnover_player = player
                         st.rerun()
-
+    
             # Team turnover button in remaining space
             with player_to_cols2[2]:
                 if st.button("Team\nTurnover", key="select_team_turnover", use_container_width=True, type="secondary"):
@@ -9397,31 +9405,30 @@ with tab1:
                     st.info("Selected: Team Turnover")
                 else:
                     st.info(f"Selected: {st.session_state.selected_turnover_player.split('(')[0].strip()}")
-
+    
             # Clear turnover selection
             if st.button("🔄 Clear TO Selection", key="clear_turnover_selection"):
                 if 'selected_turnover_player' in st.session_state:
                     del st.session_state.selected_turnover_player
                 st.rerun()
         
-            # Use selected player or default to team turnover
-            home_turnover_player = st.session_state.get('selected_turnover_player', "Team Turnover")
-        
         else:
-            home_turnover_player = "Team Turnover"
             st.info("Set lineup first to track individual player turnovers")
-        
-
     
     with turnover_col2:
         st.markdown("### **AWAY Turnovers**")
-        # Away team turnover (team only)
+        
+        # ===== DEFINE away_turnover_player FIRST (for consistency) =====
+        away_turnover_player = None  # Away team always uses None (no player tracking)
+        
+        # ===== AWAY TURNOVER BUTTON =====
         if st.button("AWAY Turnover", key="away_turnover", use_container_width=True, type="primary"):
-            add_turnover("away", None)
+            add_turnover("away", away_turnover_player)
             st.success("AWAY turnover recorded")
             st.rerun()
+        
         st.info("📊 Away team turnovers recorded as team totals only")
-
+    
     # Display current turnover count
     home_tos, away_tos = get_team_turnovers()
     if home_tos > 0 or away_tos > 0:
@@ -9430,7 +9437,7 @@ with tab1:
             st.metric("HOME Turnovers", home_tos)
         with to_count_col2:
             st.metric("AWAY Turnovers", away_tos)
-
+    
     # Undo last turnover
     if st.session_state.turnover_history:
         last_turnover = st.session_state.turnover_history[-1]
@@ -9440,7 +9447,7 @@ with tab1:
         if st.button(undo_text):
             if undo_last_turnover():
                 st.success("Last turnover undone!")
-                st.rerun()    
+                st.rerun()
 # ------------------------------------------------------------------
 # Tab 2: Analytics
 # ------------------------------------------------------------------
