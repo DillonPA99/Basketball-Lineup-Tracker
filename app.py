@@ -10144,7 +10144,7 @@ with tab2:
                                     st.metric("Neutral Impact", neutral)
 
                             if timeouts:
-                                st.write("**⏸️ Timeout Impact Analysis:**")
+                                st.write("**⏸️ Timeout Impact Analysis (Home Team Perspective):**")
                                 
                                 positive_impact = 0
                                 negative_impact = 0
@@ -10159,9 +10159,13 @@ with tab2:
                                         margin_after = next_events['Margin'].iloc[-1]
                                         margin_change = margin_after - margin_before
                                         
-                                        # Determine if timeout helped the team that called it
+                                        # From HOME team's perspective:
+                                        # Positive margin change = good for home team
+                                        # Negative margin change = bad for home team
+                                        
                                         if to['Team'].lower() == 'home':
-                                            # Home team timeout - positive if margin improved
+                                            # Home team called timeout
+                                            # Effective if home team improves (margin increases)
                                             if margin_change > 2:
                                                 positive_impact += 1
                                             elif margin_change < -2:
@@ -10169,21 +10173,28 @@ with tab2:
                                             else:
                                                 neutral_impact += 1
                                         else:
-                                            # Away team timeout - positive if margin decreased (better for away)
-                                            if margin_change < -2:
-                                                positive_impact += 1
-                                            elif margin_change > 2:
-                                                negative_impact += 1
+                                            # Away team called timeout
+                                            # Effective FOR HOME if away team doesn't improve (margin stays positive or increases)
+                                            # Ineffective FOR HOME if away team improves (margin decreases)
+                                            if margin_change > 2:
+                                                positive_impact += 1  # Home team got better despite away timeout
+                                            elif margin_change < -2:
+                                                negative_impact += 1  # Away timeout successfully hurt home team
                                             else:
                                                 neutral_impact += 1
                                 
                                 to_col1, to_col2, to_col3 = st.columns(3)
                                 with to_col1:
-                                    st.metric("Effective Timeouts", positive_impact)
+                                    st.metric("Effective (Home)", positive_impact)
                                 with to_col2:
-                                    st.metric("Ineffective Timeouts", negative_impact)
+                                    st.metric("Ineffective (Home)", negative_impact)
                                 with to_col3:
                                     st.metric("Neutral Impact", neutral_impact)
+                                
+                                # Detailed timeout list
+                                st.write("**Timeout Details:**")
+                                for to in timeouts:
+                                    st.caption(f"• {to['Team']} timeout @ {to['Quarter']} {to['Game Time']} (Score: {to['Home Score']}-{to['Away Score']}, Margin: {to['Margin']:+d})")
                                 
                                 # Detailed timeout list
                                 st.write("**Timeout Details:**")
