@@ -5986,8 +5986,14 @@ def display_game_flow_prediction():
     eff_trend, current_ppp, starting_ppp = calculate_scoring_efficiency_trend()
     momentum_score, momentum_dir = calculate_momentum_score()
     
-    # Top metrics row
-    metric_col1, metric_col2, metric_col3 = st.columns(3)
+    # Check if first quarter is completed
+    first_quarter_completed = len(st.session_state.quarter_end_history) > 0
+    
+    # Top metrics row - conditionally show 2 or 3 columns
+    if first_quarter_completed:
+        metric_col1, metric_col2, metric_col3 = st.columns(3)
+    else:
+        metric_col1, metric_col3 = st.columns(2)
     
     # Win Probability with context
     with metric_col1:
@@ -6001,21 +6007,22 @@ def display_game_flow_prediction():
             st.warning(f"**Win Probability**\n## {win_prob}%")
             st.caption("🔴 Uphill battle")
     
-    # Predicted Final Score with reasoning
-    with metric_col2:
-        score_diff = pred_home - pred_away
-        st.metric(
-            "Predicted Final",
-            f"{pred_home}-{pred_away}",
-            f"{confidence}% confidence"
-        )
-        if score_diff > 0:
-            st.caption(f"Win by {score_diff} pts")
-        elif score_diff < 0:
-            st.caption(f"Lose by {abs(score_diff)} pts")
-        else:
-            st.caption("Overtime likely")
-        
+    # Predicted Final Score - ONLY show if first quarter completed
+    if first_quarter_completed:
+        with metric_col2:
+            score_diff = pred_home - pred_away
+            st.metric(
+                "Predicted Final",
+                f"{pred_home}-{pred_away}",
+                f"{confidence}% confidence"
+            )
+            if score_diff > 0:
+                st.caption(f"Win by {score_diff} pts")
+            elif score_diff < 0:
+                st.caption(f"Lose by {abs(score_diff)} pts")
+            else:
+                st.caption("Overtime likely")
+    
     # Efficiency Trend with explanation
     with metric_col3:
         trend_emoji = "📈" if eff_trend == "improving" else "📉" if eff_trend == "declining" else "➡️"
