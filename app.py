@@ -700,10 +700,6 @@ def load_game_session(session_id):
         # Decode pickled data with proper error handling
         fields_to_decode = ['lineup_history', 'score_history', 'quarter_end_history', 'player_stats', 'turnover_history', 'player_turnovers', 'lineup_points_off_turnovers', 'timeout_history']
         
-        # And add the default case:
-        if field == 'timeout_history':
-            session_data[field] = []
-        
         for field in fields_to_decode:
             if field in session_data and session_data[field]:
                 try:
@@ -727,13 +723,16 @@ def load_game_session(session_id):
                     elif field == 'lineup_points_off_turnovers':
                         # Convert back to defaultdict(int) for lineup points off turnovers
                         session_data[field] = defaultdict(int, decoded_data)
+                    elif field == 'timeout_history':
+                        # Handle timeout history
+                        session_data[field] = decoded_data
                     else:
                         session_data[field] = decoded_data
                         
                 except Exception as e:
                     st.warning(f"Error decoding {field}, using defaults: {e}")
                     # Set defaults based on field type
-                    if field == 'turnover_history':
+                    if field == 'turnover_history' or field == 'timeout_history':
                         session_data[field] = []
                     elif field == 'player_turnovers':
                         session_data[field] = defaultdict(int)
@@ -754,7 +753,7 @@ def load_game_session(session_id):
                         session_data[field] = []
             else:
                 # Initialize missing fields with defaults
-                if field == 'turnover_history':
+                if field == 'turnover_history' or field == 'timeout_history':
                     session_data[field] = []
                 elif field == 'player_turnovers':
                     session_data[field] = defaultdict(int)
@@ -774,6 +773,7 @@ def load_game_session(session_id):
                 else:
                     session_data[field] = []
         
+        # Handle points off turnovers data
         points_off_to = session_data.get('points_off_turnovers')
         if not points_off_to or not isinstance(points_off_to, dict):
             session_data['points_off_turnovers'] = {'home': 0, 'away': 0}
@@ -785,9 +785,8 @@ def load_game_session(session_id):
         if 'event_counter' in session_data:
             st.session_state.event_counter = session_data['event_counter']
         else:
-            st.session_state.event_counter = 0  # Default for games saved before this feature
+            st.session_state.event_counter = 0
     
-        # ADD THESE LINES HERE (right before the return statement):
         # Set completion flag if game is completed
         if session_data.get('is_completed', False):
             st.session_state.game_marked_complete = True
