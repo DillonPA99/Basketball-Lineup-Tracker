@@ -9150,6 +9150,7 @@ with tab1:
     
     with home_col:
         st.markdown("### **HOME TEAM Scoring**")
+        st.metric("Home Score", st.session_state.home_score)
 
         # Home team scoring buttons
         st.write("**Score Entry:**")
