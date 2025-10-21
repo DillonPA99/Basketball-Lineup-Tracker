@@ -6071,13 +6071,13 @@ def display_game_flow_prediction():
             home_possessions = 0
             home_points_weighted = 0
             
-           for i, score in enumerate(recent_scores):
-               recency_weight = 0.5 + (0.5 * (i + 1) / len(recent_scores))
-               
-               if score['team'] == 'home':
-                   home_possessions += recency_weight
-                   if score.get('made', True):
-                       home_points_weighted += score['points'] * recency_weight
+            for i, score in enumerate(recent_scores):
+                recency_weight = 0.5 + (0.5 * (i + 1) / len(recent_scores))
+                
+                if score['team'] == 'home':
+                    home_possessions += recency_weight
+                    if score.get('made', True):
+                        home_points_weighted += score['points'] * recency_weight
             
             home_eff = (home_points_weighted / home_possessions) if home_possessions > 0 else 0
             
