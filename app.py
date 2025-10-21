@@ -9150,7 +9150,38 @@ with tab1:
     
     with home_col:
         st.markdown("### **HOME TEAM Scoring**")
+
+        # Home team scoring buttons
+        st.write("**Score Entry**")
         
+        # Free Throws
+        home_ft_make, home_ft_miss = st.columns(2)
+        with home_ft_make:
+            if st.button("✅ FT", key="home_ft_make", use_container_width=True, type="primary"):
+                handle_score_entry("home", 1, home_scorer, "free_throw", True)
+        with home_ft_miss:
+            if st.button("❌ FT", key="home_ft_miss", use_container_width=True):
+                handle_score_entry("home", 0, home_scorer, "free_throw", False)
+
+        # 2-Point Field Goals
+        home_2pt_make, home_2pt_miss = st.columns(2)
+        with home_2pt_make:
+            if st.button("✅ 2PT", key="home_2pt_make", use_container_width=True, type="primary"):
+                handle_score_entry("home", 2, home_scorer, "field_goal", True)
+        with home_2pt_miss:
+            if st.button("❌ 2PT", key="home_2pt_miss", use_container_width=True):
+                handle_score_entry("home", 0, home_scorer, "field_goal", False)
+
+        # 3-Point Field Goals
+        home_3pt_make, home_3pt_miss = st.columns(2)
+        with home_3pt_make:
+            if st.button("✅ 3PT", key="home_3pt_make", use_container_width=True, type="primary"):
+                handle_score_entry("home", 3, home_scorer, "three_pointer", True)
+        with home_3pt_miss:
+            if st.button("❌ 3PT", key="home_3pt_miss", use_container_width=True):
+                handle_score_entry("home", 0, home_scorer, "three_pointer", False)
+
+
         # Show current players as buttons when lineup is set
         if st.session_state.quarter_lineup_set and st.session_state.current_lineup:            
             st.write("**Select Player:**")
@@ -9232,36 +9263,6 @@ with tab1:
         else:
             home_scorer = "Quick Score (No Player)"
             st.info("Set lineup first to track individual player stats")
-
-        # Home team scoring buttons
-        st.write("**Score Entry**")
-        
-        # Free Throws
-        home_ft_make, home_ft_miss = st.columns(2)
-        with home_ft_make:
-            if st.button("✅ FT", key="home_ft_make", use_container_width=True, type="primary"):
-                handle_score_entry("home", 1, home_scorer, "free_throw", True)
-        with home_ft_miss:
-            if st.button("❌ FT", key="home_ft_miss", use_container_width=True):
-                handle_score_entry("home", 0, home_scorer, "free_throw", False)
-
-        # 2-Point Field Goals
-        home_2pt_make, home_2pt_miss = st.columns(2)
-        with home_2pt_make:
-            if st.button("✅ 2PT", key="home_2pt_make", use_container_width=True, type="primary"):
-                handle_score_entry("home", 2, home_scorer, "field_goal", True)
-        with home_2pt_miss:
-            if st.button("❌ 2PT", key="home_2pt_miss", use_container_width=True):
-                handle_score_entry("home", 0, home_scorer, "field_goal", False)
-
-        # 3-Point Field Goals
-        home_3pt_make, home_3pt_miss = st.columns(2)
-        with home_3pt_make:
-            if st.button("✅ 3PT", key="home_3pt_make", use_container_width=True, type="primary"):
-                handle_score_entry("home", 3, home_scorer, "three_pointer", True)
-        with home_3pt_miss:
-            if st.button("❌ 3PT", key="home_3pt_miss", use_container_width=True):
-                handle_score_entry("home", 0, home_scorer, "three_pointer", False)
 
     with away_col:
         st.markdown("### **AWAY TEAM Scoring**")
