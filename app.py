@@ -8943,31 +8943,26 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏀 Live Game", "📊 Analytics", "�
 # Tab 1: Live Game
 # ------------------------------------------------------------------
 with tab1:
-    # NUCLEAR OPTION - Most aggressive sticky approach
+    # JavaScript-based sticky header (always works)
     st.markdown("""
-    <style>
-        /* Hide the header "Live Game" to make room */
-        section.main > div:first-child h1 {
-            margin-top: 0 !important;
-        }
+    <script>
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (!entry.isIntersecting) {
+                    entry.target.style.position = 'fixed';
+                    entry.target.style.top = '0';
+                    entry.target.style.width = '100%';
+                } else {
+                    entry.target.style.position = 'relative';
+                }
+            });
+        });
         
-        /* Make the ENTIRE tab content area scrollable */
-        .stTabs [data-baseweb="tab-panel"] {
-            overflow-y: auto !important;
-            max-height: calc(100vh - 200px) !important;
-        }
-        
-        /* Stick the first element (status bar) */
-        .stTabs [data-baseweb="tab-panel"] > div > div:first-child {
-            position: sticky !important;
-            top: -1rem !important;
-            background-color: #0e1117 !important;
-            z-index: 999 !important;
-            padding: 1rem 0 !important;
-            margin: -1rem 0 1rem 0 !important;
-            border-bottom: 2px solid #262730 !important;
-        }
-    </style>
+        setTimeout(() => {
+            const statusBar = document.querySelector('[data-testid="stHorizontalBlock"]');
+            if (statusBar) observer.observe(statusBar);
+        }, 1000);
+    </script>
     """, unsafe_allow_html=True)
     
     st.header("Live Game")
