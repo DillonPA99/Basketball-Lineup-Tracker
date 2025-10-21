@@ -5944,7 +5944,7 @@ def display_key_runs():
 def display_game_flow_prediction():
     """
     Main display function for AI Game Flow Analysis with efficiency comparison at top.
-    """
+    """    
     if not st.session_state.score_history or len(st.session_state.score_history) < 5:
         st.info("📊 Need at least 5 scoring events to generate predictions. Keep playing!")
         return
@@ -5953,56 +5953,196 @@ def display_game_flow_prediction():
     win_prob, factors = calculate_win_probability()
     pred_home, pred_away, confidence = predict_final_score()
     eff_trend, current_ppp, starting_ppp = calculate_scoring_efficiency_trend()
+    momentum_score, momentum_dir = calculate_momentum_score()
     
     # Top metrics row
     metric_col1, metric_col2, metric_col3 = st.columns(3)
     
+    # Win Probability with context
     with metric_col1:
-        st.metric("Win Probability", f"{win_prob}%")
+        if win_prob >= 70:
+            st.success(f"**Win Probability**\n## {win_prob}%")
+            st.caption("🟢 Strong position")
+        elif win_prob >= 45:
+            st.info(f"**Win Probability**\n## {win_prob}%")
+            st.caption("🟡 Competitive game")
+        else:
+            st.warning(f"**Win Probability**\n## {win_prob}%")
+            st.caption("🔴 Uphill battle")
+    
+    # Predicted Final Score with reasoning
     with metric_col2:
-        st.metric("Predicted Final", f"{pred_home}-{pred_away}", f"{confidence}% confidence")
+        score_diff = pred_home - pred_away
+        st.metric(
+            "Predicted Final",
+            f"{pred_home}-{pred_away}",
+            f"{confidence}% confidence"
+        )
+        if score_diff > 0:
+            st.caption(f"Win by {score_diff} pts")
+        elif score_diff < 0:
+            st.caption(f"Lose by {abs(score_diff)} pts")
+        else:
+            st.caption("Overtime likely")
+        
+    # Efficiency Trend with explanation
     with metric_col3:
         trend_emoji = "📈" if eff_trend == "improving" else "📉" if eff_trend == "declining" else "➡️"
-        st.metric("Efficiency Trend", f"{trend_emoji} {eff_trend.title()}", f"{current_ppp - starting_ppp:+.2f} PPP")
-
+        ppp_change = current_ppp - starting_ppp
+        st.metric(
+            "Efficiency Trend",
+            f"{trend_emoji} {eff_trend.title()}",
+            f"{ppp_change:+.2f} PPP"
+        )
+        
+        # Add specific explanation
+        if eff_trend == "improving":
+            st.caption("✅ Getting better shots")
+        elif eff_trend == "declining":
+            st.caption("⚠️ Shot quality dropping")
+        else:
+            st.caption("➡️ Consistent performance")
+    
     # Critical Moments Section
     critical_moments = identify_critical_moments()
     if critical_moments:
         st.subheader("⚠️ Critical Moments & Alerts")
+        
         for moment in critical_moments:
             if moment['urgency'] == 'high':
                 st.error(f"**🚨 {moment['message']}**")
+                st.write(f"**Recommendation:** {moment['recommendation']}")
+                
+                # Add context based on moment type
+                if moment['type'] == 'clutch_time':
+                    st.caption("💡 Key factors in clutch situations:")
+                    st.caption("   • Minimize turnovers (protect ball)")
+                    st.caption("   • High-percentage shots only")
+                    st.caption("   • Get best defenders on court")
+                    
+                elif moment['type'] == 'momentum_shift':
+                    st.caption("💡 Breaking opponent momentum:")
+                    st.caption("   • Timeout can disrupt their flow")
+                    st.caption("   • Focus on defensive stops")
+                    st.caption("   • Run a set play to regain confidence")
+                    
             else:
                 st.warning(f"**⚠️ {moment['message']}**")
-            st.write(f"**Recommendation:** {moment['recommendation']}")
+                st.write(f"**Recommendation:** {moment['recommendation']}")    
     
     st.divider()
+
+    st.write("📊 Efficiency Comparison")
     
-    # --- Combined Efficiency & Momentum Section ---
-    st.write("📊 Efficiency & Momentum")
+    # Use 3 equal columns for better spacing
+    comparison_col1, comparison_col2, comparison_col3 = st.columns(3)
     
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
+    with comparison_col1:
+        # Calculate overall game PPP
         total_points = st.session_state.home_score
         total_turnovers = sum(1 for to in st.session_state.turnover_history if to.get('team') == 'home')
-        total_fga = sum(1 for se in st.session_state.score_history if se.get('team') == 'home' and se.get('shot_type') in ['field_goal', 'three_pointer'])
-        total_fta = sum(1 for se in st.session_state.score_history if se.get('team') == 'home' and se.get('shot_type') == 'free_throw')
+        
+        total_fga = 0
+        total_fta = 0
+        for score_event in st.session_state.score_history:
+            if score_event.get('team') == 'home' and score_event.get('attempted', True):
+                shot_type = score_event.get('shot_type', 'field_goal')
+                if shot_type in ['field_goal', 'three_pointer']:
+                    total_fga += 1
+                elif shot_type == 'free_throw':
+                    total_fta += 1
+        
         estimated_possessions = total_fga + total_turnovers + (0.44 * total_fta)
         current_overall_ppp = (total_points / estimated_possessions) if estimated_possessions > 0 else 0
         
-        st.metric("Overall Game PPP", f"{current_overall_ppp:.2f}")
-        st.caption("Home team avg.")
-
-    # --- Calculations & Display for Recent Efficiency and Momentum ---
+        if current_overall_ppp >= 1.10:
+            st.success(f"**Overall Game**\n\n## {current_overall_ppp:.2f} PPP")
+        elif current_overall_ppp >= 1.00:
+            st.info(f"**Overall Game**\n\n## {current_overall_ppp:.2f} PPP")
+        else:
+            st.warning(f"**Overall Game**\n\n## {current_overall_ppp:.2f} PPP")
+        st.caption("Average across all possessions")
+    
+    with comparison_col2:
+        eff_trend, current_ppp, starting_ppp = calculate_scoring_efficiency_trend()
+        
+        if current_ppp >= 1.10:
+            st.success(f"**Recent Segment**\n\n## {current_ppp:.2f} PPP")
+        elif current_ppp >= 1.00:
+            st.info(f"**Recent Segment**\n\n## {current_ppp:.2f} PPP")
+        else:
+            st.warning(f"**Recent Segment**\n\n## {current_ppp:.2f} PPP")
+        
+        # Calculate segment details for context
+        total_events = len(st.session_state.score_history)
+        segment_size = max(5, total_events // 4)
+        num_segments = (total_events + segment_size - 1) // segment_size
+        
+        # Find the last non-empty segment with meaningful data
+        if total_events > 0:
+            last_meaningful_segment = None
+            last_meaningful_start = 0
+            last_meaningful_end = 0
+            
+            for seg_num in range(num_segments - 1, -1, -1):
+                segment_start = seg_num * segment_size
+                segment_end = min(segment_start + segment_size, total_events)
+                segment_scores = st.session_state.score_history[segment_start:segment_end]
+                
+                # Check if segment has meaningful home team data
+                has_data = any(s.get('team') == 'home' and s.get('attempted', True) for s in segment_scores)
+                
+                if has_data:
+                    last_meaningful_segment = seg_num + 1
+                    last_meaningful_start = segment_start + 1  # +1 for human-readable numbering
+                    last_meaningful_end = segment_end
+                    break
+            
+            if last_meaningful_segment:
+                segment_event_count = last_meaningful_end - last_meaningful_start + 1
+                
+                # Add helpful context about what this means
+                if segment_event_count < 10:
+                    st.caption(f"Last ~{segment_event_count} events (Segment {last_meaningful_segment} of {num_segments})")
+                    st.caption(f"⚠️ Small sample - includes events {last_meaningful_start}-{last_meaningful_end}")
+                elif segment_event_count >= 15:
+                    st.caption(f"Last ~{segment_event_count} events (Segment {last_meaningful_segment} of {num_segments})")
+                else:
+                    st.caption(f"Last ~{segment_event_count} events (Segment {last_meaningful_segment} of {num_segments})")
+                    st.caption(f"📈 Recent trend from events {last_meaningful_start}-{last_meaningful_end}")
+            else:
+                st.caption("No meaningful data yet")
+        else:
+            st.caption("Last ~10 possessions")
+    
+    with comparison_col3:
+        ppp_diff = current_ppp - current_overall_ppp
+        
+        if abs(ppp_diff) < 0.10:
+            st.info(f"**Momentum**\n\n## Stable")
+            st.caption(f"Recent vs Overall: {ppp_diff:+.2f}")
+        elif ppp_diff > 0:
+            st.success(f"**Momentum**\n\n## 🔥 Hot")
+            st.caption(f"Recent +{ppp_diff:.2f} better!")
+        else:
+            st.error(f"**Momentum**\n\n## ❄️ Cool")
+            st.caption(f"Recent {ppp_diff:.2f} worse")
+        
+    st.divider()
+    
+    st.subheader("🔍 Momentum Analysis")
     if len(st.session_state.score_history) >= 2:
         recent_scores = st.session_state.score_history[-10:]
         
-        home_possessions, home_points_weighted = 0, 0
-        away_possessions, away_points_weighted = 0, 0
+        # Calculate momentum components
+        home_possessions = 0
+        home_points_weighted = 0
+        away_possessions = 0
+        away_points_weighted = 0
         
         for i, score in enumerate(recent_scores):
             recency_weight = 0.5 + (0.5 * (i + 1) / len(recent_scores))
+            
             if score['team'] == 'home':
                 home_possessions += recency_weight
                 if score.get('made', True):
@@ -6011,44 +6151,66 @@ def display_game_flow_prediction():
                 away_possessions += recency_weight
                 if score.get('made', True):
                     away_points_weighted += score['points'] * recency_weight
-                    
-        home_eff = (home_points_weighted / home_possessions) if home_possessions > 0 else 0
-        away_eff = (away_points_weighted / away_possessions) if away_possessions > 0 else 0
-        efficiency_diff = home_eff - away_eff
-        momentum_final = max(-75, min(75, efficiency_diff * 35))
         
-        with col2:
-            st.metric("HOME Efficiency", f"{home_eff:.2f} PPP", help="Weighted PPP (last 10 events)")
-        with col3:
-            st.metric("AWAY Efficiency", f"{away_eff:.2f} PPP", help="Weighted PPP (last 10 events)")
-        with col4:
-            if momentum_final > 12: delta, color = "🔥 Dominating", "normal"
-            elif momentum_final > 4: delta, color = "✅ Positive", "normal"
-            elif momentum_final < -12: delta, color = "❄️ Opponent run", "inverse"
-            elif momentum_final < -4: delta, color = "⚠️ Negative", "inverse"
-            else: delta, color = "⚖️ Even", "off"
-            st.metric("Momentum Score", f"{momentum_final:+.0f}", delta=delta, delta_color=color)
-
-        # Correctly placed expander
+        # Show efficiency calculation in compact format
+        momentum_col1, momentum_col2, momentum_col3 = st.columns(3)
+        
+        with momentum_col1:
+            home_eff = (home_points_weighted / home_possessions) if home_possessions > 0 else 0
+            st.metric("HOME Efficiency", f"{home_eff:.2f} PPP", 
+                     help="Weighted points per possession (last 10)")
+        
+        with momentum_col2:
+            away_eff = (away_points_weighted / away_possessions) if away_possessions > 0 else 0
+            st.metric("AWAY Efficiency", f"{away_eff:.2f} PPP",
+                     help="Weighted points per possession (last 10)")
+        
+        with momentum_col3:
+            efficiency_diff = home_eff - away_eff
+            momentum_final = max(-75, min(75, efficiency_diff * 35))
+            
+            if momentum_final > 12:
+                st.metric("Momentum Score", f"{momentum_final:+.0f}", 
+                         delta="🔥 Dominating", delta_color="normal")
+            elif momentum_final > 4:
+                st.metric("Momentum Score", f"{momentum_final:+.0f}", 
+                         delta="✅ Positive", delta_color="normal")
+            elif momentum_final < -12:
+                st.metric("Momentum Score", f"{momentum_final:+.0f}", 
+                         delta="❄️ Opponent run", delta_color="inverse")
+            elif momentum_final < -4:
+                st.metric("Momentum Score", f"{momentum_final:+.0f}", 
+                         delta="⚠️ Negative", delta_color="inverse")
+            else:
+                st.metric("Momentum Score", f"{momentum_final:+.0f}", 
+                         delta="⚖️ Even", delta_color="off")
+        
+        # Compact formula explanation
         with st.expander("📊 How is this calculated?", expanded=False):
             st.write("""
             **Quick Formula:**
             - Analyzes last 10 possessions (recent events weighted more)
             - Compares HOME vs AWAY scoring efficiency (PPP)
-            - Score = (HOME PPP - AWAY PPP) × 35 (Range: -75 to +75)
-            """)
-            st.code(f"""
-Efficiency Gap   = {home_eff:.2f} (Home) - {away_eff:.2f} (Away) = {efficiency_diff:.2f}
-Momentum Score   = {efficiency_diff:.2f} × 35 = {momentum_final:.0f}
-            """, language="text")
-
-    else:
-        # Display placeholders if not enough data
-        st.info("Need at least 2 possessions to calculate recent momentum.")
-        with col2: st.metric("HOME Efficiency", "N/A")
-        with col3: st.metric("AWAY Efficiency", "N/A")
-        with col4: st.metric("Momentum Score", "N/A")
+            - Score = (HOME PPP - AWAY PPP) × 35
+            - Range: -75 to +75
             
+            **What it means:**
+            - **+12 or higher**: Strong positive momentum - keep it up!
+            - **+4 to +12**: Slight advantage - push tempo
+            - **-4 to +4**: Even battle - next plays matter
+            - **-12 to -4**: Losing momentum - adjust strategy
+            - **-12 or lower**: Strong negative - consider timeout
+            """)
+            
+            # Show calculation
+            st.code(f"""
+    Efficiency Gap = {home_eff:.2f} - {away_eff:.2f} = {efficiency_diff:.2f}
+    Momentum Score = {efficiency_diff:.2f} × 35 = {momentum_final:.0f}
+            """, language="text")
+        
+    else:
+        st.info("Need at least 2 possessions to calculate momentum")    
+    
     st.divider()
   
     # Enhanced Analysis Section
