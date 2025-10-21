@@ -8940,7 +8940,7 @@ if st.session_state.get('show_admin_panel', False) and st.session_state.user_inf
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏀 Live Game", "📊 Analytics", "🤖 AI Insights", "📝 Event Log", "🏆 Season Stats"])
 
 # ------------------------------------------------------------------
-# Tab 1: Live Game - COMPACT LAYOUT VERSION
+# Tab 1: Live Game - FIXED VERSION
 # ------------------------------------------------------------------
 with tab1:
     st.header("Live Game")
@@ -8969,149 +8969,161 @@ with tab1:
     if not st.session_state.quarter_lineup_set:
         st.warning("⚠️ Please set a starting lineup for this quarter before tracking home team player stats.")
 
-    # COMPACT LINEUP SECTION
-    st.subheader("⚡ Lineup Status")
+    # Lineup management section
+    st.header("Lineup Management")
+
+    # Show current quarter lineup status
+    if not st.session_state.quarter_lineup_set:
+        st.info(f"🏀 Please set the starting lineup for {st.session_state.current_quarter}")
+
+    # Available players (now from roster)
+    available_players = [f"{p['name']} (#{p['jersey']})" for p in st.session_state.roster]
+
+    display_lineup_recommendation()
     
-    if st.session_state.quarter_lineup_set and st.session_state.current_lineup:
-        # Show current lineup in ONE compact row
-        lineup_display = " | ".join([p.split('(')[0].strip() for p in st.session_state.current_lineup])
-        st.success(f"**On Court:** {lineup_display}")
+    # Current lineup display
+    if st.session_state.current_lineup:
+        st.write("**Players on Court:**")
+        lineup_cols = st.columns(5)
+        for i, player in enumerate(st.session_state.current_lineup):
+            with lineup_cols[i]:
+                st.info(f"🏀 {player}")
+    else:
+        st.warning("No players currently on court")
+
+    # Substitution Management (only if lineup is set)
+    if st.session_state.quarter_lineup_set:
+        st.write("**Make Substitutions:**")
         
-        # Substitution in expander (hidden until needed)
-        with st.expander("🔄 Make Substitution"):
-            st.write("**Substitute Players:**")
+        # Two-column layout for substitutions
+        sub_col1, sub_col2 = st.columns(2)
+        
+        with sub_col1:
+            players_out = st.multiselect(
+                "Select players to substitute out",
+                st.session_state.current_lineup,
+                key="players_out",
+                help="Choose players currently on court to substitute out"
+            )
+        
+        with sub_col2:
+            # Available players for substitution (not currently on court)
+            available_for_sub = [p for p in available_players if p not in st.session_state.current_lineup]
+            players_in = st.multiselect(
+                "Select players to substitute in",
+                available_for_sub,
+                key="players_in",
+                help="Choose players from bench to substitute in"
+            )
+        
+        # Time input for substitution - iPhone-style scroll picker
+        st.write("**Game Time:**")
+        
+        # Parse current time for defaults
+        try:
+            current_minutes = int(st.session_state.current_game_time.split(':')[0])
+            current_seconds = int(st.session_state.current_game_time.split(':')[1])
+        except:
+            current_minutes = st.session_state.quarter_length
+            current_seconds = 0
+        
+        # Ensure current_minutes doesn't exceed quarter_length
+        if current_minutes > st.session_state.quarter_length:
+            current_minutes = st.session_state.quarter_length
+        
+        # Determine the maximum allowed minute based on last substitution in this quarter
+        max_allowed_minutes = st.session_state.quarter_length
+        
+        if st.session_state.lineup_history:
+            # Find the most recent lineup change in the current quarter
+            current_quarter_subs = [
+                event for event in st.session_state.lineup_history 
+                if event.get('quarter') == st.session_state.current_quarter 
+                and not event.get('is_quarter_end')  # Exclude quarter-end snapshots
+            ]
             
-            available_players = [f"{p['name']} (#{p['jersey']})" for p in st.session_state.roster]
-            
-            sub_col1, sub_col2 = st.columns(2)
-            
-            with sub_col1:
-                players_out = st.multiselect(
-                    "Select players to substitute out",
-                    st.session_state.current_lineup,
-                    key="players_out",
-                    help="Choose players currently on court to substitute out"
-                )
-            
-            with sub_col2:
-                # Available players for substitution (not currently on court)
-                available_for_sub = [p for p in available_players if p not in st.session_state.current_lineup]
-                players_in = st.multiselect(
-                    "Select players to substitute in",
-                    available_for_sub,
-                    key="players_in",
-                    help="Choose players from bench to substitute in"
-                )
-            
-            # Time input for substitution - iPhone-style scroll picker
-            st.write("**Game Time:**")
-            
-            # Parse current time for defaults
-            try:
-                current_minutes = int(st.session_state.current_game_time.split(':')[0])
-                current_seconds = int(st.session_state.current_game_time.split(':')[1])
-            except:
-                current_minutes = st.session_state.quarter_length
-                current_seconds = 0
-            
-            # Ensure current_minutes doesn't exceed quarter_length
-            if current_minutes > st.session_state.quarter_length:
-                current_minutes = st.session_state.quarter_length
-            
-            # Determine the maximum allowed minute based on last substitution in this quarter
-            max_allowed_minutes = st.session_state.quarter_length
-            
-            if st.session_state.lineup_history:
-                # Find the most recent lineup change in the current quarter
-                current_quarter_subs = [
-                    event for event in st.session_state.lineup_history 
-                    if event.get('quarter') == st.session_state.current_quarter 
-                    and not event.get('is_quarter_end')  # Exclude quarter-end snapshots
-                ]
+            if current_quarter_subs:
+                # Get the last substitution time
+                last_sub = current_quarter_subs[-1]
+                last_sub_time = last_sub.get('game_time', f"{st.session_state.quarter_length}:00")
                 
-                if current_quarter_subs:
-                    # Get the last substitution time
-                    last_sub = current_quarter_subs[-1]
-                    last_sub_time = last_sub.get('game_time', f"{st.session_state.quarter_length}:00")
-                    
-                    try:
-                        last_sub_minutes = int(last_sub_time.split(':')[0])
-                        # Max minutes should be <= last substitution minutes
-                        max_allowed_minutes = min(last_sub_minutes, st.session_state.quarter_length)
-                    except:
-                        max_allowed_minutes = st.session_state.quarter_length
+                try:
+                    last_sub_minutes = int(last_sub_time.split(':')[0])
+                    # Max minutes should be <= last substitution minutes
+                    max_allowed_minutes = min(last_sub_minutes, st.session_state.quarter_length)
+                except:
+                    max_allowed_minutes = st.session_state.quarter_length
+        
+        # Create two columns for minutes and seconds
+        picker_col1, picker_col2 = st.columns(2)
+        
+        with picker_col1:
+            st.markdown("Minutes")
+            # Only show minutes from max_allowed_minutes down to 0
+            minute_options = list(range(max_allowed_minutes, -1, -1))
             
-            # Create two columns for minutes and seconds
-            picker_col1, picker_col2 = st.columns(2)
+            # Adjust current_minutes if it exceeds max_allowed
+            if current_minutes > max_allowed_minutes:
+                current_minutes = max_allowed_minutes
             
-            with picker_col1:
-                st.markdown("Minutes")
-                # Only show minutes from max_allowed_minutes down to 0
-                minute_options = list(range(max_allowed_minutes, -1, -1))
-                
-                # Adjust current_minutes if it exceeds max_allowed
-                if current_minutes > max_allowed_minutes:
-                    current_minutes = max_allowed_minutes
-                
-                minutes = st.selectbox(
-                    "min",
-                    options=minute_options,
-                    index=minute_options.index(current_minutes) if current_minutes in minute_options else 0,
-                    key="sub_minutes_select",
-                    label_visibility="collapsed"
-                )
-            
-            with picker_col2:
-                st.markdown("Seconds")
-                second_options = list(range(59, -1, -1))
-                seconds = st.selectbox(
-                    "sec",
-                    options=second_options,
-                    index=second_options.index(current_seconds) if current_seconds in second_options else 0,
-                    key="sub_seconds_select",
-                    label_visibility="collapsed"
-                )
-            
-            game_time = f"{minutes}:{seconds:02d}"
-            
-            if st.button("🔄 Make Substitution"):
-                if len(players_out) != len(players_in):
-                    st.error("Number of players coming out must equal number coming in!")
-                elif len(players_out) == 0:
-                    st.error("Please select at least one player to substitute!")
-                else:
-                    # Validate game time before making substitution
-                    is_valid_time, time_message = validate_game_time(game_time, st.session_state.quarter_length)
-                    if not is_valid_time:
-                        st.error(f"Invalid game time: {time_message}")
-                    else:
-                        new_lineup = [p for p in st.session_state.current_lineup if p not in players_out] + players_in
-                        if len(new_lineup) == 5:
-                            success, message = update_lineup(new_lineup, game_time)
-                            if success:
-                                st.success(f"✅ Substitution made! Game clock updated to {game_time}")
-                                st.info(f"Out: {', '.join(players_out)} | In: {', '.join(players_in)}")
-                                st.rerun()
-                            else:
-                                st.error(f"Error making substitution: {message}")
-                        else:
-                            st.error("Invalid lineup after substitution!")
-
-            if max_allowed_minutes < st.session_state.quarter_length:
-                st.success(f"⏱️ Substitution at: **{game_time}**")
-                st.caption(f"ℹ️ Time based on last sub at {current_quarter_subs[-1].get('game_time')}")
+            minutes = st.selectbox(
+                "min",
+                options=minute_options,
+                index=minute_options.index(current_minutes) if current_minutes in minute_options else 0,
+                key="sub_minutes_select",
+                label_visibility="collapsed"
+            )
+        
+        with picker_col2:
+            st.markdown("Seconds")
+            second_options = list(range(59, -1, -1))
+            seconds = st.selectbox(
+                "sec",
+                options=second_options,
+                index=second_options.index(current_seconds) if current_seconds in second_options else 0,
+                key="sub_seconds_select",
+                label_visibility="collapsed"
+            )
+        
+        game_time = f"{minutes}:{seconds:02d}"
+        
+        if st.button("🔄 Make Substitution"):
+            if len(players_out) != len(players_in):
+                st.error("Number of players coming out must equal number coming in!")
+            elif len(players_out) == 0:
+                st.error("Please select at least one player to substitute!")
             else:
-                st.success(f"⏱️ Substitution at: **{game_time}**")
+                # Validate game time before making substitution
+                is_valid_time, time_message = validate_game_time(game_time, st.session_state.quarter_length)
+                if not is_valid_time:
+                    st.error(f"Invalid game time: {time_message}")
+                else:
+                    new_lineup = [p for p in st.session_state.current_lineup if p not in players_out] + players_in
+                    if len(new_lineup) == 5:
+                        success, message = update_lineup(new_lineup, game_time)
+                        if success:
+                            st.success(f"✅ Substitution made! Game clock updated to {game_time}")
+                            st.info(f"Out: {', '.join(players_out)} | In: {', '.join(players_in)}")
+                            st.rerun()
+                        else:
+                            st.error(f"Error making substitution: {message}")
+                    else:
+                        st.error("Invalid lineup after substitution!")
 
-            if len(players_out) == len(players_in) and len(players_out) > 0:
-                new_lineup = [p for p in st.session_state.current_lineup if p not in players_out] + players_in
-                if len(new_lineup) == 5:
-                    st.info(f"**New lineup will be:** {' | '.join(new_lineup)}")
+        if max_allowed_minutes < st.session_state.quarter_length:
+            st.success(f"⏱️ Substitution at: **{game_time}**")
+            st.caption(f"ℹ️ Time based on last sub at {current_quarter_subs[-1].get('game_time')}")
+        else:
+            st.success(f"⏱️ Substitution at: **{game_time}**")
+
+        if len(players_out) == len(players_in) and len(players_out) > 0:
+            new_lineup = [p for p in st.session_state.current_lineup if p not in players_out] + players_in
+            if len(new_lineup) == 5:
+                st.info(f"**New lineup will be:** {' | '.join(new_lineup)}")
     
     else:
-        # Starting lineup selection (compact)
+        # Show lineup selection for new quarter
         st.write("**Set Starting Lineup:**")
-        available_players = [f"{p['name']} (#{p['jersey']})" for p in st.session_state.roster]
         quick_lineup = st.multiselect(
             "Choose 5 players for the court",
             available_players,
@@ -9131,14 +9143,7 @@ with tab1:
                 else:
                     st.error(f"Error setting lineup: {message}")
     
-    # AI Recommendation in expander (optional - only shows when needed)
-    with st.expander("🎯 AI Lineup Recommendation"):
-        display_lineup_recommendation()
-    
     st.divider()
-    
-    # SCORING SECTION - NOW IMMEDIATELY VISIBLE
-    st.subheader("Scoring")
     
     # Side-by-side team scoring
     home_col, away_col = st.columns(2)
@@ -9334,9 +9339,6 @@ with tab1:
 
     st.divider()
  
-    # TURNOVERS SECTION
-    st.subheader("Turnovers")
-    
     turnover_col1, turnover_col2 = st.columns(2)
     
     with turnover_col1:
@@ -9430,7 +9432,7 @@ with tab1:
         if st.button(undo_text):
             if undo_last_turnover():
                 st.success("Last turnover undone!")
-                st.rerun()  
+                st.rerun()    
 # ------------------------------------------------------------------
 # Tab 2: Analytics
 # ------------------------------------------------------------------
