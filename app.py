@@ -843,9 +843,19 @@ def get_user_game_sessions(user_id, include_completed=True):
 
 
 def delete_game_session(session_id):
-    """Delete a game session."""
+    """Delete a game session permanently from Firebase."""
     try:
+        # Delete the document from Firebase
         db.collection('game_sessions').document(session_id).delete()
+        
+        # Clear the cache so deleted games don't show up
+        st.cache_data.clear()
+        
+        # If this was the current game session, clear it from session state
+        if st.session_state.get('current_game_session_id') == session_id:
+            st.session_state.current_game_session_id = None
+            st.session_state.game_session_name = None
+        
         return True
     except Exception as e:
         st.error(f"Error deleting game session: {str(e)}")
@@ -8415,12 +8425,15 @@ with st.sidebar:
                                 st.session_state.game_session_name = session['session_name']
                                 st.success(f"Loaded game: {session['session_name']}")
                                 st.rerun()
-                    
+
                     with delete_col:
                         if st.button("🗑️", key=f"delete_{session['id']}", help="Delete this game"):
                             if delete_game_session(session['id']):
-                                st.success("Game deleted!")
+                                st.success("Game deleted permanently!")
+                                time.sleep(0.5)  # Brief pause so user sees the message
                                 st.rerun()
+                            else:
+                                st.error("Failed to delete game")
                 
                 if len(saved_sessions) > 5:
                     st.caption(f"Showing 5 of {len(saved_sessions)} saved games")
