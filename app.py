@@ -10060,6 +10060,8 @@ with tab2:
                         f"{best_pm['Player']}",
                         f"{best_pm['+/-']}"
                     )
+                    # Remove helper column so it doesn't show in UI
+                    player_shooting_df.drop(columns=['pm_numeric'], inplace=True, errors='ignore')
         
                 with perf_col4:
                     # Most efficient (best PPP with minimum possessions)
@@ -10070,6 +10072,8 @@ with tab2:
                         f"{best_eff['Player']}",
                         f"{best_eff['PPP']}"
                     )
+                    # Remove helper column so it doesn't show in UI
+                    player_shooting_df.drop(columns=['ppp_numeric'], inplace=True, errors='ignore')
 
                 # ===== CORE STATISTICS TABLE =====
                 st.subheader("**📊 Core Statistics**")
