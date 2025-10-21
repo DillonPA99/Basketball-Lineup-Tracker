@@ -9709,11 +9709,14 @@ with tab2:
                 # Performance Over Time Graph section in Tab 2
                 st.subheader("📈 Performance Over Time")
                 
+                st.subheader("📈 Performance Over Time")
+                
                 if st.session_state.score_history or st.session_state.lineup_history:
                     # Create timeline data from score history
                     timeline_data = []
                     lineup_changes = []
-                    quarter_ends = []  # NEW: Track quarter end events
+                    quarter_ends = []
+                    timeouts = []  # NEW: Track timeout events
                     
                     # Start with initial state
                     current_home = 0
@@ -9754,12 +9757,22 @@ with tab2:
                             'index': i,
                             'event_sequence': lineup_event.get('event_sequence', (len(st.session_state.score_history) + i) * 3 + 2),
                             'timestamp': lineup_event.get('timestamp', datetime.now()),
-                            'is_quarter_end': lineup_event.get('is_quarter_end', False)  # NEW: Flag for quarter ends
+                            'is_quarter_end': lineup_event.get('is_quarter_end', False)
+                        })
+                    
+                    # NEW: Add timeout events
+                    for i, timeout_event in enumerate(st.session_state.timeout_history):
+                        all_events.append({
+                            'type': 'timeout',
+                            'data': timeout_event,
+                            'index': i,
+                            'event_sequence': timeout_event.get('event_sequence', (len(st.session_state.score_history) + len(st.session_state.lineup_history) + i) * 3 + 3),
+                            'timestamp': timeout_event.get('timestamp', datetime.now())
                         })
                     
                     default_timestamp = datetime.now(timezone.utc)
                     all_events.sort(key=lambda x: (x.get('timestamp', default_timestamp), x.get('event_sequence', 0)))
-
+                
                     # Process all events in chronological order
                     for event in all_events:
                         if event['type'] == 'score':
@@ -9835,6 +9848,34 @@ with tab2:
                                     'Index': event_counter
                                 })
                                 event_counter += 1
+                        
+                        # NEW: Process timeout events
+                        elif event['type'] == 'timeout':
+                            timeout_event = event['data']
+                            
+                            # Record the timeout
+                            timeouts.append({
+                                'Index': event_counter,
+                                'Quarter': timeout_event.get('quarter', 'Unknown'),
+                                'Game Time': timeout_event.get('game_time', 'Unknown'),
+                                'Margin': current_home - current_away,
+                                'Team': timeout_event.get('team', 'Unknown').title(),
+                                'Home Score': current_home,
+                                'Away Score': current_away
+                            })
+                            
+                            # Add timeout to timeline
+                            timeline_data.append({
+                                'Event': f"{timeout_event.get('team', 'Unknown').title()} Timeout",
+                                'Quarter': timeout_event.get('quarter', 'Unknown'),
+                                'Game Time': timeout_event.get('game_time', 'Unknown'),
+                                'Home Score': current_home,
+                                'Away Score': current_away,
+                                'Margin': current_home - current_away,
+                                'Event Type': 'Timeout',
+                                'Index': event_counter
+                            })
+                            event_counter += 1
                     
                     if len(timeline_data) > 1:
                         timeline_df = pd.DataFrame(timeline_data)
@@ -9859,7 +9900,7 @@ with tab2:
                             customdata=timeline_df[['Event', 'Quarter', 'Game Time', 'Home Score', 'Away Score']].values
                         ))
                         
-                        # Add vertical lines for lineup changes (orange)
+                        # Add vertical lines for lineup changes (orange, dotted)
                         for lineup_change in lineup_changes:
                             fig.add_vline(
                                 x=lineup_change['Index'],
@@ -9878,11 +9919,30 @@ with tab2:
                                 yshift=10
                             )
                         
-                        # NEW: Add vertical lines for quarter ends (purple)
+                        # NEW: Add vertical lines for timeouts (teal/cyan, dotted)
+                        for timeout in timeouts:
+                            fig.add_vline(
+                                x=timeout['Index'],
+                                line_dash="dot",
+                                line_color="cyan",
+                                line_width=2,
+                                opacity=0.7
+                            )
+                            # Add annotation for timeout
+                            fig.add_annotation(
+                                x=timeout['Index'],
+                                y=timeline_df['Margin'].max() * 0.85,
+                                text=f"TO-{timeout['Team'][0]}",  # TO-H or TO-A
+                                showarrow=False,
+                                font=dict(size=9, color="cyan"),
+                                yshift=10
+                            )
+                        
+                        # Add vertical lines for quarter ends (purple, solid)
                         for quarter_end in quarter_ends:
                             fig.add_vline(
                                 x=quarter_end['Index'],
-                                line_dash="solid",  # Solid line to differentiate from subs
+                                line_dash="solid",
                                 line_color="purple",
                                 line_width=3,
                                 opacity=0.8
@@ -9927,7 +9987,7 @@ with tab2:
                         
                         fig.update_layout(
                             title=f"Score Margin Throughout Game ({st.session_state.home_team_name} perspective)",
-                            xaxis_title="Game Progression (🟠 = Substitutions | 🟣 = Quarter Ends)",
+                            xaxis_title="Game Progression (🟠 = Subs | 🔵 = Timeouts | 🟣 = Quarter Ends)",
                             yaxis_title="Point Margin (+ = Leading, - = Trailing)",
                             hovermode='closest',
                             height=500,
@@ -9942,21 +10002,57 @@ with tab2:
                         
                         st.plotly_chart(fig, use_container_width=True)
                         
-                        # Add quarter markers if available - UPDATED to show quarter ends
+                        # Add event markers if available
+                        event_summary_cols = []
+                        
                         if quarter_ends:
-                            st.write("**Quarter Snapshots:**")
-                            quarter_cols = st.columns(len(quarter_ends))
+                            event_summary_cols.append("Quarter Ends")
+                        if lineup_changes:
+                            event_summary_cols.append("Substitutions")
+                        if timeouts:
+                            event_summary_cols.append("Timeouts")
+                        
+                        if event_summary_cols:
+                            st.write("**Game Events:**")
+                            summary_cols = st.columns(len(event_summary_cols))
                             
-                            for i, qe in enumerate(quarter_ends):
-                                with quarter_cols[i]:
-                                    margin = qe['Margin']
+                            col_idx = 0
+                            
+                            if quarter_ends:
+                                with summary_cols[col_idx]:
+                                    st.write("**🟣 Quarter Ends:**")
+                                    for qe in quarter_ends:
+                                        margin = qe['Margin']
+                                        if margin > 0:
+                                            st.success(f"**{qe['Quarter']}**: {qe['Home Score']}-{qe['Away Score']} (+{margin})")
+                                        elif margin < 0:
+                                            st.error(f"**{qe['Quarter']}**: {qe['Home Score']}-{qe['Away Score']} ({margin})")
+                                        else:
+                                            st.info(f"**{qe['Quarter']}**: {qe['Home Score']}-{qe['Away Score']} (Tied)")
+                                col_idx += 1
+                            
+                            if lineup_changes:
+                                with summary_cols[col_idx]:
+                                    st.write(f"**🟠 Substitutions:** {len(lineup_changes)}")
+                                    if len(lineup_changes) > 0:
+                                        st.caption(f"First: {lineup_changes[0]['Quarter']} @ {lineup_changes[0]['Game Time']}")
+                                        st.caption(f"Last: {lineup_changes[-1]['Quarter']} @ {lineup_changes[-1]['Game Time']}")
+                                col_idx += 1
+                            
+                            # NEW: Display timeout summary
+                            if timeouts:
+                                with summary_cols[col_idx]:
+                                    st.write(f"**🔵 Timeouts:** {len(timeouts)}")
                                     
-                                    if margin > 0:
-                                        st.success(f"**{qe['Quarter']}**: {qe['Home Score']}-{qe['Away Score']} (+{margin})")
-                                    elif margin < 0:
-                                        st.error(f"**{qe['Quarter']}**: {qe['Home Score']}-{qe['Away Score']} ({margin})")
-                                    else:
-                                        st.info(f"**{qe['Quarter']}**: {qe['Home Score']}-{qe['Away Score']} (Tied)")
+                                    # Count timeouts by team
+                                    home_timeouts = sum(1 for to in timeouts if to['Team'].lower() == 'home')
+                                    away_timeouts = sum(1 for to in timeouts if to['Team'].lower() == 'away')
+                                    
+                                    st.caption(f"Home: {home_timeouts} | Away: {away_timeouts}")
+                                    
+                                    if len(timeouts) > 0:
+                                        st.caption(f"First: {timeouts[0]['Team']} @ {timeouts[0]['Quarter']} {timeouts[0]['Game Time']}")
+                                        st.caption(f"Last: {timeouts[-1]['Team']} @ {timeouts[-1]['Quarter']} {timeouts[-1]['Game Time']}")
                         
                         # Performance summary
                         summary_col1, summary_col2, summary_col3, summary_col4 = st.columns(4)
@@ -9979,7 +10075,7 @@ with tab2:
                                 st.metric("Current Status", "Tied", "0")
                         
                         with summary_col4:
-                            st.metric("Lineup Changes", len(lineup_changes))
+                            st.metric("Total Events", len(timeline_df) - 1)  # -1 for game start
                         
                         # Trend analysis
                         with st.expander("📊 Performance Trends & Lineup Analysis"):
@@ -10046,6 +10142,54 @@ with tab2:
                                 with sub_col3:
                                     neutral = len(lineup_changes) - positive_subs - negative_subs
                                     st.metric("Neutral Impact", neutral)
+
+                            if timeouts:
+                                st.write("**⏸️ Timeout Impact Analysis:**")
+                                
+                                positive_impact = 0
+                                negative_impact = 0
+                                neutral_impact = 0
+                                
+                                for i, to in enumerate(timeouts):
+                                    # Look at next 5 events after timeout
+                                    next_events = timeline_df[timeline_df['Index'] > to['Index']].head(5)
+                                    
+                                    if len(next_events) > 0:
+                                        margin_before = to['Margin']
+                                        margin_after = next_events['Margin'].iloc[-1]
+                                        margin_change = margin_after - margin_before
+                                        
+                                        # Determine if timeout helped the team that called it
+                                        if to['Team'].lower() == 'home':
+                                            # Home team timeout - positive if margin improved
+                                            if margin_change > 2:
+                                                positive_impact += 1
+                                            elif margin_change < -2:
+                                                negative_impact += 1
+                                            else:
+                                                neutral_impact += 1
+                                        else:
+                                            # Away team timeout - positive if margin decreased (better for away)
+                                            if margin_change < -2:
+                                                positive_impact += 1
+                                            elif margin_change > 2:
+                                                negative_impact += 1
+                                            else:
+                                                neutral_impact += 1
+                                
+                                to_col1, to_col2, to_col3 = st.columns(3)
+                                with to_col1:
+                                    st.metric("Effective Timeouts", positive_impact)
+                                with to_col2:
+                                    st.metric("Ineffective Timeouts", negative_impact)
+                                with to_col3:
+                                    st.metric("Neutral Impact", neutral_impact)
+                                
+                                # Detailed timeout list
+                                st.write("**Timeout Details:**")
+                                for to in timeouts:
+                                    st.caption(f"• {to['Team']} timeout @ {to['Quarter']} {to['Game Time']} (Score: {to['Home Score']}-{to['Away Score']}, Margin: {to['Margin']:+d})")
+                            
                             
                             # Time spent leading/trailing/tied
                             leading_events = sum(1 for m in timeline_df['Margin'] if m > 0)
