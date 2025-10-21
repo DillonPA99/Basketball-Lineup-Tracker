@@ -6082,7 +6082,7 @@ def display_game_flow_prediction():
             home_eff = (home_points_weighted / home_possessions) if home_possessions > 0 else 0
             
             if home_eff >= 1.10:
-                st.success(f"**HOME Efficiency**\n\n## {home_eff:.2f} PPP")
+                st.success(f"**Recent HOME Efficiency**\n\n## {home_eff:.2f} PPP")
             elif home_eff >= 1.00:
                 st.info(f"**Recent HOME Efficiency**\n\n## {home_eff:.2f} PPP")
             else:
