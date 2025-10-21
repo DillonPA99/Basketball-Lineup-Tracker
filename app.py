@@ -9149,7 +9149,7 @@ with tab1:
     home_col, away_col = st.columns(2)
     
     with home_col:
-        st.markdown(f"### **HOME TEAM Scoring:** {st.session_state.home_score}")
+        st.markdown(f"### **HOME TEAM Score:** {st.session_state.home_score}")
 
         # Home team scoring buttons
         st.write("**Score Entry:**")
@@ -9265,7 +9265,7 @@ with tab1:
             st.info("Set lineup first to track individual player stats")
 
     with away_col:
-        st.markdown("### **AWAY TEAM Scoring**")
+        st.markdown("### **AWAY TEAM Score:**{st.session_state.home_score}")
         
         # Away team scoring buttons
         st.write("**Score Entry:**")
