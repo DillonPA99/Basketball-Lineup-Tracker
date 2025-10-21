@@ -6003,6 +6003,33 @@ def display_game_flow_prediction():
         else:
             st.caption("➡️ Consistent performance")
     
+    # Critical Moments Section
+    critical_moments = identify_critical_moments()
+    if critical_moments:
+        st.subheader("⚠️ Critical Moments & Alerts")
+        
+        for moment in critical_moments:
+            if moment['urgency'] == 'high':
+                st.error(f"**🚨 {moment['message']}**")
+                st.write(f"**Recommendation:** {moment['recommendation']}")
+                
+                # Add context based on moment type
+                if moment['type'] == 'clutch_time':
+                    st.caption("💡 Key factors in clutch situations:")
+                    st.caption("   • Minimize turnovers (protect ball)")
+                    st.caption("   • High-percentage shots only")
+                    st.caption("   • Get best defenders on court")
+                    
+                elif moment['type'] == 'momentum_shift':
+                    st.caption("💡 Breaking opponent momentum:")
+                    st.caption("   • Timeout can disrupt their flow")
+                    st.caption("   • Focus on defensive stops")
+                    st.caption("   • Run a set play to regain confidence")
+                    
+            else:
+                st.warning(f"**⚠️ {moment['message']}**")
+                st.write(f"**Recommendation:** {moment['recommendation']}")    
+    
     st.divider()
 
     st.write("📊 Efficiency Comparison")
@@ -6893,33 +6920,6 @@ def display_game_flow_prediction():
                 st.write("")  # Small spacing between suggestions
     
     display_key_runs()
-        
-    # Critical Moments Section
-    critical_moments = identify_critical_moments()
-    if critical_moments:
-        st.subheader("⚠️ Critical Moments & Alerts")
-        
-        for moment in critical_moments:
-            if moment['urgency'] == 'high':
-                st.error(f"**🚨 {moment['message']}**")
-                st.write(f"**Recommendation:** {moment['recommendation']}")
-                
-                # Add context based on moment type
-                if moment['type'] == 'clutch_time':
-                    st.caption("💡 Key factors in clutch situations:")
-                    st.caption("   • Minimize turnovers (protect ball)")
-                    st.caption("   • High-percentage shots only")
-                    st.caption("   • Get best defenders on court")
-                    
-                elif moment['type'] == 'momentum_shift':
-                    st.caption("💡 Breaking opponent momentum:")
-                    st.caption("   • Timeout can disrupt their flow")
-                    st.caption("   • Focus on defensive stops")
-                    st.caption("   • Run a set play to regain confidence")
-                    
-            else:
-                st.warning(f"**⚠️ {moment['message']}**")
-                st.write(f"**Recommendation:** {moment['recommendation']}")
         
 def display_post_game_comprehensive(summary):
     """Display comprehensive post-game analysis."""
