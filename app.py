@@ -8357,7 +8357,7 @@ with st.sidebar:
             if saved_sessions:
                 for session in saved_sessions[:10]:
                     # Create a more informative display
-                    status_emoji = "🏁" if session['is_completed'] else "🎮"
+                    status_emoji = "Complete: " if session['is_completed'] else "In Progress:"
 
                     # Use matchup if available, otherwise fall back to session name
                     display_name = session.get('matchup', session['session_name'])
