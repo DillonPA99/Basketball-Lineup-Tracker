@@ -10185,16 +10185,11 @@ with tab2:
                                 
                                 to_col1, to_col2, to_col3 = st.columns(3)
                                 with to_col1:
-                                    st.metric("Effective (Home)", positive_impact)
+                                    st.metric("Positive Impact", positive_impact)
                                 with to_col2:
-                                    st.metric("Ineffective (Home)", negative_impact)
+                                    st.metric("Negative Impact", negative_impact)
                                 with to_col3:
                                     st.metric("Neutral Impact", neutral_impact)
-                                
-                                # Detailed timeout list
-                                st.write("**Timeout Details:**")
-                                for to in timeouts:
-                                    st.caption(f"• {to['Team']} timeout @ {to['Quarter']} {to['Game Time']} (Score: {to['Home Score']}-{to['Away Score']}, Margin: {to['Margin']:+d})")
                                 
                                 # Detailed timeout list
                                 st.write("**Timeout Details:**")
