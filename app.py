@@ -9412,13 +9412,14 @@ with tab1:
     
     with turnover_col2:
         st.markdown("### **AWAY Turnovers**")
-        st.info("📊 Away team turnovers recorded as team totals only")
         # Away team turnover (team only)
         if st.button("AWAY Turnover", key="away_turnover", use_container_width=True, type="primary"):
             add_turnover("away", None)
             st.success("AWAY turnover recorded")
             st.rerun()
     
+    st.info("📊 Away team turnovers recorded as team totals only")
+
     # Display current turnover count
     home_tos, away_tos = get_team_turnovers()
     if home_tos > 0 or away_tos > 0:
