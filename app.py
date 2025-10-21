@@ -9141,7 +9141,7 @@ with tab1:
                 else:
                     st.error(f"Error setting lineup: {message}")
     
-         display_lineup_recommendation()
+    display_lineup_recommendation()
 
     st.divider()
     
