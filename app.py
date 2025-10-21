@@ -9147,8 +9147,15 @@ with tab1:
     
     with home_col:
         st.markdown(f"### **HOME TEAM Score:** {st.session_state.home_score}")
-
-        # Home team scoring buttons
+    
+        # ===== DEFINE home_scorer FIRST =====
+        if st.session_state.quarter_lineup_set and st.session_state.current_lineup:
+            # Use selected player or default to quick score
+            home_scorer = st.session_state.get('selected_home_player', "Quick Score (No Player)")
+        else:
+            home_scorer = "Quick Score (No Player)"
+    
+        # ===== NOW SCORING BUTTONS CAN USE home_scorer =====
         st.write("**Score Entry:**")
         
         # Free Throws
@@ -9159,7 +9166,7 @@ with tab1:
         with home_ft_miss:
             if st.button("❌ FT", key="home_ft_miss", use_container_width=True):
                 handle_score_entry("home", 0, home_scorer, "free_throw", False)
-
+    
         # 2-Point Field Goals
         home_2pt_make, home_2pt_miss = st.columns(2)
         with home_2pt_make:
@@ -9168,7 +9175,7 @@ with tab1:
         with home_2pt_miss:
             if st.button("❌ 2PT", key="home_2pt_miss", use_container_width=True):
                 handle_score_entry("home", 0, home_scorer, "field_goal", False)
-
+    
         # 3-Point Field Goals
         home_3pt_make, home_3pt_miss = st.columns(2)
         with home_3pt_make:
@@ -9177,8 +9184,8 @@ with tab1:
         with home_3pt_miss:
             if st.button("❌ 3PT", key="home_3pt_miss", use_container_width=True):
                 handle_score_entry("home", 0, home_scorer, "three_pointer", False)
-
-
+    
+        # ===== PLAYER SELECTION UI (AFTER SCORING BUTTONS) =====
         # Show current players as buttons when lineup is set
         if st.session_state.quarter_lineup_set and st.session_state.current_lineup:            
             st.write("**Select Player:**")
@@ -9186,7 +9193,7 @@ with tab1:
             if len(st.session_state.current_lineup) == 5:
                 player_cols_top = st.columns(3)
             
-               # Display first 3 players
+                # Display first 3 players
                 for i in range(3):
                     with player_cols_top[i]:
                         player = st.session_state.current_lineup[i]
@@ -9196,7 +9203,7 @@ with tab1:
                         if st.button(f"{player_name}\n#{jersey}", key=f"select_player_{i}", use_container_width=True):
                             st.session_state.selected_home_player = player
                             st.rerun()
-
+    
                 # Second row: 2 players + quick score option
                 player_cols_bottom = st.columns(3)
             
@@ -9225,7 +9232,7 @@ with tab1:
                     if st.button("Quick Score\n(No Player)", key="home_quick_score", use_container_width=True, type="secondary"):
                         st.session_state.selected_home_player = "Quick Score (No Player)"
                         st.rerun()
-
+    
             else:
                 # Fallback: display all players in a single row if not exactly 5
                 player_cols = st.columns(len(st.session_state.current_lineup))
@@ -9242,7 +9249,7 @@ with tab1:
                 if st.button("Quick Score (No Player)", key="home_quick_score_fallback"):
                     st.session_state.selected_home_player = "Quick Score (No Player)"
                     st.rerun()
-
+    
             # Show currently selected player
             if 'selected_home_player' in st.session_state and st.session_state.selected_home_player:
                 st.info(f"Selected: {st.session_state.selected_home_player.split('(')[0].strip()}")
@@ -9253,47 +9260,46 @@ with tab1:
                     if 'selected_home_player' in st.session_state:
                         del st.session_state.selected_home_player
                     st.rerun()
-            
-            # Use selected player or default to quick score
-            home_scorer = st.session_state.get('selected_home_player', "Quick Score (No Player)")
           
         else:
-            home_scorer = "Quick Score (No Player)"
             st.info("Set lineup first to track individual player stats")
-
+    
     with away_col:
         st.markdown(f"### **AWAY TEAM Score:** {st.session_state.away_score}")
         
-        # Away team scoring buttons
+        # ===== DEFINE away_scorer FIRST (for consistency) =====
+        away_scorer = "Quick Score (No Player)"
+        
+        # ===== SCORING BUTTONS =====
         st.write("**Score Entry:**")
         
         # Free Throws
         away_ft_make, away_ft_miss = st.columns(2)
         with away_ft_make:
             if st.button("✅ FT", key="away_ft_make", use_container_width=True, type="primary"):
-                handle_score_entry("away", 1, "Quick Score (No Player)", "free_throw", True)
+                handle_score_entry("away", 1, away_scorer, "free_throw", True)
         with away_ft_miss:
             if st.button("❌ FT", key="away_ft_miss", use_container_width=True):
-                handle_score_entry("away", 0, "Quick Score (No Player)", "free_throw", False)
-
+                handle_score_entry("away", 0, away_scorer, "free_throw", False)
+    
         # 2-Point Field Goals
         away_2pt_make, away_2pt_miss = st.columns(2)
         with away_2pt_make:
             if st.button("✅ 2PT", key="away_2pt_make", use_container_width=True, type="primary"):
-                handle_score_entry("away", 2, "Quick Score (No Player)", "field_goal", True)
+                handle_score_entry("away", 2, away_scorer, "field_goal", True)
         with away_2pt_miss:
             if st.button("❌ 2PT", key="away_2pt_miss", use_container_width=True):
-                handle_score_entry("away", 0, "Quick Score (No Player)", "field_goal", False)
-
+                handle_score_entry("away", 0, away_scorer, "field_goal", False)
+    
         # 3-Point Field Goals
         away_3pt_make, away_3pt_miss = st.columns(2)
         with away_3pt_make:
             if st.button("✅ 3PT", key="away_3pt_make", use_container_width=True, type="primary"):
-                handle_score_entry("away", 3, "Quick Score (No Player)", "three_pointer", True)
+                handle_score_entry("away", 3, away_scorer, "three_pointer", True)
         with away_3pt_miss:
             if st.button("❌ 3PT", key="away_3pt_miss", use_container_width=True):
-                handle_score_entry("away", 0, "Quick Score (No Player)", "three_pointer", False)
-
+                handle_score_entry("away", 0, away_scorer, "three_pointer", False)
+    
         st.info("📊 Away team scoring recorded as team totals only")
 
     # Quick stats display
