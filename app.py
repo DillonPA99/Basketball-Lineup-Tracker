@@ -9266,11 +9266,6 @@ with tab1:
 
     with away_col:
         st.markdown("### **AWAY TEAM Scoring**")
-        st.info("📊 Away team scoring recorded as team totals only")
-
-        st.write("")  # Empty space
-        st.write("")  # Empty space
-        st.write("")  # Empty space (adjust number as needed)
         
         # Away team scoring buttons
         st.write("**Score Entry**")
@@ -9301,6 +9296,8 @@ with tab1:
         with away_3pt_miss:
             if st.button("❌ 3PT", key="away_3pt_miss", use_container_width=True):
                 handle_score_entry("away", 0, "Quick Score (No Player)", "three_pointer", False)
+
+        st.info("📊 Away team scoring recorded as team totals only")
 
     # Quick stats display
     if st.session_state.player_stats:
