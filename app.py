@@ -9152,7 +9152,7 @@ with tab1:
         st.markdown("### **HOME TEAM Scoring**")
 
         # Home team scoring buttons
-        st.write("**Score Entry**")
+        st.write("**Score Entry:**")
         
         # Free Throws
         home_ft_make, home_ft_miss = st.columns(2)
@@ -9268,7 +9268,7 @@ with tab1:
         st.markdown("### **AWAY TEAM Scoring**")
         
         # Away team scoring buttons
-        st.write("**Score Entry**")
+        st.write("**Score Entry:**")
         
         # Free Throws
         away_ft_make, away_ft_miss = st.columns(2)
@@ -9347,6 +9347,14 @@ with tab1:
         st.markdown("### **HOME Turnovers**")
         # Home team turnover player selection
         if st.session_state.quarter_lineup_set and st.session_state.current_lineup:
+
+            if st.button("HOME Turnover", key="home_turnover", use_container_width=True, type="primary"):
+                player_to_record = None if home_turnover_player == "Team Turnover" else home_turnover_player
+                add_turnover("home", player_to_record)
+                player_text = f" by {home_turnover_player.split('(')[0].strip()}" if home_turnover_player != "Team Turnover" else ""
+                st.success(f"HOME turnover recorded{player_text}")
+                st.rerun()
+            
             st.write("**Select Player:**")
 
             # Create 5 columns for the 5 players plus team turnover
@@ -9400,12 +9408,7 @@ with tab1:
             home_turnover_player = "Team Turnover"
             st.info("Set lineup first to track individual player turnovers")
         
-        if st.button("HOME Turnover", key="home_turnover", use_container_width=True, type="primary"):
-            player_to_record = None if home_turnover_player == "Team Turnover" else home_turnover_player
-            add_turnover("home", player_to_record)
-            player_text = f" by {home_turnover_player.split('(')[0].strip()}" if home_turnover_player != "Team Turnover" else ""
-            st.success(f"HOME turnover recorded{player_text}")
-            st.rerun()
+
     
     with turnover_col2:
         st.markdown("### **AWAY Turnovers**")
