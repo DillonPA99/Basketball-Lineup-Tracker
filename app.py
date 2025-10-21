@@ -9344,7 +9344,6 @@ with tab1:
     turnover_col1, turnover_col2 = st.columns(2)
     
     with turnover_col1:
-        st.write("Select Player first, then Select HOME Turnovers")
         st.markdown("### **HOME Turnovers**")
         # Home team turnover player selection
         if st.session_state.quarter_lineup_set and st.session_state.current_lineup:
