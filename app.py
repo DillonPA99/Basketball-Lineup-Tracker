@@ -6032,10 +6032,8 @@ def display_game_flow_prediction():
     
     st.divider()
 
-    st.write("📊 Efficiency Comparison")
-    
-    st.write("📊 Efficiency Comparison")
-    
+    st.write("📊 Efficiency Analysis")
+        
     # Use 4 equal columns
     comparison_col1, comparison_col2, comparison_col3, comparison_col4 = st.columns(4)
     
@@ -6086,12 +6084,12 @@ def display_game_flow_prediction():
             if home_eff >= 1.10:
                 st.success(f"**HOME Efficiency**\n\n## {home_eff:.2f} PPP")
             elif home_eff >= 1.00:
-                st.info(f"**HOME Efficiency**\n\n## {home_eff:.2f} PPP")
+                st.info(f"**Recent HOME Efficiency**\n\n## {home_eff:.2f} PPP")
             else:
-                st.warning(f"**HOME Efficiency**\n\n## {home_eff:.2f} PPP")
+                st.warning(f"**Recent HOME Efficiency**\n\n## {home_eff:.2f} PPP")
             st.caption("Last 10 possessions (weighted)")
         else:
-            st.info("**HOME Efficiency**\n\n## 0.00 PPP")
+            st.info("**Recent HOME Efficiency**\n\n## 0.00 PPP")
             st.caption("Need 2+ possessions")
     
     with comparison_col3:
@@ -6113,14 +6111,14 @@ def display_game_flow_prediction():
             away_eff = (away_points_weighted / away_possessions) if away_possessions > 0 else 0
             
             if away_eff >= 1.10:
-                st.success(f"**AWAY Efficiency**\n\n## {away_eff:.2f} PPP")
+                st.success(f"**Recent AWAY Efficiency**\n\n## {away_eff:.2f} PPP")
             elif away_eff >= 1.00:
-                st.info(f"**AWAY Efficiency**\n\n## {away_eff:.2f} PPP")
+                st.info(f"**Recent AWAY Efficiency**\n\n## {away_eff:.2f} PPP")
             else:
-                st.warning(f"**AWAY Efficiency**\n\n## {away_eff:.2f} PPP")
+                st.warning(f"**Recent AWAY Efficiency**\n\n## {away_eff:.2f} PPP")
             st.caption("Last 10 possessions (weighted)")
         else:
-            st.info("**AWAY Efficiency**\n\n## 0.00 PPP")
+            st.info("**Recent AWAY Efficiency**\n\n## 0.00 PPP")
             st.caption("Need 2+ possessions")
     
     with comparison_col4:
