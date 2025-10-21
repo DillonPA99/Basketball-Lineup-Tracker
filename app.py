@@ -6103,6 +6103,89 @@ def display_game_flow_prediction():
         
     st.divider()
     
+    st.subheader("🔍 Momentum Analysis")
+    if len(st.session_state.score_history) >= 2:
+        recent_scores = st.session_state.score_history[-10:]
+        
+        # Calculate momentum components
+        home_possessions = 0
+        home_points_weighted = 0
+        away_possessions = 0
+        away_points_weighted = 0
+        
+        for i, score in enumerate(recent_scores):
+            recency_weight = 0.5 + (0.5 * (i + 1) / len(recent_scores))
+            
+            if score['team'] == 'home':
+                home_possessions += recency_weight
+                if score.get('made', True):
+                    home_points_weighted += score['points'] * recency_weight
+            else:
+                away_possessions += recency_weight
+                if score.get('made', True):
+                    away_points_weighted += score['points'] * recency_weight
+        
+        # Show efficiency calculation in compact format
+        momentum_col1, momentum_col2, momentum_col3 = st.columns(3)
+        
+        with momentum_col1:
+            home_eff = (home_points_weighted / home_possessions) if home_possessions > 0 else 0
+            st.metric("HOME Efficiency", f"{home_eff:.2f} PPP", 
+                     help="Weighted points per possession (last 10)")
+        
+        with momentum_col2:
+            away_eff = (away_points_weighted / away_possessions) if away_possessions > 0 else 0
+            st.metric("AWAY Efficiency", f"{away_eff:.2f} PPP",
+                     help="Weighted points per possession (last 10)")
+        
+        with momentum_col3:
+            efficiency_diff = home_eff - away_eff
+            momentum_final = max(-75, min(75, efficiency_diff * 35))
+            
+            if momentum_final > 12:
+                st.metric("Momentum Score", f"{momentum_final:+.0f}", 
+                         delta="🔥 Dominating", delta_color="normal")
+            elif momentum_final > 4:
+                st.metric("Momentum Score", f"{momentum_final:+.0f}", 
+                         delta="✅ Positive", delta_color="normal")
+            elif momentum_final < -12:
+                st.metric("Momentum Score", f"{momentum_final:+.0f}", 
+                         delta="❄️ Opponent run", delta_color="inverse")
+            elif momentum_final < -4:
+                st.metric("Momentum Score", f"{momentum_final:+.0f}", 
+                         delta="⚠️ Negative", delta_color="inverse")
+            else:
+                st.metric("Momentum Score", f"{momentum_final:+.0f}", 
+                         delta="⚖️ Even", delta_color="off")
+        
+        # Compact formula explanation
+        with st.expander("📊 How is this calculated?", expanded=False):
+            st.write("""
+            **Quick Formula:**
+            - Analyzes last 10 possessions (recent events weighted more)
+            - Compares HOME vs AWAY scoring efficiency (PPP)
+            - Score = (HOME PPP - AWAY PPP) × 35
+            - Range: -75 to +75
+            
+            **What it means:**
+            - **+12 or higher**: Strong positive momentum - keep it up!
+            - **+4 to +12**: Slight advantage - push tempo
+            - **-4 to +4**: Even battle - next plays matter
+            - **-12 to -4**: Losing momentum - adjust strategy
+            - **-12 or lower**: Strong negative - consider timeout
+            """)
+            
+            # Show calculation
+            st.code(f"""
+    Efficiency Gap = {home_eff:.2f} - {away_eff:.2f} = {efficiency_diff:.2f}
+    Momentum Score = {efficiency_diff:.2f} × 35 = {momentum_final:.0f}
+            """, language="text")
+        
+    else:
+        st.info("Need at least 2 possessions to calculate momentum")    
+    
+    st.divider()
+  
     # Enhanced Analysis Section
     st.subheader("🎯 Detailed Game Analysis")
     
@@ -6808,88 +6891,6 @@ def display_game_flow_prediction():
             
             if i < len(suggestions[:2]) - 1:
                 st.write("")  # Small spacing between suggestions
-
-    st.subheader("🔍 Momentum Analysis")
-    
-    if len(st.session_state.score_history) >= 2:
-        recent_scores = st.session_state.score_history[-10:]
-        
-        # Calculate momentum components
-        home_possessions = 0
-        home_points_weighted = 0
-        away_possessions = 0
-        away_points_weighted = 0
-        
-        for i, score in enumerate(recent_scores):
-            recency_weight = 0.5 + (0.5 * (i + 1) / len(recent_scores))
-            
-            if score['team'] == 'home':
-                home_possessions += recency_weight
-                if score.get('made', True):
-                    home_points_weighted += score['points'] * recency_weight
-            else:
-                away_possessions += recency_weight
-                if score.get('made', True):
-                    away_points_weighted += score['points'] * recency_weight
-        
-        # Show efficiency calculation in compact format
-        momentum_col1, momentum_col2, momentum_col3 = st.columns(3)
-        
-        with momentum_col1:
-            home_eff = (home_points_weighted / home_possessions) if home_possessions > 0 else 0
-            st.metric("HOME Efficiency", f"{home_eff:.2f} PPP", 
-                     help="Weighted points per possession (last 10)")
-        
-        with momentum_col2:
-            away_eff = (away_points_weighted / away_possessions) if away_possessions > 0 else 0
-            st.metric("AWAY Efficiency", f"{away_eff:.2f} PPP",
-                     help="Weighted points per possession (last 10)")
-        
-        with momentum_col3:
-            efficiency_diff = home_eff - away_eff
-            momentum_final = max(-75, min(75, efficiency_diff * 35))
-            
-            if momentum_final > 12:
-                st.metric("Momentum Score", f"{momentum_final:+.0f}", 
-                         delta="🔥 Dominating", delta_color="normal")
-            elif momentum_final > 4:
-                st.metric("Momentum Score", f"{momentum_final:+.0f}", 
-                         delta="✅ Positive", delta_color="normal")
-            elif momentum_final < -12:
-                st.metric("Momentum Score", f"{momentum_final:+.0f}", 
-                         delta="❄️ Opponent run", delta_color="inverse")
-            elif momentum_final < -4:
-                st.metric("Momentum Score", f"{momentum_final:+.0f}", 
-                         delta="⚠️ Negative", delta_color="inverse")
-            else:
-                st.metric("Momentum Score", f"{momentum_final:+.0f}", 
-                         delta="⚖️ Even", delta_color="off")
-        
-        # Compact formula explanation
-        with st.expander("📊 How is this calculated?", expanded=False):
-            st.write("""
-            **Quick Formula:**
-            - Analyzes last 10 possessions (recent events weighted more)
-            - Compares HOME vs AWAY scoring efficiency (PPP)
-            - Score = (HOME PPP - AWAY PPP) × 35
-            - Range: -75 to +75
-            
-            **What it means:**
-            - **+12 or higher**: Strong positive momentum - keep it up!
-            - **+4 to +12**: Slight advantage - push tempo
-            - **-4 to +4**: Even battle - next plays matter
-            - **-12 to -4**: Losing momentum - adjust strategy
-            - **-12 or lower**: Strong negative - consider timeout
-            """)
-            
-            # Show calculation
-            st.code(f"""
-    Efficiency Gap = {home_eff:.2f} - {away_eff:.2f} = {efficiency_diff:.2f}
-    Momentum Score = {efficiency_diff:.2f} × 35 = {momentum_final:.0f}
-            """, language="text")
-        
-    else:
-        st.info("Need at least 2 possessions to calculate momentum")
     
     display_key_runs()
         
