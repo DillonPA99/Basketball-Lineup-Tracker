@@ -8943,29 +8943,34 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏀 Live Game", "📊 Analytics", "�
 # Tab 1: Live Game
 # ------------------------------------------------------------------
 with tab1:
-    st.header("Live Game")
-    
-    # Add AGGRESSIVE sticky CSS that actually works
+    # NUCLEAR OPTION - Most aggressive sticky approach
     st.markdown("""
     <style>
-        /* Target the specific metrics container */
-        section[data-testid="stVerticalBlock"] > div:first-child {
-            position: sticky !important;
-            top: 0 !important;
-            background-color: #0e1117 !important;
-            z-index: 1000 !important;
-            padding-top: 1rem !important;
-            padding-bottom: 1rem !important;
-            border-bottom: 2px solid #262730 !important;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3) !important;
+        /* Hide the header "Live Game" to make room */
+        section.main > div:first-child h1 {
+            margin-top: 0 !important;
         }
         
-        /* Make sure parent allows sticky positioning */
-        section[data-testid="stVerticalBlock"] {
-            position: relative !important;
+        /* Make the ENTIRE tab content area scrollable */
+        .stTabs [data-baseweb="tab-panel"] {
+            overflow-y: auto !important;
+            max-height: calc(100vh - 200px) !important;
+        }
+        
+        /* Stick the first element (status bar) */
+        .stTabs [data-baseweb="tab-panel"] > div > div:first-child {
+            position: sticky !important;
+            top: -1rem !important;
+            background-color: #0e1117 !important;
+            z-index: 999 !important;
+            padding: 1rem 0 !important;
+            margin: -1rem 0 1rem 0 !important;
+            border-bottom: 2px solid #262730 !important;
         }
     </style>
     """, unsafe_allow_html=True)
+    
+    st.header("Live Game")
     
     # Current game status
     status_col1, status_col2, status_col3, status_col4, status_col5 = st.columns([1, 1, 1, 1, 1])
