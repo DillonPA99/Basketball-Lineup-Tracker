@@ -8945,22 +8945,27 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏀 Live Game", "📊 Analytics", "�
 with tab1:
     st.header("Live Game")
     
+    # Add AGGRESSIVE sticky CSS that actually works
     st.markdown("""
     <style>
-        .sticky-game-status {
-            position: sticky;
-            top: 3.5rem;
-            background-color: #0e1117;
-            z-index: 999;
-            padding: 1rem 0;
-            border-bottom: 2px solid #262730;
-            margin-bottom: 1.5rem;
+        /* Target the specific metrics container */
+        section[data-testid="stVerticalBlock"] > div:first-child {
+            position: sticky !important;
+            top: 0 !important;
+            background-color: #0e1117 !important;
+            z-index: 1000 !important;
+            padding-top: 1rem !important;
+            padding-bottom: 1rem !important;
+            border-bottom: 2px solid #262730 !important;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3) !important;
+        }
+        
+        /* Make sure parent allows sticky positioning */
+        section[data-testid="stVerticalBlock"] {
+            position: relative !important;
         }
     </style>
     """, unsafe_allow_html=True)
-    
-    # Wrap status bar in sticky container
-    st.markdown('<div class="sticky-game-status">', unsafe_allow_html=True)
     
     # Current game status
     status_col1, status_col2, status_col3, status_col4, status_col5 = st.columns([1, 1, 1, 1, 1])
@@ -8981,7 +8986,6 @@ with tab1:
             else:
                 st.error("Cannot advance quarter further")
     
-    st.markdown('</div>', unsafe_allow_html=True)
     st.divider()
 
     # Check if lineup is set for current quarter
