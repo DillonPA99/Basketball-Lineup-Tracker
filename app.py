@@ -3687,7 +3687,7 @@ def display_lineup_recommendation():
     title_col, button_col, spacer_col = st.columns([2, 2, 2])
     
     with title_col:
-        st.subheader("🎯 AI Lineup Recommendation")
+        st.write("🎯 AI Lineup Recommendation")
     
     with button_col:
         if not st.session_state.show_recommendation:
