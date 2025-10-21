@@ -8940,10 +8940,27 @@ if st.session_state.get('show_admin_panel', False) and st.session_state.user_inf
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏀 Live Game", "📊 Analytics", "🤖 AI Insights", "📝 Event Log", "🏆 Season Stats"])
 
 # ------------------------------------------------------------------
-# Tab 1: Live Game - FIXED VERSION
+# Tab 1: Live Game
 # ------------------------------------------------------------------
 with tab1:
     st.header("Live Game")
+    
+    st.markdown("""
+    <style>
+        .sticky-game-status {
+            position: sticky;
+            top: 3.5rem;
+            background-color: #0e1117;
+            z-index: 999;
+            padding: 1rem 0;
+            border-bottom: 2px solid #262730;
+            margin-bottom: 1.5rem;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Wrap status bar in sticky container
+    st.markdown('<div class="sticky-game-status">', unsafe_allow_html=True)
     
     # Current game status
     status_col1, status_col2, status_col3, status_col4, status_col5 = st.columns([1, 1, 1, 1, 1])
@@ -8963,6 +8980,8 @@ with tab1:
                 st.rerun()
             else:
                 st.error("Cannot advance quarter further")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
     st.divider()
 
     # Check if lineup is set for current quarter
