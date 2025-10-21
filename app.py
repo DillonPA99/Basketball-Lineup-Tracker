@@ -6921,65 +6921,6 @@ def display_game_flow_prediction():
                 st.warning(f"**⚠️ {moment['message']}**")
                 st.write(f"**Recommendation:** {moment['recommendation']}")
         
-    # Prediction Confidence Explanation
-    with st.expander("🔮 How Predictions Work", expanded=False):
-        st.write("### Prediction Methodology")
-        
-        st.write("**📊 Final Score Prediction:**")
-        st.write(f"""
-        - **Current Pace:** {st.session_state.home_score}-{st.session_state.away_score}
-        - **Projected finish:** {pred_home}-{pred_away}
-        - **Confidence:** {confidence}%
-        
-        **How we calculate this:**
-        1. **Pace-based projection** ({confidence - 20}% of prediction)
-           - Calculates points-per-minute so far
-           - Extrapolates to end of 4 quarters
-           - Accounts for time remaining
-        
-        2. **Momentum adjustment** (±{abs(calculate_momentum_score()[0] * 0.1):.1f} points)
-           - Weighs recent 10 possessions more heavily
-           - {'Adds' if momentum_score > 0 else 'Subtracts'} points based on recent efficiency
-           - Accounts for hot/cold streaks
-        
-        3. **Efficiency trend** ({'+' if current_ppp > starting_ppp else ''}{current_ppp - starting_ppp:.2f} PPP impact)
-           - Analyzes if offense improving/declining
-           - Projects trend continuation
-           - {'Increases' if current_ppp > starting_ppp else 'Decreases'} expected scoring
-        
-        **Confidence factors:**
-        - Base confidence: {min(100, (len(st.session_state.score_history) / 40) * 100):.0f}% (more events = more reliable)
-        - Time remaining: {'Low' if st.session_state.current_quarter in ['Q1', 'Q2'] else 'Medium' if st.session_state.current_quarter == 'Q3' else 'High'} confidence
-        - Score margin: {'High' if abs(st.session_state.home_score - st.session_state.away_score) > 15 else 'Medium' if abs(st.session_state.home_score - st.session_state.away_score) > 7 else 'Low'} confidence
-        """)
-        
-        st.write("**🎲 Win Probability Calculation:**")
-        st.write(f"""
-        The {win_prob}% win probability combines:
-        
-        1. **Score differential** (Current: {st.session_state.home_score - st.session_state.away_score:+d})
-           - Each point = ~{3 * (1 + (4 - int(st.session_state.current_quarter[1]) if st.session_state.current_quarter.startswith('Q') else 4) / 4):.1f}% win probability
-           - More valuable late in game
-        
-        2. **Momentum** ({momentum_dir})
-           - Recent 10 possessions weighted 2x vs earlier
-           - {'Positive' if momentum_score > 0 else 'Negative'} momentum {'increases' if momentum_score > 0 else 'decreases'} win prob by {abs(momentum_score * 0.1):.0f}%
-        
-        3. **Efficiency trend** ({eff_trend})
-           - {'Improving efficiency adds ~5%' if eff_trend == 'improving' else 'Declining efficiency subtracts ~5%' if eff_trend == 'declining' else 'Stable efficiency = neutral'}
-        
-        4. **Time context**
-           - More time = more uncertainty
-           - Current quarter: {st.session_state.current_quarter}
-           - {'Early game - high variance' if st.session_state.current_quarter in ['Q1', 'Q2'] else 'Late game - more predictable'}
-        
-        5. **Turnover differential** ({sum(1 for to in st.session_state.turnover_history if to['team'] == 'away') - sum(1 for to in st.session_state.turnover_history if to['team'] == 'home'):+d})
-           - Each TO advantage = ~2% win probability
-           - Ball security matters more late
-        """)
-        
-        st.info("💡 **Remember:** These are probabilities, not guarantees. Basketball games can change quickly with a run or key plays!")
-        
 def display_post_game_comprehensive(summary):
     """Display comprehensive post-game analysis."""
     
@@ -7449,6 +7390,65 @@ def display_possession_details():
             away_points = sum(p['Points'] for p in possession_details if p['Team'] == 'AWAY')
             away_ppp = (away_points / away_poss) if away_poss > 0 else 0
             st.metric("Away PPP", f"{away_ppp:.2f}")
+
+    # Prediction Confidence Explanation
+    with st.expander("🔮 How Predictions Work", expanded=False):
+        st.write("### Prediction Methodology")
+        
+        st.write("**📊 Final Score Prediction:**")
+        st.write(f"""
+        - **Current Pace:** {st.session_state.home_score}-{st.session_state.away_score}
+        - **Projected finish:** {pred_home}-{pred_away}
+        - **Confidence:** {confidence}%
+        
+        **How we calculate this:**
+        1. **Pace-based projection** ({confidence - 20}% of prediction)
+           - Calculates points-per-minute so far
+           - Extrapolates to end of 4 quarters
+           - Accounts for time remaining
+        
+        2. **Momentum adjustment** (±{abs(calculate_momentum_score()[0] * 0.1):.1f} points)
+           - Weighs recent 10 possessions more heavily
+           - {'Adds' if momentum_score > 0 else 'Subtracts'} points based on recent efficiency
+           - Accounts for hot/cold streaks
+        
+        3. **Efficiency trend** ({'+' if current_ppp > starting_ppp else ''}{current_ppp - starting_ppp:.2f} PPP impact)
+           - Analyzes if offense improving/declining
+           - Projects trend continuation
+           - {'Increases' if current_ppp > starting_ppp else 'Decreases'} expected scoring
+        
+        **Confidence factors:**
+        - Base confidence: {min(100, (len(st.session_state.score_history) / 40) * 100):.0f}% (more events = more reliable)
+        - Time remaining: {'Low' if st.session_state.current_quarter in ['Q1', 'Q2'] else 'Medium' if st.session_state.current_quarter == 'Q3' else 'High'} confidence
+        - Score margin: {'High' if abs(st.session_state.home_score - st.session_state.away_score) > 15 else 'Medium' if abs(st.session_state.home_score - st.session_state.away_score) > 7 else 'Low'} confidence
+        """)
+        
+        st.write("**🎲 Win Probability Calculation:**")
+        st.write(f"""
+        The {win_prob}% win probability combines:
+        
+        1. **Score differential** (Current: {st.session_state.home_score - st.session_state.away_score:+d})
+           - Each point = ~{3 * (1 + (4 - int(st.session_state.current_quarter[1]) if st.session_state.current_quarter.startswith('Q') else 4) / 4):.1f}% win probability
+           - More valuable late in game
+        
+        2. **Momentum** ({momentum_dir})
+           - Recent 10 possessions weighted 2x vs earlier
+           - {'Positive' if momentum_score > 0 else 'Negative'} momentum {'increases' if momentum_score > 0 else 'decreases'} win prob by {abs(momentum_score * 0.1):.0f}%
+        
+        3. **Efficiency trend** ({eff_trend})
+           - {'Improving efficiency adds ~5%' if eff_trend == 'improving' else 'Declining efficiency subtracts ~5%' if eff_trend == 'declining' else 'Stable efficiency = neutral'}
+        
+        4. **Time context**
+           - More time = more uncertainty
+           - Current quarter: {st.session_state.current_quarter}
+           - {'Early game - high variance' if st.session_state.current_quarter in ['Q1', 'Q2'] else 'Late game - more predictable'}
+        
+        5. **Turnover differential** ({sum(1 for to in st.session_state.turnover_history if to['team'] == 'away') - sum(1 for to in st.session_state.turnover_history if to['team'] == 'home'):+d})
+           - Each TO advantage = ~2% win probability
+           - Ball security matters more late
+        """)
+        
+        st.info("💡 **Remember:** These are probabilities, not guarantees. Basketball games can change quickly with a run or key plays!")
     
 # ------------------------------------------------------------------
 # User Authentication Gate
