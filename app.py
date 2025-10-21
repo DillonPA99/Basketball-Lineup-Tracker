@@ -11025,13 +11025,18 @@ with tab5:
         st.info("💡 Click above to load season statistics. This calculates aggregated data from all your games.")
         st.stop()
     
-    # Load ALL games first to show in filter
     with st.spinner("Loading your games..."):
         all_available_games = get_user_game_sessions_cached(st.session_state.user_info['id'], include_completed=True)
+
+    all_available_games = [
+        game for game in all_available_games 
+        if game.get('is_completed', False)
+    ]
     
     if not all_available_games:
-        st.warning("No saved games found. Save and track games to see season statistics.")
-        st.info("💡 Tip: Games are automatically saved when you start tracking. Use 'My Saved Games' in the sidebar to manage them.")
+        st.warning("No completed games found. Mark games as complete to include them in season statistics.")
+        st.info("💡 Tip: Use the '🏁 Mark Complete' button in the sidebar when a game is finished.")
+    
     else:
         # Game selection filter
         st.subheader("Select Games to Include")
