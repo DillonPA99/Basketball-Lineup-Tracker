@@ -614,7 +614,7 @@ def save_game_session(user_id, session_name, game_data):
             'created_at': get_current_utc_time(),
             'updated_at': get_current_utc_time(),
             'is_completed': False,
-            # Add points off turnover data
+            'timeout_history': base64.b64encode(pickle.dumps(game_data.get('timeout_history', []))).decode('utf-8'),
             'points_off_turnovers': game_data.get('points_off_turnovers', {'home': 0, 'away': 0}),
             'last_turnover_event': game_data.get('last_turnover_event', None)
         }
@@ -698,7 +698,11 @@ def load_game_session(session_id):
         session_data = doc.to_dict()
         
         # Decode pickled data with proper error handling
-        fields_to_decode = ['lineup_history', 'score_history', 'quarter_end_history', 'player_stats', 'turnover_history', 'player_turnovers', 'lineup_points_off_turnovers']
+        fields_to_decode = ['lineup_history', 'score_history', 'quarter_end_history', 'player_stats', 'turnover_history', 'player_turnovers', 'lineup_points_off_turnovers', 'timeout_history']
+        
+        # And add the default case:
+        if field == 'timeout_history':
+            session_data[field] = []
         
         for field in fields_to_decode:
             if field in session_data and session_data[field]:
@@ -1428,9 +1432,11 @@ if "custom_game_name" not in st.session_state:
 if "current_quarter" not in st.session_state:
     st.session_state.current_quarter = "Q1"
 
-# Initialize quarter_length BEFORE using it in current_game_time
 if "quarter_length" not in st.session_state:
     st.session_state.quarter_length = 12
+
+if "timeout_history" not in st.session_state:
+    st.session_state.timeout_history = []
 
 if "home_score" not in st.session_state:
     st.session_state.home_score = 0
@@ -1604,6 +1610,7 @@ def reset_game(save_current=True):
     st.session_state.quarter_lineup_set = False
     st.session_state.quarter_end_history = []
     st.session_state.turnover_history = []
+    st.session_state.timeout_history = []
     st.session_state.player_turnovers = defaultdict(int)
     st.session_state.player_stats = defaultdict(lambda: {
         'points': 0,
@@ -1651,6 +1658,7 @@ def check_auto_save():
             'current_lineup': st.session_state.current_lineup,
             'quarter_lineup_set': st.session_state.quarter_lineup_set,
             'current_game_time': st.session_state.current_game_time,
+            'timeout_history': st.session_state.timeout_history,
             'lineup_history': st.session_state.lineup_history,
             'score_history': st.session_state.score_history,
             'quarter_end_history': st.session_state.quarter_end_history,
@@ -2020,8 +2028,31 @@ def undo_last_score():
     st.success("Last entry undone!")
     st.rerun()
 
-# Function to get points off turnover statistics
-
+def add_timeout(team, game_time):
+    """Record a timeout event."""
+    current_timestamp = get_current_utc_time()
+    
+    timeout_event = {
+        'team': team,
+        'quarter': st.session_state.current_quarter,
+        'game_time': game_time,
+        'lineup': st.session_state.current_lineup.copy() if st.session_state.current_lineup else [],
+        'home_score': st.session_state.home_score,
+        'away_score': st.session_state.away_score,
+        'timestamp': current_timestamp,
+        'event_sequence': st.session_state.event_counter
+    }
+    
+    st.session_state.timeout_history.append(timeout_event)
+    st.session_state.event_counter += 1
+    
+    # Update game clock
+    st.session_state.current_game_time = game_time
+    
+    check_auto_save()
+    
+    return True
+    
 def get_points_off_turnovers_stats():
     """Get team and lineup points off turnover statistics - SINGLE SOURCE VERSION."""
     team_stats = {'home': 0, 'away': 0}
@@ -8818,8 +8849,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏀 Live Game", "📊 Analytics", "�
 with tab1:
     st.header("Live Game")
     
-    # Current game status
-    status_col1, status_col2, status_col3, status_col4, status_col5 = st.columns([1, 1, 1, 1, 1])
+    status_col1, status_col2, status_col3, status_col4, status_col5, status_col6 = st.columns([1, 1, 1, 1, 1, 1])
     with status_col1:
         st.metric("Quarter", st.session_state.current_quarter)
     with status_col2:
@@ -8829,6 +8859,10 @@ with tab1:
     with status_col4:
         st.metric("Away Score", st.session_state.away_score)
     with status_col5:
+        if st.button("⏸️ Timeout", help="Record a timeout and update game clock"):
+            st.session_state.show_timeout_modal = True
+            st.rerun()
+    with status_col6:
         if st.button("🔚 End Quarter", type="primary"):
             success = end_quarter()
             if success:
@@ -8836,6 +8870,87 @@ with tab1:
                 st.rerun()
             else:
                 st.error("Cannot advance quarter further")
+    
+    # Timeout Modal
+    if st.session_state.get('show_timeout_modal', False):
+        with st.container():
+            st.markdown("### ⏸️ Record Timeout")
+            
+            timeout_col1, timeout_col2 = st.columns(2)
+            
+            with timeout_col1:
+                timeout_team = st.radio(
+                    "Which team called timeout?",
+                    ["Home", "Away"],
+                    horizontal=True,
+                    key="timeout_team_select"
+                )
+            
+            with timeout_col2:
+                st.write("**Game Clock at Timeout:**")
+                
+                # Parse current time for defaults
+                try:
+                    current_minutes = int(st.session_state.current_game_time.split(':')[0])
+                    current_seconds = int(st.session_state.current_game_time.split(':')[1])
+                except:
+                    current_minutes = st.session_state.quarter_length
+                    current_seconds = 0
+                
+                # Ensure current_minutes doesn't exceed quarter_length
+                if current_minutes > st.session_state.quarter_length:
+                    current_minutes = st.session_state.quarter_length
+                
+                # Time picker
+                time_col1, time_col2 = st.columns(2)
+                
+                with time_col1:
+                    st.markdown("Minutes")
+                    minute_options = list(range(st.session_state.quarter_length, -1, -1))
+                    timeout_minutes = st.selectbox(
+                        "min",
+                        options=minute_options,
+                        index=minute_options.index(current_minutes) if current_minutes in minute_options else 0,
+                        key="timeout_minutes_select",
+                        label_visibility="collapsed"
+                    )
+                
+                with time_col2:
+                    st.markdown("Seconds")
+                    second_options = list(range(59, -1, -1))
+                    timeout_seconds = st.selectbox(
+                        "sec",
+                        options=second_options,
+                        index=second_options.index(current_seconds) if current_seconds in second_options else 0,
+                        key="timeout_seconds_select",
+                        label_visibility="collapsed"
+                    )
+            
+            timeout_game_time = f"{timeout_minutes}:{timeout_seconds:02d}"
+            
+            st.info(f"⏱️ Timeout recorded at: **{timeout_game_time}**")
+            
+            button_col1, button_col2 = st.columns(2)
+            
+            with button_col1:
+                if st.button("✅ Record Timeout", type="primary", use_container_width=True):
+                    # Validate time
+                    is_valid, message = validate_game_time(timeout_game_time, st.session_state.quarter_length)
+                    if not is_valid:
+                        st.error(f"Invalid game time: {message}")
+                    else:
+                        team_lower = timeout_team.lower()
+                        if add_timeout(team_lower, timeout_game_time):
+                            st.success(f"✅ {timeout_team} timeout recorded at {timeout_game_time}")
+                            st.session_state.show_timeout_modal = False
+                            time.sleep(0.5)
+                            st.rerun()
+            
+            with button_col2:
+                if st.button("❌ Cancel", use_container_width=True):
+                    st.session_state.show_timeout_modal = False
+                    st.rerun()
+    
     st.divider()
 
     # Check if lineup is set for current quarter
@@ -10830,6 +10945,24 @@ with tab4:
                     'previous_lineup': lineup.get('previous_lineup', [])
                 })
         
+        # Add timeout events
+        for i, timeout in enumerate(st.session_state.timeout_history):
+            timestamp = timeout.get('timestamp', datetime.now(timezone.utc))
+            if isinstance(timestamp, datetime) and timestamp.tzinfo is None:
+                timestamp = timestamp.replace(tzinfo=timezone.utc)
+            
+            all_events.append({
+                'timestamp': timestamp,
+                'event_sequence': timeout.get('event_sequence', (len(st.session_state.score_history) + len(st.session_state.turnover_history) + len(st.session_state.lineup_history) + i) * 3 + 3),
+                'type': 'Timeout',
+                'team': timeout['team'].title(),
+                'description': f"{timeout['team'].title()} timeout",
+                'quarter': timeout['quarter'],
+                'game_time': timeout.get('game_time', 'Unknown'),
+                'details': f"Score: {timeout.get('home_score', 0)}-{timeout.get('away_score', 0)}",
+                'lineup': timeout.get('lineup', [])
+            })
+        
         # Sort by timestamp (primary) and event_sequence (secondary)
         all_events.sort(key=lambda x: (x['timestamp'], x.get('event_sequence', 0)))
         
@@ -10851,6 +10984,8 @@ with tab4:
                         header_color = "⚪"
                 elif event['type'] == 'Lineup Change':
                     header_color = "🟠"
+                elif event['type'] == 'Timeout':
+                    header_color = "⏸️"
                 elif event['type'] == 'Quarter End':
                     header_color = "🟣"  # Purple for quarter end
                 elif event['type'] == 'Turnover':
@@ -10889,6 +11024,11 @@ with tab4:
                         elif event['type'] == 'Lineup Change':
                             if event.get('previous_lineup'):
                                 st.write(f"**Players Out:** {len(event['previous_lineup'])}")
+                        elif event['type'] == 'Timeout':
+                            st.write(f"**Type:** ⏸️ Team Timeout")
+                            st.write(f"**Called By:** {event['team']}")
+                            if event.get('lineup'):
+                                st.write(f"**Lineup on Court:** {' | '.join(event['lineup'])}")
                         elif event['type'] == 'Quarter End':
                             st.write(f"**Status:** ✅ Quarter Completed")
                             st.write(f"**Quarter Duration:** Full Quarter")
