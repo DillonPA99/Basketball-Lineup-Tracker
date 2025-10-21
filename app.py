@@ -3687,7 +3687,7 @@ def display_lineup_recommendation():
     title_col, button_col, spacer_col = st.columns([2, 2, 2])
     
     with title_col:
-        st.write("🎯 AI Lineup Recommendation")
+        st.subheader("🎯 AI Lineup Recommendation")
     
     with button_col:
         if not st.session_state.show_recommendation:
@@ -8970,7 +8970,7 @@ with tab1:
         st.warning("⚠️ Please set a starting lineup for this quarter before tracking home team player stats.")
 
     # Lineup management section
-    st.subheader("Lineup Management")
+    st.header("Lineup Management")
 
     # Show current quarter lineup status
     if not st.session_state.quarter_lineup_set:
