@@ -8355,7 +8355,7 @@ with st.sidebar:
             saved_sessions = get_user_game_sessions_cached(st.session_state.user_info['id'], include_completed=True)
             
             if saved_sessions:
-                for session in saved_sessions[:5]:  # Show last 5
+                for session in saved_sessions[:10]:
                     # Create a more informative display
                     status_emoji = "🏁" if session['is_completed'] else "🎮"
 
@@ -8435,8 +8435,8 @@ with st.sidebar:
                             else:
                                 st.error("Failed to delete game")
                 
-                if len(saved_sessions) > 5:
-                    st.caption(f"Showing 5 of {len(saved_sessions)} saved games")
+                if len(saved_sessions) > 10:
+                    st.caption(f"Showing 10 of {len(saved_sessions)} saved games")
             else:
                 st.info("No saved games found")
                 
