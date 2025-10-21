@@ -9417,8 +9417,7 @@ with tab1:
             add_turnover("away", None)
             st.success("AWAY turnover recorded")
             st.rerun()
-    
-    st.info("📊 Away team turnovers recorded as team totals only")
+        st.info("📊 Away team turnovers recorded as team totals only")
 
     # Display current turnover count
     home_tos, away_tos = get_team_turnovers()
