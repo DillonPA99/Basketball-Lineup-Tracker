@@ -4979,7 +4979,7 @@ def calculate_scoring_efficiency_trend():
     Returns: efficiency_trend, current_ppp, starting_ppp
     """
     if len(st.session_state.score_history) < 10:
-        return "insufficient_data", 0, 0
+        return "Insufficient Data", 0, 0
     
     # Split game into segments
     total_events = len(st.session_state.score_history)
@@ -5035,7 +5035,7 @@ def calculate_scoring_efficiency_trend():
             segments_ppp.append(segment_ppp)
     
     if len(segments_ppp) < 2:
-        return "insufficient_data", 0, 0
+        return "Insufficient Data", 0, 0
     
     # SIMPLIFIED APPROACH: Just compare first vs last segment
     first_segment_ppp = segments_ppp[0]
