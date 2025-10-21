@@ -6613,7 +6613,7 @@ def display_game_flow_prediction():
                 if best_defenders:
                     actions.append(f'✅ Get {best_defenders[0]["name"]} in the game (best defensive impact)')
                     if len(best_defenders) > 1:
-                        actions.append(f'Consider lineup with {best_defenders[0]["name"]} and {best_defenders[1]["name"]}')
+                        actions.append(f'Consider lineup with {best_defenders[0]["name"]} and {best_defenders[3]["name"]}')
                 
                 # Suggest best defensive lineup
                 if best_def_lineups:
