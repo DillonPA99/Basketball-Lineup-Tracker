@@ -9708,9 +9708,7 @@ with tab2:
                 
                 # Performance Over Time Graph section in Tab 2
                 st.subheader("📈 Performance Over Time")
-                
-                st.subheader("📈 Performance Over Time")
-                
+                                
                 if st.session_state.score_history or st.session_state.lineup_history:
                     # Create timeline data from score history
                     timeline_data = []
