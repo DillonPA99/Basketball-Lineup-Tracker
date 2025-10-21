@@ -9266,6 +9266,10 @@ with tab1:
     with away_col:
         st.markdown("### **AWAY TEAM Scoring**")
         st.info("📊 Away team scoring recorded as team totals only")
+
+        st.write("")  # Empty space
+        st.write("")  # Empty space
+        st.write("")  # Empty space (adjust number as needed)
         
         # Away team scoring buttons
         st.write("**Score Entry**")
