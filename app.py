@@ -344,6 +344,90 @@ def delete_product_key(key_id):
         st.error(f"Error deleting product key: {str(e)}")
         return False
 
+def renew_product_key(key_code, additional_days=30):
+    """
+    Renew a product key by extending its expiration date.
+    Returns: (success: bool, message: str)
+    """
+    try:
+        # Query for the product key
+        docs = db.collection('product_keys').where(
+            filter=FieldFilter('key_code', '==', key_code)
+        ).limit(1).get()
+        
+        if not docs:
+            return False, "Product key not found"
+        
+        key_doc = docs[0]
+        key_data = key_doc.to_dict()
+        
+        # Calculate new expiration date
+        current_expires_at = key_data.get('expires_at')
+        
+        if current_expires_at:
+            # Convert to datetime if needed
+            if hasattr(current_expires_at, 'timestamp'):
+                current_expires_at = datetime.fromtimestamp(current_expires_at.timestamp(), tz=timezone.utc)
+            elif isinstance(current_expires_at, datetime):
+                current_expires_at = make_timezone_aware(current_expires_at)
+            
+            # If key is already expired, extend from current time, otherwise extend from expiry date
+            current_time = get_current_utc_time()
+            if current_time > current_expires_at:
+                new_expires_at = current_time + timedelta(days=additional_days)
+            else:
+                new_expires_at = current_expires_at + timedelta(days=additional_days)
+        else:
+            # No expiration set, create one from now
+            new_expires_at = get_current_utc_time() + timedelta(days=additional_days)
+        
+        # Update the product key
+        db.collection('product_keys').document(key_doc.id).update({
+            'expires_at': new_expires_at,
+            'is_active': True,  # Reactivate if it was deactivated
+            'renewed_at': get_current_utc_time()
+        })
+        
+        return True, f"Product key renewed. New expiration: {new_expires_at.strftime('%Y-%m-%d %H:%M UTC')}"
+        
+    except Exception as e:
+        return False, f"Error renewing product key: {str(e)}"
+
+def reactivate_user_by_key_renewal(user_id):
+    """
+    Reactivate a user after their product key has been renewed.
+    This should be called after renewing a product key.
+    """
+    try:
+        db.collection('users').document(user_id).update({
+            'is_active': True,
+            'reactivated_at': get_current_utc_time(),
+            'deactivation_reason': None
+        })
+        return True, "User reactivated successfully"
+    except Exception as e:
+        return False, f"Error reactivating user: {str(e)}"
+
+def get_users_by_product_key(key_code):
+    """Get all users who registered with a specific product key."""
+    try:
+        docs = db.collection('users').where(
+            filter=FieldFilter('registered_with_key', '==', key_code)
+        ).get()
+        
+        users = []
+        for doc in docs:
+            user_data = doc.to_dict()
+            user_data['id'] = doc.id
+            users.append(user_data)
+        
+        return users
+        
+    except Exception as e:
+        st.error(f"Error fetching users by product key: {str(e)}")
+        return []
+
+
 # ============================================================================
 # USER ACCOUNT MANAGEMENT (FIREBASE VERSION)
 # ============================================================================
@@ -406,28 +490,48 @@ def authenticate_user(username, password):
             user_doc = users[0]
             user_data = user_doc.to_dict()
             
-            # First check if user is active and password is correct
-            if not user_data['is_active']:
-                return False, "Account is not active"
-            
+            # Check password first
             if not verify_password(password, user_data['password_hash']):
                 return False, "Invalid credentials"
-
-            # Admin users bypass product key validation
-            if user_data.get('role') != 'admin':
-                # CRITICAL FIX: Check if the user's product key is still valid
-                key_valid, key_message = check_user_product_key_validity(user_data)
-                
-                if not key_valid:
-                    return False, f"Access denied: {key_message}"            
             
-            # CRITICAL FIX: Check if the user's product key is still valid
+            # Admin users bypass product key validation
+            if user_data.get('role') == 'admin':
+                # Check if user is active
+                if not user_data['is_active']:
+                    return False, "Account is not active"
+                
+                # Update last login
+                db.collection('users').document(user_doc.id).update({
+                    'last_login': get_current_utc_time()
+                })
+                
+                return True, {
+                    'id': user_doc.id,
+                    'username': user_data['username'],
+                    'role': user_data['role']
+                }
+            
+            # For non-admin users, check product key validity
             key_valid, key_message = check_user_product_key_validity(user_data)
             
             if not key_valid:
-                return False, f"Access denied: {key_message}"
+                # Automatically set user to inactive if product key is invalid
+                db.collection('users').document(user_doc.id).update({
+                    'is_active': False,
+                    'deactivation_reason': key_message,
+                    'deactivated_at': get_current_utc_time()
+                })
+                return False, f"Account deactivated: {key_message}"
             
-            # Update last login only if all checks pass
+            # Check if user is active (should be active if key is valid)
+            if not user_data['is_active']:
+                # If key is valid but user is inactive, reactivate them
+                db.collection('users').document(user_doc.id).update({
+                    'is_active': True,
+                    'reactivated_at': get_current_utc_time()
+                })
+            
+            # Update last login
             db.collection('users').document(user_doc.id).update({
                 'last_login': get_current_utc_time()
             })
@@ -1251,7 +1355,10 @@ def get_all_users():
                 user_data['role'],
                 user_data['created_at'],
                 user_data.get('last_login'),
-                user_data['is_active']
+                user_data['is_active'],
+                user_data.get('registered_with_key'),
+                user_data.get('deactivation_reason'),
+                user_data.get('deactivated_at')
             ))
         
         return user_list
@@ -8334,18 +8441,29 @@ if st.session_state.get('show_admin_panel', False) and st.session_state.user_inf
         if users:
             user_data = []
             for user in users:
+                # Format deactivation info
+                status_display = '✅ Active' if user[6] else '❌ Inactive'
+                deactivation_reason = user[8] if user[8] else 'N/A'
+                
                 user_data.append({
                     'ID': user[0],
                     'Username': user[1], 
                     'Email': user[2] or 'N/A',
                     'Role': user[3],
+                    'Product Key': user[7] or 'N/A',
+                    'Status': status_display,
+                    'Deactivation Reason': deactivation_reason,
                     'Created': user[4],
-                    'Last Login': user[5] or 'Never',
-                    'Active': '✅' if user[6] else '❌'
+                    'Last Login': user[5] or 'Never'
                 })
             
             users_df = pd.DataFrame(user_data)
             st.dataframe(users_df, use_container_width=True, hide_index=True)
+            
+            # Show inactive users warning
+            inactive_users = [u for u in users if not u[6]]
+            if inactive_users:
+                st.warning(f"⚠️ {len(inactive_users)} inactive user(s). Renew their product keys to reactivate them.")
             
             # User management actions
             st.subheader("User Actions")
@@ -8360,6 +8478,26 @@ if st.session_state.get('show_admin_panel', False) and st.session_state.user_inf
                     toggle_user_status(user_id, new_status)
                     st.success(f"User status updated!")
                     st.rerun()
+            
+            with col2:
+                # Manual reactivation option
+                inactive_users_list = [u for u in users if not u[6]]
+                if inactive_users_list:
+                    user_to_reactivate = st.selectbox(
+                        "Reactivate inactive user:",
+                        [f"{u[1]} ({u[8] or 'No reason'})" for u in inactive_users_list],
+                        key="reactivate_select"
+                    )
+                    if st.button("🔓 Reactivate User", type="primary"):
+                        username = user_to_reactivate.split(" (")[0]
+                        user = next(u for u in inactive_users_list if u[1] == username)
+                        success, message = reactivate_user_by_key_renewal(user[0])
+                        if success:
+                            st.success(f"✅ {message}")
+                            st.info("Note: Make sure their product key is also renewed!")
+                            st.rerun()
+                        else:
+                            st.error(f"❌ {message}")
         else:
             st.info("No users found")
     
@@ -8497,6 +8635,43 @@ if st.session_state.get('show_admin_panel', False) and st.session_state.user_inf
             st.write("**Product Key Actions**")
             
             action_col1, action_col2, action_col3 = st.columns(3)
+            
+            with action_col1:
+                # Renew product key
+                key_to_renew = st.selectbox(
+                    "Select key to renew:",
+                    [f"{k['key_code']} - {k.get('description', 'No desc')[:20]}" for k in keys],
+                    key="renew_select"
+                )
+                renew_days = st.number_input(
+                    "Add days:",
+                    min_value=1,
+                    max_value=365,
+                    value=30,
+                    key="renew_days"
+                )
+                if st.button("🔄 Renew Key", type="primary"):
+                    key_code = key_to_renew.split(" - ")[0]
+                    success, message = renew_product_key(key_code, renew_days)
+                    if success:
+                        st.success(f"✅ {message}")
+                        
+                        # Get and reactivate users with this key
+                        users_to_reactivate = get_users_by_product_key(key_code)
+                        if users_to_reactivate:
+                            reactivated_count = 0
+                            for user in users_to_reactivate:
+                                if not user.get('is_active'):
+                                    reactivate_success, _ = reactivate_user_by_key_renewal(user['id'])
+                                    if reactivate_success:
+                                        reactivated_count += 1
+                            
+                            if reactivated_count > 0:
+                                st.success(f"🔓 Reactivated {reactivated_count} user(s) with this key!")
+                        
+                        st.rerun()
+                    else:
+                        st.error(f"❌ {message}")
             
             with action_col2:
                 key_to_delete = st.selectbox(
