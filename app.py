@@ -10268,6 +10268,27 @@ with tab2:
                 else:
                     st.info("Start tracking scores to see performance over time")
 
+                # ===== TIMEOUT LOG TABLE =====
+                if timeouts:
+                    st.divider()
+                    st.subheader("**⏸️ Timeout Log**")
+                    
+                    # Create timeout dataframe
+                    timeout_df = pd.DataFrame(timeouts)
+                    
+                    # Reorder columns for better display
+                    timeout_display_cols = ['Index', 'Quarter', 'Game Time', 'Team', 'Home Score', 'Away Score', 'Margin']
+                    
+                    st.dataframe(
+                        timeout_df[timeout_display_cols],
+                        use_container_width=True,
+                        hide_index=True
+                    )
+                    
+                    # Show timeout statistics
+                    st.caption(f"Total Timeouts: {len(timeouts)} | Home: {sum(1 for to in timeouts if to['Team'].lower() == 'home')} | Away: {sum(1 for to in timeouts if to['Team'].lower() == 'away')}")
+                
+                
                 st.divider()
                 
                 st.header("**Player Statistics**")
