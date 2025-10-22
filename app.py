@@ -10284,7 +10284,6 @@ with tab2:
                             else:
                                 st.write("\n❌ Local 'timeouts' list is EMPTY")
                             st.write("=" * 50)
-                            # END DEBUG                        
                             
                             # ===== TIMEOUT LOG TABLE =====
                             if timeouts:
