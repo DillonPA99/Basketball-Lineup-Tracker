@@ -396,7 +396,7 @@ def create_user(username, password, email=None, role='user', product_key=None):
         return False, f"Error creating user: {str(e)}"
 
 def authenticate_user(username, password):
-    """Authenticate a user with Firebase."""
+    """Authenticate a user with Firebase and check product key validity."""
     try:
         users = db.collection('users').where(
             filter=FieldFilter('username', '==', username)
@@ -406,22 +406,95 @@ def authenticate_user(username, password):
             user_doc = users[0]
             user_data = user_doc.to_dict()
             
-            if user_data['is_active'] and verify_password(password, user_data['password_hash']):
-                # Update last login
-                db.collection('users').document(user_doc.id).update({
-                    'last_login': get_current_utc_time()
-                })
-                
-                return True, {
-                    'id': user_doc.id,
-                    'username': user_data['username'],
-                    'role': user_data['role']
-                }
+            # First check if user is active and password is correct
+            if not user_data['is_active']:
+                return False, "Account is not active"
+            
+            if not verify_password(password, user_data['password_hash']):
+                return False, "Invalid credentials"
+            
+            # CRITICAL FIX: Check if the user's product key is still valid
+            key_valid, key_message = check_user_product_key_validity(user_data)
+            
+            if not key_valid:
+                return False, f"Access denied: {key_message}"
+            
+            # Update last login only if all checks pass
+            db.collection('users').document(user_doc.id).update({
+                'last_login': get_current_utc_time()
+            })
+            
+            return True, {
+                'id': user_doc.id,
+                'username': user_data['username'],
+                'role': user_data['role']
+            }
         
         return False, "Invalid credentials"
         
     except Exception as e:
         return False, f"Authentication error: {str(e)}"
+
+def check_user_product_key_validity(user_data):
+    """
+    Check if the user's registered product key is still valid (not expired).
+    Returns: (is_valid: bool, message: str)
+    """
+    try:
+        # Get the product key the user registered with
+        registered_key = user_data.get('registered_with_key')
+        
+        if not registered_key:
+            # User doesn't have a registered key (shouldn't happen, but handle gracefully)
+            return False, "No product key associated with account"
+        
+        # Query for the product key
+        docs = db.collection('product_keys').where(
+            filter=FieldFilter('key_code', '==', registered_key)
+        ).limit(1).get()
+        
+        if not docs:
+            return False, "Product key not found"
+        
+        key_doc = docs[0]
+        key_data = key_doc.to_dict()
+        
+        # Check if the key is still active
+        if not key_data.get('is_active', False):
+            return False, "Product key has been deactivated"
+        
+        # Check if expired
+        if key_data.get('expires_at'):
+            expires_at = key_data['expires_at']
+            
+            # Convert Firebase timestamp to timezone-aware datetime if needed
+            if hasattr(expires_at, 'timestamp'):
+                # Firebase Timestamp object
+                expires_at = datetime.fromtimestamp(expires_at.timestamp(), tz=timezone.utc)
+            elif isinstance(expires_at, datetime):
+                # Regular datetime - make timezone-aware if needed
+                expires_at = make_timezone_aware(expires_at)
+            
+            # Compare with current UTC time
+            current_time = get_current_utc_time()
+            
+            if current_time > expires_at:
+                return False, "Product key has expired"
+
+            # In check_user_product_key_validity, modify the expiry check:
+            if current_time > expires_at:
+                # Add a 24-hour grace period
+                grace_period = timedelta(hours=24)
+                if current_time > (expires_at + grace_period):
+                    return False, "Product key has expired"
+                else:
+                    # Key expired but still in grace period
+                    st.warning("Your product key will expire soon. Please renew.")
+        
+        return True, "Product key is valid"
+        
+    except Exception as e:
+        return False, f"Error checking product key: {str(e)}"
 
 # ============================================================================
 # ROSTER STORAGE (FIREBASE VERSION)
