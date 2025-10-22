@@ -2221,28 +2221,55 @@ def undo_last_score():
 
 def add_timeout(team, game_time):
     """Record a timeout event."""
-    current_timestamp = get_current_utc_time()
+    # DEBUG
+    print("=" * 60)
+    print("🔍 DEBUG: add_timeout() called")
+    print(f"  - team: {team}")
+    print(f"  - game_time: {game_time}")
+    print(f"  - current_quarter: {st.session_state.current_quarter}")
+    print(f"  - timeout_history length before: {len(st.session_state.timeout_history)}")
     
-    timeout_event = {
-        'team': team,
-        'quarter': st.session_state.current_quarter,
-        'game_time': game_time,
-        'lineup': st.session_state.current_lineup.copy() if st.session_state.current_lineup else [],
-        'home_score': st.session_state.home_score,
-        'away_score': st.session_state.away_score,
-        'timestamp': current_timestamp,
-        'event_sequence': st.session_state.event_counter
-    }
-    
-    st.session_state.timeout_history.append(timeout_event)
-    st.session_state.event_counter += 1
-    
-    # Update game clock
-    st.session_state.current_game_time = game_time
-    
-    check_auto_save()
-    
-    return True
+    try:
+        current_timestamp = get_current_utc_time()
+        
+        timeout_event = {
+            'team': team,
+            'quarter': st.session_state.current_quarter,
+            'game_time': game_time,
+            'lineup': st.session_state.current_lineup.copy() if st.session_state.current_lineup else [],
+            'home_score': st.session_state.home_score,
+            'away_score': st.session_state.away_score,
+            'timestamp': current_timestamp,
+            'event_sequence': st.session_state.event_counter
+        }
+        
+        print(f"  - timeout_event created: {timeout_event}")
+        
+        st.session_state.timeout_history.append(timeout_event)
+        
+        print(f"  - timeout_history length after append: {len(st.session_state.timeout_history)}")
+        print(f"  - Last item in timeout_history: {st.session_state.timeout_history[-1]}")
+        
+        st.session_state.event_counter += 1
+        
+        # Update game clock
+        st.session_state.current_game_time = game_time
+        
+        print("  - Calling check_auto_save()")
+        check_auto_save()
+        print("  - check_auto_save() completed")
+        
+        print("✅ add_timeout() completed successfully")
+        print("=" * 60)
+        return True
+        
+    except Exception as e:
+        print(f"❌ ERROR in add_timeout(): {e}")
+        print(f"   Exception type: {type(e)}")
+        import traceback
+        print(traceback.format_exc())
+        print("=" * 60)
+        return False
     
 def get_points_off_turnovers_stats():
     """Get team and lineup points off turnover statistics - SINGLE SOURCE VERSION."""
@@ -8992,7 +9019,20 @@ with tab1:
                         st.error(f"Invalid game time: {message}")
                     else:
                         team_lower = timeout_team.lower()
-                        if add_timeout(team_lower, timeout_game_time):
+                        
+                        # DEBUG - Before calling function
+                        st.write(f"🔍 DEBUG: About to call add_timeout")
+                        st.write(f"  - team: {team_lower}")
+                        st.write(f"  - game_time: {timeout_game_time}")
+                        st.write(f"  - timeout_history before: {len(st.session_state.timeout_history)} items")
+                        
+                        result = add_timeout(team_lower, timeout_game_time)
+                        
+                        # DEBUG - After calling function
+                        st.write(f"🔍 DEBUG: add_timeout returned: {result}")
+                        st.write(f"  - timeout_history after: {len(st.session_state.timeout_history)} items")
+                        
+                        if result:
                             st.success(f"✅ {timeout_team} timeout recorded at {timeout_game_time}")
                             st.session_state.show_timeout_modal = False
                             time.sleep(0.5)
