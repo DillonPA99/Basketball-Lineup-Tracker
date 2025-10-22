@@ -412,6 +412,14 @@ def authenticate_user(username, password):
             
             if not verify_password(password, user_data['password_hash']):
                 return False, "Invalid credentials"
+
+            # Admin users bypass product key validation
+            if user_data.get('role') != 'admin':
+                # CRITICAL FIX: Check if the user's product key is still valid
+                key_valid, key_message = check_user_product_key_validity(user_data)
+                
+                if not key_valid:
+                    return False, f"Access denied: {key_message}"            
             
             # CRITICAL FIX: Check if the user's product key is still valid
             key_valid, key_message = check_user_product_key_validity(user_data)
@@ -441,6 +449,10 @@ def check_user_product_key_validity(user_data):
     Returns: (is_valid: bool, message: str)
     """
     try:
+        # Admin users always have valid product keys
+        if user_data.get('role') == 'admin':
+            return True, "Admin user - product key check bypassed"
+        
         # Get the product key the user registered with
         registered_key = user_data.get('registered_with_key')
         
