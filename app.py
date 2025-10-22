@@ -8333,6 +8333,7 @@ with st.sidebar:
                                 st.session_state.player_stats = loaded_data['player_stats']
                                 st.session_state.turnover_history = loaded_data.get('turnover_history', [])
                                 st.session_state.player_turnovers = loaded_data.get('player_turnovers', defaultdict(int)) 
+                                st.session_state.timeout_history = loaded_data.get('timeout_history', [])
                                 st.session_state.points_off_turnovers = loaded_data.get('points_off_turnovers', {'home': 0, 'away': 0})
                                 st.session_state.lineup_points_off_turnovers = loaded_data.get('lineup_points_off_turnovers', defaultdict(int))
                                 st.session_state.last_turnover_event = loaded_data.get('last_turnover_event', None)
