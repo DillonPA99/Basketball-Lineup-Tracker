@@ -10263,6 +10263,29 @@ with tab2:
                             with trend_col3:
                                 st.metric("Time Tied", f"{tied_events/total_events*100:.1f}%")
 
+                            # DEBUG - REMOVE AFTER FIXING
+                            st.write("=" * 50)
+                            st.write("🔍 TIMEOUT DEBUG")
+                            st.write("=" * 50)
+                            st.write(f"Session state timeout_history: {len(st.session_state.timeout_history)} timeouts")
+                            st.write(f"Local 'timeouts' list: {len(timeouts)} timeouts")
+                            
+                            if st.session_state.timeout_history:
+                                st.write("\n✅ Found in session_state.timeout_history:")
+                                for i, to in enumerate(st.session_state.timeout_history):
+                                    st.write(f"  {i+1}. Team={to.get('team')}, Q={to.get('quarter')}, Time={to.get('game_time')}")
+                            else:
+                                st.write("\n❌ session_state.timeout_history is EMPTY")
+                            
+                            if timeouts:
+                                st.write("\n✅ Found in local 'timeouts' list:")
+                                for i, to in enumerate(timeouts):
+                                    st.write(f"  {i+1}. {to}")
+                            else:
+                                st.write("\n❌ Local 'timeouts' list is EMPTY")
+                            st.write("=" * 50)
+                            # END DEBUG                        
+                            
                             # ===== TIMEOUT LOG TABLE =====
                             if timeouts:
                                 st.divider()
