@@ -8229,6 +8229,7 @@ with st.sidebar:
                                     'current_lineup': st.session_state.current_lineup,
                                     'quarter_lineup_set': st.session_state.quarter_lineup_set,
                                     'current_game_time': st.session_state.current_game_time,
+                                    'timeout_history': st.session_state.timeout_history,
                                     'lineup_history': st.session_state.lineup_history,
                                     'score_history': st.session_state.score_history,
                                     'quarter_end_history': st.session_state.quarter_end_history,
