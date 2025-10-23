@@ -2219,15 +2219,7 @@ def undo_last_score():
     st.rerun()
 
 def add_timeout(team, game_time):
-    """Record a timeout event."""
-    # DEBUG
-    print("=" * 60)
-    print("🔍 DEBUG: add_timeout() called")
-    print(f"  - team: {team}")
-    print(f"  - game_time: {game_time}")
-    print(f"  - current_quarter: {st.session_state.current_quarter}")
-    print(f"  - timeout_history length before: {len(st.session_state.timeout_history)}")
-    
+    """Record a timeout event."""   
     try:
         current_timestamp = get_current_utc_time()
         
@@ -7226,15 +7218,6 @@ def display_quick_coaching_tips():
     
     suggestions = get_ai_coaching_suggestion()
     critical_moments = identify_critical_moments()
-
-    # DEBUG - REMOVE AFTER TESTING
-    st.write(f"DEBUG: Found {len(critical_moments)} critical moments")
-    st.write(f"DEBUG: Current quarter: {st.session_state.current_quarter}")
-    st.write(f"DEBUG: Game time: {st.session_state.current_game_time}")
-    st.write(f"DEBUG: Score diff: {st.session_state.home_score - st.session_state.away_score}")
-    if critical_moments:
-        for cm in critical_moments:
-            st.write(f"DEBUG: Moment type: {cm['type']}, urgency: {cm['urgency']}")
     
     # Critical alerts first
     if critical_moments:
@@ -9026,18 +9009,8 @@ with tab1:
                     else:
                         team_lower = timeout_team.lower()
                         
-                        # DEBUG - Before calling function
-                        st.write(f"🔍 DEBUG: About to call add_timeout")
-                        st.write(f"  - team: {team_lower}")
-                        st.write(f"  - game_time: {timeout_game_time}")
-                        st.write(f"  - timeout_history before: {len(st.session_state.timeout_history)} items")
-                        
                         result = add_timeout(team_lower, timeout_game_time)
-                        
-                        # DEBUG - After calling function
-                        st.write(f"🔍 DEBUG: add_timeout returned: {result}")
-                        st.write(f"  - timeout_history after: {len(st.session_state.timeout_history)} items")
-                        
+                                                
                         if result:
                             st.success(f"✅ {timeout_team} timeout recorded at {timeout_game_time}")
                             st.session_state.show_timeout_modal = False
@@ -10308,28 +10281,6 @@ with tab2:
                                 st.metric("Time Trailing", f"{trailing_events/total_events*100:.1f}%")
                             with trend_col3:
                                 st.metric("Time Tied", f"{tied_events/total_events*100:.1f}%")
-
-                            # DEBUG - REMOVE AFTER FIXING
-                            st.write("=" * 50)
-                            st.write("🔍 TIMEOUT DEBUG")
-                            st.write("=" * 50)
-                            st.write(f"Session state timeout_history: {len(st.session_state.timeout_history)} timeouts")
-                            st.write(f"Local 'timeouts' list: {len(timeouts)} timeouts")
-                            
-                            if st.session_state.timeout_history:
-                                st.write("\n✅ Found in session_state.timeout_history:")
-                                for i, to in enumerate(st.session_state.timeout_history):
-                                    st.write(f"  {i+1}. Team={to.get('team')}, Q={to.get('quarter')}, Time={to.get('game_time')}")
-                            else:
-                                st.write("\n❌ session_state.timeout_history is EMPTY")
-                            
-                            if timeouts:
-                                st.write("\n✅ Found in local 'timeouts' list:")
-                                for i, to in enumerate(timeouts):
-                                    st.write(f"  {i+1}. {to}")
-                            else:
-                                st.write("\n❌ Local 'timeouts' list is EMPTY")
-                            st.write("=" * 50)
                             
                             # ===== TIMEOUT LOG TABLE =====
                             if timeouts:
