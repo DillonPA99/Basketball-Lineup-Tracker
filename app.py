@@ -1076,7 +1076,6 @@ def update_game_session(session_id, game_data):
             'total_events': len(game_data.get('lineup_history', [])) + len(game_data.get('score_history', [])),
             'game_phase': 'In Progress' if game_data['current_quarter'] != 'Q4' else 'Final Quarter',
             'updated_at': get_current_utc_time(),
-            # Add points off turnover data
             'points_off_turnovers': game_data.get('points_off_turnovers', {'home': 0, 'away': 0}),
             'last_turnover_event': game_data.get('last_turnover_event', None)
         }
@@ -1092,6 +1091,7 @@ def update_game_session(session_id, game_data):
             update_data['lineup_history'] = base64.b64encode(pickle.dumps(game_data['lineup_history'])).decode('utf-8')
             update_data['score_history'] = base64.b64encode(pickle.dumps(game_data['score_history'])).decode('utf-8')
             update_data['quarter_end_history'] = base64.b64encode(pickle.dumps(game_data['quarter_end_history'])).decode('utf-8')
+            update_data['timeout_history'] = base64.b64encode(pickle.dumps(game_data.get('timeout_history', []))).decode('utf-8')
             
             # Convert defaultdicts to regular dicts
             player_stats_dict = {}
@@ -1779,6 +1779,7 @@ def reset_game(save_current=True):
             'quarter_end_history': st.session_state.quarter_end_history,
             'player_stats': st.session_state.player_stats,
             'turnover_history': st.session_state.turnover_history,
+            'timeout_history': st.session_state.timeout_history,
             'player_turnovers': st.session_state.player_turnovers,
             'points_off_turnovers': st.session_state.points_off_turnovers,
             'lineup_points_off_turnovers': st.session_state.lineup_points_off_turnovers,
@@ -1855,8 +1856,6 @@ def check_auto_save():
             'quarter_end_history': st.session_state.quarter_end_history,
             'player_stats': st.session_state.player_stats,
             'turnover_history': st.session_state.turnover_history,
-            'player_turnovers': st.session_state.player_turnovers,
-            'turnover_history': st.session_state.turnover_history, 
             'player_turnovers': st.session_state.player_turnovers,
             'points_off_turnovers': st.session_state.points_off_turnovers,
             'lineup_points_off_turnovers': st.session_state.lineup_points_off_turnovers,
@@ -7926,6 +7925,7 @@ with st.sidebar:
                     'quarter_end_history': st.session_state.quarter_end_history,
                     'player_stats': st.session_state.player_stats,
                     'turnover_history': st.session_state.turnover_history,
+                    'timeout_history': st.session_state.timeout_history,
                     'player_turnovers': st.session_state.player_turnovers,
                     'points_off_turnovers': st.session_state.points_off_turnovers,
                     'lineup_points_off_turnovers': st.session_state.lineup_points_off_turnovers,
@@ -8119,6 +8119,7 @@ with st.sidebar:
                     'quarter_end_history': st.session_state.quarter_end_history,
                     'player_stats': st.session_state.player_stats,
                     'turnover_history': st.session_state.turnover_history,
+                    'timeout_history': st.session_state.timeout_history,
                     'player_turnovers': st.session_state.player_turnovers,
                     'points_off_turnovers': st.session_state.points_off_turnovers,
                     'lineup_points_off_turnovers': st.session_state.lineup_points_off_turnovers,
@@ -8155,6 +8156,7 @@ with st.sidebar:
                     'quarter_end_history': st.session_state.quarter_end_history,
                     'player_stats': st.session_state.player_stats,
                     'turnover_history': st.session_state.turnover_history,
+                    'timeout_history': st.session_state.timeout_history,
                     'player_turnovers': st.session_state.player_turnovers,
                     'points_off_turnovers': st.session_state.points_off_turnovers,
                     'lineup_points_off_turnovers': st.session_state.lineup_points_off_turnovers,
@@ -8442,6 +8444,7 @@ with st.sidebar:
                 'quarter_end_history': st.session_state.quarter_end_history,
                 'player_stats': st.session_state.player_stats,
                 'turnover_history': st.session_state.turnover_history,
+                'timeout_history': st.session_state.timeout_history,
                 'player_turnovers': st.session_state.player_turnovers,
                 'points_off_turnovers': st.session_state.points_off_turnovers,
                 'lineup_points_off_turnovers': st.session_state.lineup_points_off_turnovers,
