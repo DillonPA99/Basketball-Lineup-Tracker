@@ -3003,7 +3003,7 @@ def log_quarter_lineup_snapshot():
     user clicked the End Quarter button. This provides a clean anchor for lineup
     +/- analytics by quarter.
     """
-    if not st.session_state.quarter_lineup_set or not st.session_state.current_lineup:
+    if not st.session_state.current_lineup:
         # Nothing meaningful to log (no starting lineup set this period)
         return
 
