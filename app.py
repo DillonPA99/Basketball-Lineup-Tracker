@@ -9051,18 +9051,6 @@ with tab1:
     
     st.divider()
 
-    # 🔍 LIVE DEBUG - Shows timeouts in real-time
-    st.write("=" * 50)
-    st.write("🔍 **LIVE TIMEOUT CHECK**")
-    st.write(f"Timeouts in session_state: {len(st.session_state.timeout_history)}")
-    if st.session_state.timeout_history:
-        st.write("✅ Timeouts found:")
-        for i, to in enumerate(st.session_state.timeout_history):
-            st.write(f"  {i+1}. Team={to.get('team')}, Q={to.get('quarter')}, Time={to.get('game_time')}")
-    else:
-        st.write("❌ No timeouts recorded yet")
-    st.write("=" * 50)
-
     # Check if lineup is set for current quarter
     if not st.session_state.quarter_lineup_set:
         st.warning("⚠️ Please set a starting lineup for this quarter before tracking home team player stats.")
