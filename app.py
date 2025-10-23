@@ -8306,6 +8306,7 @@ with st.sidebar:
                                     'turnover_history': st.session_state.turnover_history,
                                     'player_turnovers': st.session_state.player_turnovers,
                                     'points_off_turnovers': st.session_state.points_off_turnovers,
+                                    'timeout_history': st.session_state.timeout_history,
                                     'lineup_points_off_turnovers': st.session_state.lineup_points_off_turnovers,
                                     'last_turnover_event': st.session_state.last_turnover_event
                                     
