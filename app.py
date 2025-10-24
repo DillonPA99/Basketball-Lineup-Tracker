@@ -2,7 +2,6 @@ import secrets
 import string
 import streamlit as st
 import pandas as pd
-import datetime
 import json
 from collections import defaultdict
 import plotly.express as px
@@ -24,7 +23,6 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 import warnings
-import logging
 
 
 warnings.filterwarnings("ignore")
