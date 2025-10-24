@@ -1,2 +1,2 @@
 # Lineup Insite
-Basketball team lineup and analytics tracker
+Basketball Team Player and Lineup Analytics Tracker and AI Insight Tool
