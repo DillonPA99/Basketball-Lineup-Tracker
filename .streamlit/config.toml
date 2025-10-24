@@ -10,3 +10,10 @@ enableWebsocketCompression = false
 
 [browser]
 gatherUsageStats = false
+
+[client]
+toolbarMode = "viewer"
+
+[ui]
+hideTopBar = false
+hideSidebarNav = false
