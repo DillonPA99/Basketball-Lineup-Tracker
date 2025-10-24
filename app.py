@@ -672,20 +672,27 @@ def load_user_roster(user_id):
         return None, None
 
 def delete_user_roster(user_id):
-    """Delete user's saved roster from Firebase."""
+    """Delete user's saved roster from Firebase using batch operation."""
     try:
         rosters = db.collection('user_rosters').where(
             filter=FieldFilter('user_id', '==', user_id)
         ).get()
         
-        for roster_doc in rosters:
-            db.collection('user_rosters').document(roster_doc.id).delete()
+        if not rosters:
+            return True
         
-        return True  # Return success indicator
+        # ✅ FAST: Batch delete
+        batch = db.batch()
+        for roster_doc in rosters:
+            roster_ref = db.collection('user_rosters').document(roster_doc.id)
+            batch.delete(roster_ref)
+        
+        batch.commit()  # Single network call!
+        return True
         
     except Exception as e:
         st.error(f"Error deleting roster: {str(e)}")
-        return False  # Return failure indicator
+        return False
 
 def get_all_user_rosters(user_id):
     """Get all rosters for a user (if you want to support multiple rosters in the future)."""
