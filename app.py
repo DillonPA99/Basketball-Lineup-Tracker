@@ -24,15 +24,22 @@ from firebase_admin import credentials, firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 import warnings
 
-st.set_page_config(
-    page_title="Lineup InSite",
-    page_icon="🏀",
-    menu_items={
-        'Get Help': None,
-        'Report a bug': None,
-        'About': None
-    }
-)
+# Hide all top-right menu elements
+st.markdown("""
+    <style>
+    /* Hide hamburger menu */
+    #MainMenu {display: none;}
+    
+    /* Hide "Deploy" button */
+    .stDeployButton {display: none;}
+    
+    /* Hide header toolbar */
+    header[data-testid="stHeader"] > div:first-child {display: none;}
+    
+    /* Hide the entire toolbar */
+    section[data-testid="stToolbar"] {display: none;}
+    </style>
+    """, unsafe_allow_html=True)
 
 
 warnings.filterwarnings("ignore")
