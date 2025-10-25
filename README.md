@@ -1,4 +1,4 @@
-# Lineup Insite
+# Lineup insite
 Basketball Team Player and Lineup Analytics Tracker and AI Insight Tool
 
 ## License
