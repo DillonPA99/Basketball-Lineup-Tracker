@@ -24,6 +24,16 @@ from firebase_admin import credentials, firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 import warnings
 
+st.set_page_config(
+    page_title="Lineup InSite",
+    page_icon="🏀",
+    menu_items={
+        'Get Help': None,
+        'Report a bug': None,
+        'About': None
+    }
+)
+
 
 warnings.filterwarnings("ignore")
 os.environ.setdefault('GOOGLE_CLOUD_DISABLE_GRPC', '1')
