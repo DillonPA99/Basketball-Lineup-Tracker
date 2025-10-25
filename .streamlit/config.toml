@@ -12,7 +12,8 @@ enableWebsocketCompression = false
 gatherUsageStats = false
 
 [client]
-toolbarMode = "viewer"
+showSidebarNavigation = true
+toolbarMode = "minimal"
 
 [ui]
 hideTopBar = false
