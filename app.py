@@ -11031,11 +11031,6 @@ with tab2:
                 hide_index=True
             )
 
-        # Optional cleanup button
-        if st.button("🗑️ Clear Quarter End Records"):
-            st.session_state.quarter_end_history.clear()
-            st.rerun()
-
     st.divider()
 
     # Lineup history (now also shows end-of-quarter snapshots)
