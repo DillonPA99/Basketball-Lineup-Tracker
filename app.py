@@ -33,81 +33,22 @@ st.markdown("""
     /* Hide "Deploy" button */
     .stDeployButton {display: none;}
     
-    /* Hide the entire header */
-    header[data-testid="stHeader"] {
-        display: none;
-    }
-    
-    /* Hide the toolbar */
+    /* Hide the toolbar but keep sidebar toggle visible */
     section[data-testid="stToolbar"] {
-        display: none;
+        visibility: hidden;
     }
     
-    /* Style for custom sidebar toggle button when sidebar is collapsed */
-    .sidebar-toggle-button {
-        position: fixed;
-        left: 0;
-        top: 50%;
-        transform: translateY(-50%);
-        z-index: 999999;
-        background-color: #ff4b4b;
-        color: white;
-        border: none;
-        border-radius: 0 8px 8px 0;
-        padding: 15px 8px;
-        cursor: pointer;
-        font-size: 20px;
-        box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
-        transition: all 0.3s ease;
+    /* Make sidebar toggle button visible */
+    button[kind="header"] {
+        visibility: visible !important;
     }
     
-    .sidebar-toggle-button:hover {
-        background-color: #ff6b6b;
-        padding-right: 12px;
-    }
-    
-    /* Hide custom button when sidebar is open */
-    [data-testid="stSidebar"] ~ .sidebar-toggle-button {
-        display: none;
-    }
-    
-    /* Adjust main content to account for removed header */
-    .main .block-container {
-        padding-top: 2rem;
+    /* Alternative: target the specific collapse button */
+    [data-testid="collapsedControl"] {
+        visibility: visible !important;
+        display: block !important;
     }
     </style>
-    
-    <script>
-    // Add custom toggle button functionality
-    function addSidebarToggle() {
-        // Remove any existing button
-        const existingBtn = document.querySelector('.sidebar-toggle-button');
-        if (existingBtn) {
-            existingBtn.remove();
-        }
-        
-        // Check if sidebar is collapsed
-        const sidebar = document.querySelector('[data-testid="stSidebar"]');
-        if (!sidebar || sidebar.getAttribute('aria-expanded') === 'false') {
-            // Create toggle button
-            const toggleBtn = document.createElement('button');
-            toggleBtn.className = 'sidebar-toggle-button';
-            toggleBtn.innerHTML = '▶';
-            toggleBtn.onclick = function() {
-                // Find and click the native Streamlit collapse button
-                const collapseBtn = document.querySelector('[data-testid="collapsedControl"]');
-                if (collapseBtn) {
-                    collapseBtn.click();
-                }
-            };
-            document.body.appendChild(toggleBtn);
-        }
-    }
-    
-    // Run on load and observe for changes
-    setTimeout(addSidebarToggle, 100);
-    setInterval(addSidebarToggle, 500);
-    </script>
     """, unsafe_allow_html=True)
 
 
