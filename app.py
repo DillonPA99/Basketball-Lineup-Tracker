@@ -33,11 +33,21 @@ st.markdown("""
     /* Hide "Deploy" button */
     .stDeployButton {display: none;}
     
-    /* Hide header toolbar */
-    header[data-testid="stHeader"] > div:first-child {display: none;}
+    /* Hide the toolbar but keep sidebar toggle visible */
+    section[data-testid="stToolbar"] {
+        visibility: hidden;
+    }
     
-    /* Hide the entire toolbar */
-    section[data-testid="stToolbar"] {display: none;}
+    /* Make sidebar toggle button visible */
+    button[kind="header"] {
+        visibility: visible !important;
+    }
+    
+    /* Alternative: target the specific collapse button */
+    [data-testid="collapsedControl"] {
+        visibility: visible !important;
+        display: block !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
