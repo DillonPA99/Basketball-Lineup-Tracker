@@ -6888,9 +6888,9 @@ def display_game_flow_prediction():
                 top_defender = best_defenders[0]
                 actions.append(f'⭐ {top_defender["name"]} has been a defensive force:')
                 if top_defender['opp_tos'] >= 2:
-                    actions.append(f'   • Forced {top_defender["opp_tos"]} turnovers')
+                    actions.append(f'Forced {top_defender["opp_tos"]} turnovers')
                 if top_defender['opp_misses'] >= 3:
-                    actions.append(f'   • Contested {top_defender["opp_misses"]} shots into misses')
+                    actions.append(f'Contested {top_defender["opp_misses"]} shots into misses')
             
             # Maintain defensive identity
             if forcing_turnovers:
