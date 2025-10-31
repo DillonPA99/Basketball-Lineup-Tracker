@@ -10087,7 +10087,7 @@ with tab2:
                                       for i in tick_positions]
                         
                         fig.update_layout(
-                            title=f"Score Margin Throughout Game ({st.session_state.home_team_name} perspective)",
+                            title=f"Score Margin Throughout Game",
                             xaxis_title="Game Progression (🟠 = Subs | 🔵 = Timeouts | 🟣 = Quarter Ends)",
                             yaxis_title="Point Margin (+ = Leading, - = Trailing)",
                             hovermode='closest',
