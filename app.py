@@ -6279,7 +6279,7 @@ def display_game_flow_prediction():
     
     with analysis_col1:
         # Win Probability Deep Dive
-        st.write("**🎲 Win Probability Breakdown**")
+        st.write("**Win Probability Breakdown**")
         
         # Explain what's driving the win probability
         if win_prob >= 70:
