@@ -3992,7 +3992,7 @@ def display_lineup_recommendation():
         best_lineup = st.session_state.best_lineup
         all_lineup_scores = st.session_state.all_lineup_scores
         
-        st.success("**Recommended Starting Lineup:**")
+        st.success("**Recommended Lineup:**")
         
         # Display recommended players in a nice format
         rec_cols = st.columns(5)
