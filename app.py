@@ -10179,7 +10179,7 @@ with tab2:
                             st.metric("Total Events", len(timeline_df) - 1)  # -1 for game start
                         
                         # Trend analysis
-                        with st.expander("📊 Performance Trends & Lineup Analysis"):
+                        with st.expander("📊 Performance Trends & Analysis"):
                             if len(timeline_df) >= 10:
                                 # Calculate momentum (last 5 events vs previous 5 events)
                                 recent_margin_change = timeline_df['Margin'].iloc[-1] - timeline_df['Margin'].iloc[-6] if len(timeline_df) > 6 else 0
