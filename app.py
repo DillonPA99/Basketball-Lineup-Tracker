@@ -4023,7 +4023,7 @@ def display_lineup_recommendation():
                 st.metric("Chemistry", f"{best_score_info['chemistry']:.0f}/20")
             
             # Show top 3 alternatives
-            with st.expander("📊 View Alternative Lineups (Top 3)"):
+            with st.expander("📊 View Alternative Lineups"):
                 for i, lineup_score in enumerate(all_lineup_scores[1:4], 2):
                     st.write(f"**Option {i}:** (Score: {lineup_score['total_score']:.1f})")
                     st.write(" | ".join([p.split('(')[0].strip() for p in lineup_score['lineup']]))
