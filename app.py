@@ -10245,7 +10245,7 @@ with tab2:
                                     st.metric("Neutral Impact", neutral)
 
                             if timeouts:
-                                st.write("**⏸️ Timeout Impact Analysis:**")
+                                st.write("**Timeout Impact Analysis:**")
                                 
                                 positive_impact = 0
                                 negative_impact = 0
