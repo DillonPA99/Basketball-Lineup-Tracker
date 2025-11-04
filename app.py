@@ -2325,59 +2325,32 @@ def clear_turnover_opportunity():
 
 def add_turnover(team, player=None):
     """
-    Record a turnover event.
+    Record a turnover for a team and optionally a player
+    
     Args:
         team: 'home' or 'away'
         player: Player name string or None for team turnover
     """
-    current_quarter = st.session_state.current_quarter
-    game_time = st.session_state.game_time
+    # Use current_game_time instead of game_time
+    game_time = st.session_state.current_game_time
     
-    # Get current lineup
-    current_lineup = st.session_state.current_lineup if st.session_state.quarter_lineup_set else []
-    
-    # Get next event sequence number
-    if st.session_state.score_history:
-        last_sequence = max(event.get('event_sequence', 0) for event in st.session_state.score_history)
-        next_sequence = last_sequence + 1
-    else:
-        next_sequence = 1
-    
-    # Create turnover event
-    turnover_event = {
-        'team': team,
-        'event_type': 'turnover',  # ← This is the critical field!
-        'points': 0,
-        'scorer': player,  # Will be None for team turnovers
-        'shot_type': None,
-        'made': False,
-        'attempted': False,
-        'quarter': current_quarter,
-        'lineup': current_lineup,
-        'game_time': game_time,
-        'timestamp': datetime.now(timezone.utc),
-        'event_sequence': next_sequence
-    }
-    
-    # Add to score_history (for possession tracking and AI analysis)
-    st.session_state.score_history.append(turnover_event)
-    
-    # Add to turnover_history (for turnover-specific tracking)
-    st.session_state.turnover_history.append({
+    turnover_entry = {
         'team': team,
         'player': player,
-        'quarter': current_quarter,
+        'quarter': st.session_state.current_quarter,
         'game_time': game_time,
-        'timestamp': datetime.now(timezone.utc),
-        'event_sequence': next_sequence
-    })
+        'timestamp': datetime.now()
+    }
     
-    # Update turnover stats
-    if team == 'home':
-        st.session_state.home_turnovers += 1
-    else:
-        st.session_state.away_turnovers += 1
-
+    st.session_state.turnover_history.append(turnover_entry)
+    
+    # Update player stats if player is specified
+    if player and player != "Team Turnover":
+        if player not in st.session_state.player_stats:
+            st.session_state.player_stats[player] = initialize_player_stats()
+        st.session_state.player_stats[player]['turnovers'] += 1
+    
+    return True
 def undo_last_turnover():
     """Undo the most recent turnover."""
     if not st.session_state.turnover_history:
