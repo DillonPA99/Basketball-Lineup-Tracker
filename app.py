@@ -4044,7 +4044,6 @@ def get_recent_possessions_detail(num_possessions=20):
     """
     Get details about recent possessions for transparency in AI calculations.
     Returns list of possession details in reverse chronological order with momentum impact.
-    Includes shots AND turnovers.
     """
     if not st.session_state.score_history:
         return []
@@ -4059,17 +4058,8 @@ def get_recent_possessions_detail(num_possessions=20):
         # Calculate recency weight (same formula used in momentum calculation)
         recency_weight = 0.5 + (0.5 * (i + 1) / len(recent_scores))
         
-        # Check if this is a turnover event
-        is_turnover = score.get('event_type') == 'turnover' or score.get('is_turnover', False)
-        
         # Calculate momentum impact for this possession
-        if is_turnover:
-            # Turnover - negative for the team committing it
-            if score['team'] == 'home':
-                momentum_impact = -1.5 * recency_weight  # Turnovers hurt momentum
-            else:
-                momentum_impact = 1.5 * recency_weight  # Good for opponent
-        elif score.get('made', True) and score.get('points', 0) > 0:
+        if score.get('made', True) and score.get('points', 0) > 0:
             # Made shot - positive for scoring team
             if score['team'] == 'home':
                 momentum_impact = score['points'] * recency_weight
@@ -4083,23 +4073,18 @@ def get_recent_possessions_detail(num_possessions=20):
                 momentum_impact = 0.5 * recency_weight
         
         # Determine result
-        if is_turnover:
-            result = f"🔄 {score['team'].upper()} turnover"
-        elif score.get('made', True) and score.get('points', 0) > 0:
+        if score.get('made', True) and score.get('points', 0) > 0:
             result = f"✅ {score['team'].upper()} made {score['points']}pts"
         else:
             result = f"❌ {score['team'].upper()} missed"
         
-        # Get shot type or turnover type
-        if is_turnover:
-            shot_type = 'TO'
-        else:
-            shot_type_map = {
-                'free_throw': 'FT',
-                'field_goal': '2PT',
-                'three_pointer': '3PT'
-            }
-            shot_type = shot_type_map.get(score.get('shot_type', 'unknown'), 'Shot')
+        # Get shot type
+        shot_type_map = {
+            'free_throw': 'FT',
+            'field_goal': '2PT',
+            'three_pointer': '3PT'
+        }
+        shot_type = shot_type_map.get(score.get('shot_type', 'unknown'), 'Shot')
         
         possession_details.append({
             'Possession': f"#{possession_num}",
@@ -4108,7 +4093,7 @@ def get_recent_possessions_detail(num_possessions=20):
             'Team': score['team'].upper(),
             'Type': shot_type,
             'Result': result,
-            'Points': 0 if is_turnover else (score.get('points', 0) if score.get('made', True) else 0),
+            'Points': score.get('points', 0) if score.get('made', True) else 0,
             'Momentum Impact': f"{momentum_impact:+.2f}",
             'Weight': f"{recency_weight:.2f}"
         })
