@@ -936,7 +936,8 @@ def load_game_session(session_id):
                             'three_pointers_attempted': 0,
                             'free_throws_made': 0,
                             'free_throws_attempted': 0,
-                            'minutes_played': 0
+                            'minutes_played': 0,
+                            'turnovers': 0 
                         }, decoded_data)
                     elif field == 'player_turnovers':
                         # Convert back to defaultdict(int)
@@ -1695,7 +1696,9 @@ if "player_stats" not in st.session_state:
         'three_pointers_attempted': 0,
         'free_throws_made': 0,
         'free_throws_attempted': 0,
-        'minutes_played': 0
+        'minutes_played': 0,
+        'turnovers': 0 
+
     })
 
 # Add this to your session state initialization elsewhere in your code
@@ -2331,7 +2334,6 @@ def add_turnover(team, player=None):
         team: 'home' or 'away'
         player: Player name string or None for team turnover
     """
-    # Use current_game_time instead of game_time
     game_time = st.session_state.current_game_time
     
     turnover_entry = {
@@ -2348,9 +2350,15 @@ def add_turnover(team, player=None):
     if player and player != "Team Turnover":
         if player not in st.session_state.player_stats:
             st.session_state.player_stats[player] = initialize_player_stats()
+        
+        # Safety check: ensure 'turnovers' key exists
+        if 'turnovers' not in st.session_state.player_stats[player]:
+            st.session_state.player_stats[player]['turnovers'] = 0
+        
         st.session_state.player_stats[player]['turnovers'] += 1
     
     return True
+    
 def undo_last_turnover():
     """Undo the most recent turnover."""
     if not st.session_state.turnover_history:
