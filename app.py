@@ -5240,6 +5240,48 @@ def calculate_scoring_efficiency_trend():
     # Return: trend, current (last segment), starting (first segment)
     return trend, last_segment_ppp, first_segment_ppp
         
+def apply_game_context_adjustment(pred_home, pred_away, current_home, current_away, 
+                                   elapsed_mins, total_mins):
+    """
+    Adjust predictions to be realistic given current game context.
+    If you're down by a lot with little time left, cap the comeback potential.
+    """
+    time_remaining = total_mins - elapsed_mins
+    current_diff = current_home - current_away
+    predicted_diff = pred_home - pred_away
+    
+    # If prediction shows a comeback, check if it's realistic
+    if (current_diff < 0 and predicted_diff > 0) or \
+       (current_diff > 0 and predicted_diff < 0):
+        # This is a predicted comeback/collapse
+        
+        points_needed = abs(current_diff)
+        
+        # Calculate if there's enough time for this comeback
+        # Assume max realistic scoring rate is about 1.5 points/minute in high school
+        max_comeback_points = time_remaining * 1.5
+        
+        if points_needed > max_comeback_points:
+            # Not enough time - temper the prediction
+            # Don't predict a full comeback, predict a closer loss instead
+            if current_home < current_away:
+                # Home team down, limit their comeback
+                max_pred_home = current_away - 2  # Predict close loss instead of win
+                pred_home = min(pred_home, max_pred_home)
+            else:
+                # Away team down
+                max_pred_away = current_home - 2
+                pred_away = min(pred_away, max_pred_away)
+    
+    # If late in game (< 5 min), predictions should converge toward current score
+    if time_remaining < 5:
+        convergence_factor = (5 - time_remaining) / 5  # 0 to 1
+        pred_home = pred_home * (1 - convergence_factor) + current_home * convergence_factor
+        pred_away = pred_away * (1 - convergence_factor) + current_away * convergence_factor
+    
+    return pred_home, pred_away
+
+
 def predict_final_score():
     """
     Predict final score based on current pace and trends with improved confidence calculation.
@@ -5302,7 +5344,17 @@ def predict_final_score():
     # Final predictions
     predicted_home = pace_projected_home + momentum_adjustment + trend_adjustment
     predicted_away = pace_projected_away - momentum_adjustment
-    
+
+    # NEW: Apply reality check based on game context
+    predicted_home, predicted_away = apply_game_context_adjustment(
+        predicted_home, 
+        predicted_away,
+        current_home,
+        current_away,
+        total_minutes_elapsed,
+        total_game_minutes
+    )
+        
     # ===== IMPROVED CONFIDENCE CALCULATION =====
     
     # Base confidence on game progress (0-100%)
@@ -5427,26 +5479,27 @@ def calculate_win_probability():
         return 50, []
     
     factors = []
-    probability = 50  # Start neutral
     
-    # Factor 1: Current Score Differential - ADJUSTED FOR HIGH SCHOOL
-    score_diff = st.session_state.home_score - st.session_state.away_score
+    # NEW: Start with predicted final score as the foundation
+    predicted_home, predicted_away, prediction_confidence = predict_final_score()
+    predicted_margin = predicted_home - predicted_away
     
-    # Estimate game progress
-    quarter_map = {'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4, 'OT1': 4.25}
-    current_quarter_num = quarter_map.get(st.session_state.current_quarter, 1)
-    game_progress = current_quarter_num / 4  # 0.25 to 1.0
+    # Base probability on predicted outcome
+    if predicted_margin > 0:
+        base_prob = 50 + min(40, predicted_margin * 2)
+    elif predicted_margin < 0:
+        base_prob = 50 - min(40, abs(predicted_margin) * 2)
+    else:
+        base_prob = 50
     
-    # CHANGED: Reduced impact multiplier (was 5 + (game_progress * 10), now 3 + (game_progress * 6))
-    # This means each point margin has less dramatic impact on win probability
-    score_impact = score_diff * (3 + (game_progress * 6))
-    probability += score_impact
+    # Weight by prediction confidence
+    confidence_weight = prediction_confidence / 100
+    probability = 50 + (base_prob - 50) * confidence_weight
     
-    if abs(score_diff) > 0:
-        factors.append({
-            'factor': f"{'Leading' if score_diff > 0 else 'Trailing'} by {abs(score_diff)}",
-            'impact': f"{'+' if score_diff > 0 else ''}{score_impact:.0f}%"
-        })
+    factors.append({
+        'factor': f"Predicted final: {predicted_home}-{predicted_away}",
+        'impact': f"{'+' if predicted_margin > 0 else ''}{(base_prob - 50) * confidence_weight:.0f}%"
+    })
     
     # Factor 2: Momentum - REDUCED IMPACT
     momentum_score, momentum_dir = calculate_momentum_score()
