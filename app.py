@@ -4040,11 +4040,11 @@ def display_lineup_recommendation():
             else:
                 st.error(f"Error setting lineup: {message}")
 
-
 def get_recent_possessions_detail(num_possessions=20):
     """
     Get details about recent possessions for transparency in AI calculations.
     Returns list of possession details in reverse chronological order with momentum impact.
+    Includes shots AND turnovers.
     """
     if not st.session_state.score_history:
         return []
@@ -4059,8 +4059,17 @@ def get_recent_possessions_detail(num_possessions=20):
         # Calculate recency weight (same formula used in momentum calculation)
         recency_weight = 0.5 + (0.5 * (i + 1) / len(recent_scores))
         
+        # Check if this is a turnover event
+        is_turnover = score.get('event_type') == 'turnover' or score.get('is_turnover', False)
+        
         # Calculate momentum impact for this possession
-        if score.get('made', True) and score.get('points', 0) > 0:
+        if is_turnover:
+            # Turnover - negative for the team committing it
+            if score['team'] == 'home':
+                momentum_impact = -1.5 * recency_weight  # Turnovers hurt momentum
+            else:
+                momentum_impact = 1.5 * recency_weight  # Good for opponent
+        elif score.get('made', True) and score.get('points', 0) > 0:
             # Made shot - positive for scoring team
             if score['team'] == 'home':
                 momentum_impact = score['points'] * recency_weight
@@ -4074,18 +4083,23 @@ def get_recent_possessions_detail(num_possessions=20):
                 momentum_impact = 0.5 * recency_weight
         
         # Determine result
-        if score.get('made', True) and score.get('points', 0) > 0:
+        if is_turnover:
+            result = f"🔄 {score['team'].upper()} turnover"
+        elif score.get('made', True) and score.get('points', 0) > 0:
             result = f"✅ {score['team'].upper()} made {score['points']}pts"
         else:
             result = f"❌ {score['team'].upper()} missed"
         
-        # Get shot type
-        shot_type_map = {
-            'free_throw': 'FT',
-            'field_goal': '2PT',
-            'three_pointer': '3PT'
-        }
-        shot_type = shot_type_map.get(score.get('shot_type', 'unknown'), 'Shot')
+        # Get shot type or turnover type
+        if is_turnover:
+            shot_type = 'TO'
+        else:
+            shot_type_map = {
+                'free_throw': 'FT',
+                'field_goal': '2PT',
+                'three_pointer': '3PT'
+            }
+            shot_type = shot_type_map.get(score.get('shot_type', 'unknown'), 'Shot')
         
         possession_details.append({
             'Possession': f"#{possession_num}",
@@ -4094,7 +4108,7 @@ def get_recent_possessions_detail(num_possessions=20):
             'Team': score['team'].upper(),
             'Type': shot_type,
             'Result': result,
-            'Points': score.get('points', 0) if score.get('made', True) else 0,
+            'Points': 0 if is_turnover else (score.get('points', 0) if score.get('made', True) else 0),
             'Momentum Impact': f"{momentum_impact:+.2f}",
             'Weight': f"{recency_weight:.2f}"
         })
@@ -7318,69 +7332,71 @@ def display_possession_details():
     
     st.subheader("📋 Recent Possessions Analyzed")
     
-    possession_details = get_recent_possessions_detail(20)
+possession_details = get_recent_possessions_detail(20)
+
+if possession_details:
+    st.info(f"Showing last {len(possession_details)} possessions used for calculations")
     
-    if possession_details:
-        st.info(f"Showing last {len(possession_details)} possessions used for calculations")
-        
-        possession_df = pd.DataFrame(possession_details)
-        
-        def color_possession_result(val):
-            if "made" in val.lower():
-                return 'background-color: #90EE90; color: black'
-            elif "missed" in val.lower():
-                return 'background-color: #FFB6C1; color: black'
+    possession_df = pd.DataFrame(possession_details)
+    
+    def color_possession_result(val):
+        if "made" in val.lower():
+            return 'background-color: #90EE90; color: black'
+        elif "missed" in val.lower():
+            return 'background-color: #FFB6C1; color: black'
+        elif "turnover" in val.lower():
+            return 'background-color: #FFA500; color: black'  # Orange for turnovers
+        return ''
+    
+    def color_momentum_impact(val):
+        """Color code momentum impact values."""
+        try:
+            numeric_val = float(val)
+            if numeric_val > 2:
+                return 'background-color: #2d5016; color: white'  # Dark green - strong positive
+            elif numeric_val > 0:
+                return 'background-color: #90EE90; color: black'  # Light green - positive
+            elif numeric_val == 0:
+                return 'background-color: #FFFACD; color: black'  # Light yellow - neutral
+            elif numeric_val > -2:
+                return 'background-color: #FFB6C1; color: black'  # Light red - negative
+            else:
+                return 'background-color: #FF0000; color: white'  # Dark red - strong negative
+        except (ValueError, TypeError):
             return ''
-        
-        def color_momentum_impact(val):
-            """Color code momentum impact values."""
-            try:
-                numeric_val = float(val)
-                if numeric_val > 2:
-                    return 'background-color: #2d5016; color: white'  # Dark green - strong positive
-                elif numeric_val > 0:
-                    return 'background-color: #90EE90; color: black'  # Light green - positive
-                elif numeric_val == 0:
-                    return 'background-color: #FFFACD; color: black'  # Light yellow - neutral
-                elif numeric_val > -2:
-                    return 'background-color: #FFB6C1; color: black'  # Light red - negative
-                else:
-                    return 'background-color: #FF0000; color: white'  # Dark red - strong negative
-            except (ValueError, TypeError):
-                return ''
-        
-        st.dataframe(
-            possession_df.style.applymap(
-                color_possession_result, subset=['Result']
-            ).applymap(
-                color_momentum_impact, subset=['Momentum Impact']
-            ),
-            use_container_width=True,
-            hide_index=True
-        )
-        
-        # Enhanced summary stats with PPP
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            home_poss = len([p for p in possession_details if p['Team'] == 'HOME'])
-            st.metric("Home Possessions", home_poss)
-        
-        with col2:
-            # Calculate Home PPP from recent possessions
-            home_points = sum(p['Points'] for p in possession_details if p['Team'] == 'HOME')
-            home_ppp = (home_points / home_poss) if home_poss > 0 else 0
-            st.metric("Home PPP", f"{home_ppp:.2f}")
-        
-        with col3:
-            away_poss = len([p for p in possession_details if p['Team'] == 'AWAY'])
-            st.metric("Away Possessions", away_poss)
-        
-        with col4:
-            # Calculate Away PPP from recent possessions
-            away_points = sum(p['Points'] for p in possession_details if p['Team'] == 'AWAY')
-            away_ppp = (away_points / away_poss) if away_poss > 0 else 0
-            st.metric("Away PPP", f"{away_ppp:.2f}")
+    
+    st.dataframe(
+        possession_df.style.applymap(
+            color_possession_result, subset=['Result']
+        ).applymap(
+            color_momentum_impact, subset=['Momentum Impact']
+        ),
+        use_container_width=True,
+        hide_index=True
+    )
+    
+    # Enhanced summary stats with PPP
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        home_poss = len([p for p in possession_details if p['Team'] == 'HOME'])
+        st.metric("Home Possessions", home_poss)
+    
+    with col2:
+        # Calculate Home PPP from recent possessions
+        home_points = sum(p['Points'] for p in possession_details if p['Team'] == 'HOME')
+        home_ppp = (home_points / home_poss) if home_poss > 0 else 0
+        st.metric("Home PPP", f"{home_ppp:.2f}")
+    
+    with col3:
+        away_poss = len([p for p in possession_details if p['Team'] == 'AWAY'])
+        st.metric("Away Possessions", away_poss)
+    
+    with col4:
+        # Calculate Away PPP from recent possessions
+        away_points = sum(p['Points'] for p in possession_details if p['Team'] == 'AWAY')
+        away_ppp = (away_points / away_poss) if away_poss > 0 else 0
+        st.metric("Away PPP", f"{away_ppp:.2f}")
     
 # ------------------------------------------------------------------
 # User Authentication Gate
