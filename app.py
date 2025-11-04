@@ -7384,14 +7384,6 @@ def display_possession_details():
     """Display recent possession details for transparency."""
     
     st.subheader("📋 Recent Possessions Analyzed")
-
-    # DEBUG: Check what's in score_history
-    with st.expander("🔍 Debug - Raw Score History"):
-        if st.session_state.score_history:
-            st.write(f"Total events: {len(st.session_state.score_history)}")
-            st.write("Last 5 events:")
-            for event in st.session_state.score_history[-5:]:
-                st.json(event)
     
     possession_details = get_recent_possessions_detail(20)
     
