@@ -2337,25 +2337,26 @@ def add_turnover(team, player=None):
     game_time = st.session_state.current_game_time
     current_timestamp = get_current_utc_time()
     
-    # Create turnover entry for turnover_history
+    # FIXED: Include lineup in turnover entry
     turnover_entry = {
         'team': team,
         'player': player,
         'quarter': st.session_state.current_quarter,
         'game_time': game_time,
+        'lineup': st.session_state.current_lineup.copy(),  # ADDED THIS LINE
         'timestamp': current_timestamp,
         'event_sequence': st.session_state.event_counter
     }
     
     st.session_state.turnover_history.append(turnover_entry)
     
-    # ADD THIS: Also add to score_history so it shows in recent possessions
+    # Add to score_history so it shows in recent possessions
     score_history_entry = {
         'team': team,
-        'points': 0,  # Turnovers don't score points
-        'scorer': player,  # Can be None for team turnovers
-        'event_type': 'turnover',  # Mark this as a turnover event
-        'is_turnover': True,  # Additional flag for clarity
+        'points': 0,
+        'scorer': player,
+        'event_type': 'turnover',
+        'is_turnover': True,
         'quarter': st.session_state.current_quarter,
         'lineup': st.session_state.current_lineup.copy(),
         'game_time': game_time,
@@ -2366,12 +2367,26 @@ def add_turnover(team, player=None):
     st.session_state.score_history.append(score_history_entry)
     st.session_state.event_counter += 1
     
-    # Update player stats if player is specified
+    # FIXED: Update BOTH data structures for consistency
     if player and player != "Team Turnover":
-        if player not in st.session_state.player_stats:
-            st.session_state.player_stats[player] = initialize_player_stats()
+        # Update player_turnovers dictionary (used in analytics)
+        st.session_state.player_turnovers[player] += 1
         
-        # Safety check: ensure 'turnovers' key exists
+        # Also update player_stats for consistency
+        if player not in st.session_state.player_stats:
+            st.session_state.player_stats[player] = {
+                'points': 0,
+                'field_goals_made': 0,
+                'field_goals_attempted': 0,
+                'three_pointers_made': 0,
+                'three_pointers_attempted': 0,
+                'free_throws_made': 0,
+                'free_throws_attempted': 0,
+                'minutes_played': 0,
+                'turnovers': 0  # ADDED THIS
+            }
+        
+        # Ensure turnovers key exists
         if 'turnovers' not in st.session_state.player_stats[player]:
             st.session_state.player_stats[player]['turnovers'] = 0
         
@@ -2398,7 +2413,7 @@ def undo_last_turnover():
     
     last_turnover = st.session_state.turnover_history.pop()
     
-    # Remove from score_history too (find the matching event)
+    # Remove from score_history too
     if st.session_state.score_history:
         for i in range(len(st.session_state.score_history) - 1, -1, -1):
             event = st.session_state.score_history[i]
@@ -2407,14 +2422,23 @@ def undo_last_turnover():
                 st.session_state.score_history.pop(i)
                 break
     
-    # Update player stats if needed
+    # FIXED: Update BOTH data structures
     player = last_turnover.get('player')
-    if player and player != "Team Turnover" and player in st.session_state.player_stats:
-        if 'turnovers' in st.session_state.player_stats[player]:
-            st.session_state.player_stats[player]['turnovers'] = max(
+    if player and player != "Team Turnover":
+        # Update player_turnovers dictionary
+        if player in st.session_state.player_turnovers:
+            st.session_state.player_turnovers[player] = max(
                 0, 
-                st.session_state.player_stats[player]['turnovers'] - 1
+                st.session_state.player_turnovers[player] - 1
             )
+        
+        # Also update player_stats
+        if player in st.session_state.player_stats:
+            if 'turnovers' in st.session_state.player_stats[player]:
+                st.session_state.player_stats[player]['turnovers'] = max(
+                    0, 
+                    st.session_state.player_stats[player]['turnovers'] - 1
+                )
     
     # Clear the last turnover event if it matches
     if st.session_state.last_turnover_event:
@@ -2423,7 +2447,7 @@ def undo_last_turnover():
             st.session_state.last_turnover_event = None
     
     return True
-
+    
 def get_team_turnovers():
     """Get turnover count for each team."""
     home_turnovers = sum(1 for to in st.session_state.turnover_history if to['team'] == 'home')
