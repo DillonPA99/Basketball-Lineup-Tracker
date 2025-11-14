@@ -9734,6 +9734,9 @@ with tab2:
 
     # Process score history for team stats with improved logic
     for score_event in st.session_state.score_history:
+        if score_event.get('event_type') == 'turnover' or score_event.get('is_turnover', False):
+            continue
+            
         team = score_event.get('team')
         shot_type = score_event.get('shot_type', 'field_goal')
         made = score_event.get('made', True)
