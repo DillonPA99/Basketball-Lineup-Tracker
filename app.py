@@ -11461,6 +11461,12 @@ with tab4:
 # ------------------------------------------------------------------
 # Tab 5: Season Statistics
 # ------------------------------------------------------------------
+def get_player_name_only(player_full):
+    """Extract just the player name, ignoring jersey number."""
+    if '(' in player_full:
+        return player_full.split('(')[0].strip()
+    return player_full.strip()
+
 with tab5:
     st.header("🏆 Season Statistics")
     
@@ -11727,7 +11733,7 @@ with tab5:
    
         st.divider()
         
-        # Individual Player Statistics (exact same table as Tab 2)
+        # Individual Player Statistics - FIXED TO COMBINE BY NAME ONLY
         st.header("**Player Season Statistics**")
         
         season_player_stats = defaultdict(lambda: {
@@ -11744,56 +11750,63 @@ with tab5:
         for game in season_games:
             players_in_game = set()
             
-            # Shooting stats
-            for player, stats in game.get('player_stats', {}).items():
+            # Shooting stats - FIXED: Extract name only
+            for player_full, stats in game.get('player_stats', {}).items():
+                player_name = get_player_name_only(player_full)
+                
                 if stats.get('points', 0) > 0 or stats.get('field_goals_attempted', 0) > 0:
-                    players_in_game.add(player)
-                    season_player_stats[player]['total_points'] += stats.get('points', 0)
-                    season_player_stats[player]['total_minutes'] += stats.get('minutes_played', 0)
-                    season_player_stats[player]['total_fg_made'] += stats.get('field_goals_made', 0)
-                    season_player_stats[player]['total_fg_attempted'] += stats.get('field_goals_attempted', 0)
-                    season_player_stats[player]['total_3pt_made'] += stats.get('three_pointers_made', 0)
-                    season_player_stats[player]['total_3pt_attempted'] += stats.get('three_pointers_attempted', 0)
-                    season_player_stats[player]['total_ft_made'] += stats.get('free_throws_made', 0)
-                    season_player_stats[player]['total_ft_attempted'] += stats.get('free_throws_attempted', 0)
+                    players_in_game.add(player_name)
+                    season_player_stats[player_name]['total_points'] += stats.get('points', 0)
+                    season_player_stats[player_name]['total_minutes'] += stats.get('minutes_played', 0)
+                    season_player_stats[player_name]['total_fg_made'] += stats.get('field_goals_made', 0)
+                    season_player_stats[player_name]['total_fg_attempted'] += stats.get('field_goals_attempted', 0)
+                    season_player_stats[player_name]['total_3pt_made'] += stats.get('three_pointers_made', 0)
+                    season_player_stats[player_name]['total_3pt_attempted'] += stats.get('three_pointers_attempted', 0)
+                    season_player_stats[player_name]['total_ft_made'] += stats.get('free_throws_made', 0)
+                    season_player_stats[player_name]['total_ft_attempted'] += stats.get('free_throws_attempted', 0)
 
-            # Plus/minus calculation for this game
+            # Plus/minus calculation for this game - FIXED: Extract name only
             game_plus_minus = calculate_individual_plus_minus_for_game(game)
-            for player, pm_stats in game_plus_minus.items():
-                if player in season_player_stats:
-                    season_player_stats[player]['total_plus_minus'] += pm_stats.get('plus_minus', 0)
+            for player_full, pm_stats in game_plus_minus.items():
+                player_name = get_player_name_only(player_full)
+                if player_name in season_player_stats:
+                    season_player_stats[player_name]['total_plus_minus'] += pm_stats.get('plus_minus', 0)
             
-            # Turnovers
-            for player, to_count in game.get('player_turnovers', {}).items():
+            # Turnovers - FIXED: Extract name only
+            for player_full, to_count in game.get('player_turnovers', {}).items():
+                player_name = get_player_name_only(player_full)
                 if to_count > 0:
-                    players_in_game.add(player)
-                    season_player_stats[player]['total_turnovers'] += to_count
+                    players_in_game.add(player_name)
+                    season_player_stats[player_name]['total_turnovers'] += to_count
             
-            # Defensive stats
+            # Defensive stats - FIXED: Extract name only
             for turnover_event in game.get('turnover_history', []):
                 if turnover_event.get('team') == 'away':
-                    for player in turnover_event.get('lineup', []):
-                        players_in_game.add(player)
-                        season_player_stats[player]['total_opp_turnovers'] += 1
-                        season_player_stats[player]['total_def_impact'] += 1.5
+                    for player_full in turnover_event.get('lineup', []):
+                        player_name = get_player_name_only(player_full)
+                        players_in_game.add(player_name)
+                        season_player_stats[player_name]['total_opp_turnovers'] += 1
+                        season_player_stats[player_name]['total_def_impact'] += 1.5
             
             for score_event in game.get('score_history', []):
                 if score_event.get('team') == 'away' and not score_event.get('made', True):
                     shot_type = score_event.get('shot_type')
                     if shot_type in ['field_goal', 'three_pointer']:
-                        for player in score_event.get('lineup', []):
-                            players_in_game.add(player)
-                            season_player_stats[player]['total_opp_missed_shots'] += 1
-                            season_player_stats[player]['total_def_impact'] += 1.0
+                        for player_full in score_event.get('lineup', []):
+                            player_name = get_player_name_only(player_full)
+                            players_in_game.add(player_name)
+                            season_player_stats[player_name]['total_opp_missed_shots'] += 1
+                            season_player_stats[player_name]['total_def_impact'] += 1.0
             
-            # Plus/minus (simplified calculation per game)
+            # Plus/minus (simplified calculation per game) - FIXED: Extract name only
             for lineup_event in game.get('lineup_history', []):
-                for player in lineup_event.get('new_lineup', []):
-                    players_in_game.add(player)
+                for player_full in lineup_event.get('new_lineup', []):
+                    player_name = get_player_name_only(player_full)
+                    players_in_game.add(player_name)
             
             # Increment games played
-            for player in players_in_game:
-                season_player_stats[player]['games_played'] += 1
+            for player_name in players_in_game:
+                season_player_stats[player_name]['games_played'] += 1
         
         # Build player data table (exact same columns as Tab 2)
         if season_player_stats:
@@ -11835,7 +11848,7 @@ with tab5:
                 PPP = (stats['total_points'] / estimated_possessions) if estimated_possessions > 0 else 0
                 
                 player_season_data.append({
-                    'Player': player.split('(')[0].strip(),
+                    'Player': player,  # Now just the name without jersey number
                     'GP': gp,
                     'Minutes': f"{stats['total_minutes']:.1f}",
                     'MPG': f"{mpg:.1f}",
