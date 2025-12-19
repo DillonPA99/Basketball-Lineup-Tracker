@@ -12294,11 +12294,18 @@ with tab5:
 
                 # ===== CORE SEASON LINEUP TABLE =====
                 st.subheader("**📊 Core Season Lineup Statistics**")
+                
+                # Filter lineups: more than 1 appearance AND more than 1 MPG
+                filtered_lineup_season_df = lineup_season_df[
+                    (lineup_season_df['Appearances'] > 1) & 
+                    (lineup_season_df['MPG'] > 1)
+                ].copy()
+                
                 core_season_lineup_cols = ['Lineup', 'Games', 'Appearances', 'MPG', '+/-', 'Off. Eff.', 
                                            'Def. Eff.', 'PPG', 'PPP', 'TO/G', 'Def Impact/Min']
         
                 st.dataframe(
-                    lineup_season_df[core_season_lineup_cols].style.applymap(
+                    filtered_lineup_season_df[core_season_lineup_cols].style.applymap(
                         color_plus_minus, subset=['+/-']
                     ).applymap(
                         color_lineup_ppg, subset=['PPG']
@@ -12325,7 +12332,7 @@ with tab5:
                         season_lineup_shooting = ['Lineup', 'Games', 'Off. Eff.', 'eFG%', 'TS%', 'FG', 'FG%', 'FT', 'FT%', '2FG', '2FG%', '3FG', 
                                                  '3FG%']
                         st.dataframe(
-                            lineup_season_df[season_lineup_shooting].style.applymap(
+                            filtered_lineup_season_df[season_lineup_shooting].style.applymap(
                                 color_ft_percentage, subset=['FT%']
                             ).applymap(
                                 color_2pt_percentage, subset=['2FG%']
@@ -12348,7 +12355,7 @@ with tab5:
                         season_lineup_eff = ['Lineup', 'Games', 'MPG', 'Off. Eff.', 'Def. Eff.', 
                                              'PPP', 'Points/Min', 'TO/G', 'Total TOs']
                         st.dataframe(
-                            lineup_season_df[season_lineup_eff].style.applymap(
+                            filtered_lineup_season_df[season_lineup_eff].style.applymap(
                                 color_offensive_efficiency_scores, subset=['Off. Eff.']
                             ).applymap(
                                 color_defensive_efficiency_scores, subset=['Def. Eff.']
@@ -12367,7 +12374,7 @@ with tab5:
                     with st.expander("🛡️ Season Lineup Defense"):
                         season_lineup_def = ['Lineup', 'Games', 'Def. Eff.', 'Def Impact/G', 'Def Impact/Min', 'Total Def Impact']
                         st.dataframe(
-                            lineup_season_df[season_lineup_def].style.applymap(
+                            filtered_lineup_season_df[season_lineup_def].style.applymap(
                                 color_lineup_defensive_impact, subset=['Def Impact/G']
                             ).applymap(
                                 color_lineup_defensive_impact_per_minute, subset=['Def Impact/Min']
@@ -12382,7 +12389,7 @@ with tab5:
                         display_cols = ['Lineup', 'Games', 'Appearances', 'Minutes', 'MPG', 'Off. Eff.', 'Def. Eff.', 'Total Points', 'PPG', "PPP", 'Points/Min', '+/-', 'FT', 'FT%', 'FG', 'FG%', '2FG', '2FG%', '3FG', '3FG%', 'eFG%', 'TS%', 'Total TOs', 'TO/G', 'Total Def Impact', 'Def Impact/G', 'Def Impact/Min']
                 
                         st.dataframe(
-                            lineup_season_df[display_cols].style.applymap(
+                            filtered_lineup_season_df[display_cols].style.applymap(
                                 color_plus_minus, subset=['+/-']
                             ).applymap(
                                 color_lineup_ppg, subset=['PPG']
