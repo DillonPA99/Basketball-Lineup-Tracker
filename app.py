@@ -11473,7 +11473,6 @@ def get_lineup_key_by_names_only(lineup_list):
     names_only = [get_player_name_only(player) for player in lineup_list]
     return " | ".join(sorted(names_only))
 
-        # Aggregate lineup stats from all games - FIXED TO GROUP BY NAME ONLY
         for game_idx, game in enumerate(season_games):
             # Calculate time for each lineup in this game
             game_lineup_times = calculate_lineup_times_for_game(game)
@@ -11610,6 +11609,7 @@ def get_lineup_key_by_names_only(lineup_list):
                         if made:
                             season_lineup_stats[name_only_key]['total_3pt_made'] += 1
                             season_lineup_stats[name_only_key]['total_fg_made'] += 1
+    
 with tab5:
     st.header("🏆 Season Statistics")
     
