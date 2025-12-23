@@ -11609,7 +11609,6 @@ def get_lineup_key_by_names_only(lineup_list):
                         if made:
                             season_lineup_stats[name_only_key]['total_3pt_made'] += 1
                             season_lineup_stats[name_only_key]['total_fg_made'] += 1
-
 with tab5:
     st.header("🏆 Season Statistics")
     
