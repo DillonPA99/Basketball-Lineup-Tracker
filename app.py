@@ -11467,10 +11467,16 @@ def get_player_name_only(player_full):
         return player_full.split('(')[0].strip()
     return player_full.strip()
 
+# Add this helper function at the top of Tab 5 (after the existing get_player_name_only function)
 def get_lineup_key_by_names_only(lineup_list):
     """Create a lineup key using only player names (no jersey numbers)."""
     names_only = [get_player_name_only(player) for player in lineup_list]
     return " | ".join(sorted(names_only))
+
+# Then in Tab 5, find this section (around line 200-250):
+# "# Aggregate lineup stats from all games - FIXED VERSION"
+
+# Replace the lineup aggregation section with this:
 
         # Aggregate lineup stats from all games - FIXED TO GROUP BY NAME ONLY
         for game_idx, game in enumerate(season_games):
