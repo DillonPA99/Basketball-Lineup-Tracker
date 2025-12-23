@@ -11467,6 +11467,149 @@ def get_player_name_only(player_full):
         return player_full.split('(')[0].strip()
     return player_full.strip()
 
+def get_lineup_key_by_names_only(lineup_list):
+    """Create a lineup key using only player names (no jersey numbers)."""
+    names_only = [get_player_name_only(player) for player in lineup_list]
+    return " | ".join(sorted(names_only))
+
+        # Aggregate lineup stats from all games - FIXED TO GROUP BY NAME ONLY
+        for game_idx, game in enumerate(season_games):
+            # Calculate time for each lineup in this game
+            game_lineup_times = calculate_lineup_times_for_game(game)
+            
+            # Calculate plus/minus AND points for lineups in this game
+            game_lineup_stats = defaultdict(lambda: {
+                'plus_minus': 0, 
+                'points': 0,
+                'opp_turnovers': 0,
+                'opp_missed_shots': 0,
+                'def_impact': 0,
+                'turnovers': 0
+            })
+            
+            # FIXED: Create a mapping from original lineup keys to name-only keys
+            lineup_key_mapping = {}
+            
+            for i in range(len(game.get('lineup_history', []))):
+                lineup_event = game['lineup_history'][i]
+                original_lineup = lineup_event.get('new_lineup', [])
+                
+                if not original_lineup:
+                    continue
+                
+                # Create both keys
+                original_key = " | ".join(sorted(original_lineup))
+                name_only_key = get_lineup_key_by_names_only(original_lineup)
+                
+                # Store the mapping
+                lineup_key_mapping[original_key] = name_only_key
+                
+                # Calculate score changes during this lineup period
+                if i < len(game['lineup_history']) - 1:
+                    next_event = game['lineup_history'][i + 1]
+                    home_points = next_event['home_score'] - lineup_event['home_score']
+                    away_points = next_event['away_score'] - lineup_event['away_score']
+                else:
+                    home_points = game.get('home_score', 0) - lineup_event['home_score']
+                    away_points = game.get('away_score', 0) - lineup_event['away_score']
+                
+                score_change = home_points - away_points
+                
+                # Use name-only key for aggregation
+                game_lineup_stats[name_only_key]['plus_minus'] += score_change
+                game_lineup_stats[name_only_key]['points'] += home_points
+                
+                # Count defensive events for this lineup period
+                lineup_quarter = lineup_event.get('quarter')
+                
+                for turnover_event in game.get('turnover_history', []):
+                    if (turnover_event.get('team') == 'home' and
+                        turnover_event.get('quarter') == lineup_quarter and
+                        get_lineup_key_by_names_only(turnover_event.get('lineup', [])) == name_only_key):
+                        game_lineup_stats[name_only_key]['turnovers'] += 1
+                
+                for turnover_event in game.get('turnover_history', []):
+                    if (turnover_event.get('team') == 'away' and
+                        turnover_event.get('quarter') == lineup_quarter and
+                        get_lineup_key_by_names_only(turnover_event.get('lineup', [])) == name_only_key):
+                        game_lineup_stats[name_only_key]['opp_turnovers'] += 1
+                        game_lineup_stats[name_only_key]['def_impact'] += 1.5
+                
+                for score_event in game.get('score_history', []):
+                    if (score_event.get('team') == 'away' and
+                        not score_event.get('made', True) and
+                        score_event.get('shot_type') in ['field_goal', 'three_pointer'] and
+                        score_event.get('quarter') == lineup_quarter and
+                        get_lineup_key_by_names_only(score_event.get('lineup', [])) == name_only_key):
+                        game_lineup_stats[name_only_key]['opp_missed_shots'] += 1
+                        game_lineup_stats[name_only_key]['def_impact'] += 1.0
+
+            processed_lineups_this_game = set()
+            
+            for lineup_event in game.get('lineup_history', []):
+                original_lineup = lineup_event.get('new_lineup', [])
+                if not original_lineup:
+                    continue
+                
+                # Use name-only key for aggregation
+                name_only_key = get_lineup_key_by_names_only(original_lineup)
+                original_key = " | ".join(sorted(original_lineup))
+                
+                season_lineup_stats[name_only_key]['total_appearances'] += 1
+                season_lineup_stats[name_only_key]['games_appeared'].add(game_idx)
+                
+                # Add minutes, plus/minus, points, and defensive stats (only once per lineup per game)
+                if name_only_key not in processed_lineups_this_game:
+                    # Map the original key to name-only key for time lookup
+                    if original_key in game_lineup_times:
+                        season_lineup_stats[name_only_key]['total_minutes'] += game_lineup_times[original_key]
+                    
+                    # Add the aggregated stats from this game
+                    season_lineup_stats[name_only_key]['total_plus_minus'] += game_lineup_stats[name_only_key]['plus_minus']
+                    season_lineup_stats[name_only_key]['total_points'] += game_lineup_stats[name_only_key]['points']
+                    season_lineup_stats[name_only_key]['total_def_impact'] += game_lineup_stats[name_only_key]['def_impact']
+                    season_lineup_stats[name_only_key]['total_turnovers'] += game_lineup_stats[name_only_key]['turnovers']
+                    
+                    processed_lineups_this_game.add(name_only_key)
+            
+            # FIXED: Process score events using name-only keys
+            for score_event in game.get('score_history', []):
+                if score_event.get('team') != 'home':
+                    continue
+                
+                # Get the lineup that was on court when this score happened
+                score_lineup = score_event.get('lineup', [])
+                
+                if not score_lineup:
+                    continue
+                
+                # Convert to name-only key
+                name_only_key = get_lineup_key_by_names_only(score_lineup)
+                
+                # Skip if this lineup isn't being tracked
+                if name_only_key not in season_lineup_stats:
+                    continue
+                
+                shot_type = score_event.get('shot_type')
+                made = score_event.get('made', True)
+                attempted = score_event.get('attempted', True)
+                
+                if attempted:
+                    if shot_type == 'free_throw':
+                        season_lineup_stats[name_only_key]['total_ft_attempted'] += 1
+                        if made:
+                            season_lineup_stats[name_only_key]['total_ft_made'] += 1
+                    elif shot_type == 'field_goal':
+                        season_lineup_stats[name_only_key]['total_fg_attempted'] += 1
+                        if made:
+                            season_lineup_stats[name_only_key]['total_fg_made'] += 1
+                    elif shot_type == 'three_pointer':
+                        season_lineup_stats[name_only_key]['total_3pt_attempted'] += 1
+                        season_lineup_stats[name_only_key]['total_fg_attempted'] += 1
+                        if made:
+                            season_lineup_stats[name_only_key]['total_3pt_made'] += 1
+                            season_lineup_stats[name_only_key]['total_fg_made'] += 1
+
 with tab5:
     st.header("🏆 Season Statistics")
     
