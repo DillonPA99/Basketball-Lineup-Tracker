@@ -11473,11 +11473,6 @@ def get_lineup_key_by_names_only(lineup_list):
     names_only = [get_player_name_only(player) for player in lineup_list]
     return " | ".join(sorted(names_only))
 
-# Then in Tab 5, find this section (around line 200-250):
-# "# Aggregate lineup stats from all games - FIXED VERSION"
-
-# Replace the lineup aggregation section with this:
-
         # Aggregate lineup stats from all games - FIXED TO GROUP BY NAME ONLY
         for game_idx, game in enumerate(season_games):
             # Calculate time for each lineup in this game
