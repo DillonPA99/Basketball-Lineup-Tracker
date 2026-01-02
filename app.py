@@ -11662,6 +11662,7 @@ with tab5:
             st.metric("Total FG", f"{season_home_shooting['field_goals_made']}/{season_home_shooting['field_goals_attempted']}", f"{fg_pct:.1f}%")
         
         with home_cols[2]:
+            # FIXED: Calculate 2-point stats correctly
             two_pt_made = season_home_shooting['field_goals_made'] - season_home_shooting['three_pointers_made']
             two_pt_attempted = season_home_shooting['field_goals_attempted'] - season_home_shooting['three_pointers_attempted']
             two_pt_pct = (two_pt_made / two_pt_attempted * 100) if two_pt_attempted > 0 else 0
@@ -11707,6 +11708,7 @@ with tab5:
             st.metric("Total FG", f"{season_away_shooting['field_goals_made']}/{season_away_shooting['field_goals_attempted']}", f"{away_fg_pct:.1f}%")
         
         with away_cols[2]:
+            # FIXED: Calculate 2-point stats correctly for away team
             away_two_pt_made = season_away_shooting['field_goals_made'] - season_away_shooting['three_pointers_made']
             away_two_pt_attempted = season_away_shooting['field_goals_attempted'] - season_away_shooting['three_pointers_attempted']
             away_two_pt_pct = (away_two_pt_made / away_two_pt_attempted * 100) if away_two_pt_attempted > 0 else 0
@@ -11735,7 +11737,7 @@ with tab5:
                 if season_away_shooting['total_points'] > 0 else 0
             )
             st.metric("Points off TO %", f"{away_pot_pct:.1f}%")
-   
+            
         st.divider()
         
         # Individual Player Statistics - FIXED TO COMBINE BY NAME ONLY
