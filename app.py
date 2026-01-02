@@ -11646,38 +11646,6 @@ with tab5:
                         total_home_pot += points
                     else:
                         total_away_pot += points
-                
-        # ===== ADD DEBUG CODE HERE =====
-        st.write("🔍 DEBUG - Score History Analysis:")
-        debug_home_fg = 0
-        debug_home_3pt = 0
-        debug_away_fg = 0
-        debug_away_3pt = 0
-        
-        for game in season_games:
-            for score_event in game.get('score_history', []):
-                team = score_event.get('team')
-                shot_type = score_event.get('shot_type', 'field_goal')
-                made = score_event.get('made', True)
-                attempted = score_event.get('attempted', True)
-                
-                if team == 'home' and attempted:
-                    if shot_type in ['field_goal', 'three_pointer']:
-                        debug_home_fg += 1
-                    if shot_type == 'three_pointer':
-                        debug_home_3pt += 1
-                elif team == 'away' and attempted:
-                    if shot_type in ['field_goal', 'three_pointer']:
-                        debug_away_fg += 1
-                    if shot_type == 'three_pointer':
-                        debug_away_3pt += 1
-        
-        st.write(f"**Expected Home:** Total FG Attempts: {debug_home_fg}, 3PT Attempts: {debug_home_3pt}, 2PT Attempts: {debug_home_fg - debug_home_3pt}")
-        st.write(f"**Expected Away:** Total FG Attempts: {debug_away_fg}, 3PT Attempts: {debug_away_3pt}, 2PT Attempts: {debug_away_fg - debug_away_3pt}")
-        st.write(f"**Actual Home:** Total FG: {season_home_shooting['field_goals_attempted']}, 3PT: {season_home_shooting['three_pointers_attempted']}")
-        st.write(f"**Actual Away:** Total FG: {season_away_shooting['field_goals_attempted']}, 3PT: {season_away_shooting['three_pointers_attempted']}")
-        st.divider()
-        # ===== END DEBUG CODE =====
         
         # ===== HOME TEAM =====
         st.subheader("Team Totals")
